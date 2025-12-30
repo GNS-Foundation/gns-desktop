@@ -77,7 +77,7 @@ pub async fn get_breadcrumb_status(state: State<'_, AppState>) -> Result<Breadcr
 /// Enable or disable breadcrumb collection (mobile only)
 #[tauri::command]
 pub async fn set_collection_enabled(
-    enabled: bool,
+    _enabled: bool,
     #[allow(unused_variables)] state: State<'_, AppState>,
 ) -> Result<(), String> {
     #[cfg(any(target_os = "ios", target_os = "android"))]
@@ -123,7 +123,7 @@ pub struct BreadcrumbStatus {
     pub collection_strategy: String,
 
     /// Is collection currently enabled
-    pub collection_enabled: bool,
+    pub collection__enabled: bool,
 
     /// Has the user claimed a handle
     pub handle_claimed: bool,

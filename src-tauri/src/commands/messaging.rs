@@ -3,7 +3,8 @@
 //! Commands for sending and receiving encrypted messages.
 
 use crate::AppState;
-use gns_crypto_core::{create_envelope_with_metadata, GnsIdentity};
+// TODO: Add envelope function when implemented
+// use gns_crypto_core::GnsIdentity;
 use tauri::State;
 
 /// Send an encrypted message

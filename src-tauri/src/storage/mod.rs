@@ -167,7 +167,7 @@ impl Database {
         &self,
         thread_id: &str,
         limit: u32,
-        before_id: Option<&str>,
+        _before_id: Option<&str>,
     ) -> Result<Vec<Message>, DatabaseError> {
         // Simplified implementation
         let sql = "SELECT * FROM messages WHERE thread_id = ? ORDER BY timestamp DESC LIMIT ?";
@@ -202,7 +202,7 @@ impl Database {
     pub fn save_sent_message(
         &mut self,
         envelope: &GnsEnvelope,
-        payload: &[u8],
+        _payload: &[u8],
     ) -> Result<(), DatabaseError> {
         // TODO: Implement proper message saving
         tracing::debug!("Saving sent message: {}", envelope.id);

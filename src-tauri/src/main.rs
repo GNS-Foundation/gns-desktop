@@ -13,12 +13,11 @@ mod network;
 mod storage;
 
 use std::sync::Arc;
-use tauri::Manager;
+use tauri::{Manager, Emitter};
 use tokio::sync::Mutex;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::crypto::IdentityManager;
-use crate::location::BreadcrumbCollector;
 use crate::network::{ApiClient, RelayConnection};
 use crate::storage::Database;
 
@@ -136,7 +135,7 @@ fn setup_app_state() -> Result<AppState, Box<dyn std::error::Error>> {
 }
 
 /// Setup deep link handler for gns:// URLs
-fn setup_deep_links(app_handle: tauri::AppHandle) {
+fn setup_deep_links(_app_handle: tauri::AppHandle) {
     // Listen for deep links
     #[cfg(any(target_os = "ios", target_os = "android"))]
     {

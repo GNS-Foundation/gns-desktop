@@ -4,7 +4,7 @@
 
 use gns_crypto_core::GnsIdentity;
 use keyring::Entry;
-use std::sync::Arc;
+// use std::sync::Arc;
 
 const SERVICE_NAME: &str = "com.gcrumbs.browser";
 const IDENTITY_KEY: &str = "identity_private_key";

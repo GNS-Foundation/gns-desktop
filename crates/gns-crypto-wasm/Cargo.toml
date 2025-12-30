@@ -6,6 +6,9 @@ description = "GNS Crypto compiled to WebAssembly for browser use"
 license = "BSL-1.1"
 authors = ["GNS Team <dev@gcrumbs.com>"]
 
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false
+
 [lib]
 crate-type = ["cdylib", "rlib"]
 
@@ -22,7 +25,3 @@ web-sys = { version = "0.3", features = ["console"] }
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3"
-
-[profile.release]
-opt-level = "s"
-lto = true

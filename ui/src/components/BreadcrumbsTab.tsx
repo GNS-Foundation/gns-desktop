@@ -3,7 +3,7 @@
  */
 
 import { useState } from 'react';
-import { MapPin, Clock, Battery, Zap, Settings2 } from 'lucide-react';
+import { MapPin, Clock, Zap, Settings2 } from 'lucide-react';
 import { useBreadcrumbStatus, setCollectionEnabled } from '../lib/tauri';
 import { formatDistanceToNow } from 'date-fns';
 import clsx from 'clsx';

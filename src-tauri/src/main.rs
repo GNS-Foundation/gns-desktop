@@ -13,7 +13,7 @@ mod network;
 mod storage;
 
 use std::sync::Arc;
-use tauri::{Manager, Emitter};
+use tauri::{Emitter, Manager};
 use tokio::sync::Mutex;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 

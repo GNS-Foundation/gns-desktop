@@ -11,26 +11,26 @@
 //! - Secure memory handling with zeroize
 //! - No custom cryptography
 
-pub mod identity;
-pub mod encryption;
-pub mod signing;
-pub mod envelope;
 pub mod breadcrumb;
+pub mod encryption;
+pub mod envelope;
 pub mod errors;
+pub mod identity;
+pub mod signing;
 
-pub use identity::GnsIdentity;
-pub use encryption::{EncryptedPayload, encrypt_for_recipient, decrypt_from_sender};
-pub use signing::{sign_message, verify_signature};
-pub use envelope::{GnsEnvelope, create_envelope, open_envelope, create_envelope_with_metadata};
-pub use breadcrumb::{Breadcrumb, create_breadcrumb};
+pub use breadcrumb::{create_breadcrumb, Breadcrumb};
+pub use encryption::{decrypt_from_sender, encrypt_for_recipient, EncryptedPayload};
+pub use envelope::{create_envelope, create_envelope_with_metadata, open_envelope, GnsEnvelope};
 pub use errors::CryptoError;
+pub use identity::GnsIdentity;
+pub use signing::{sign_message, verify_signature};
 
 /// Re-export commonly used types
 pub mod prelude {
-    pub use crate::identity::GnsIdentity;
-    pub use crate::envelope::GnsEnvelope;
     pub use crate::breadcrumb::Breadcrumb;
+    pub use crate::envelope::GnsEnvelope;
     pub use crate::errors::CryptoError;
+    pub use crate::identity::GnsIdentity;
 }
 
 #[cfg(test)]
@@ -45,16 +45,14 @@ mod tests {
 
         // Alice sends message to Bob
         let message = b"Hello Bob!";
-        
+
         // Encrypt for Bob
         let encrypted = alice
             .encrypt_for(message, &bob.encryption_public_key_bytes())
             .expect("Encryption should succeed");
 
         // Bob decrypts
-        let decrypted = bob
-            .decrypt(&encrypted)
-            .expect("Decryption should succeed");
+        let decrypted = bob.decrypt(&encrypted).expect("Decryption should succeed");
 
         assert_eq!(message.as_slice(), decrypted.as_slice());
     }
@@ -65,7 +63,7 @@ mod tests {
         let message = b"Sign this message";
 
         let signature = identity.sign(message);
-        
+
         assert!(identity.verify(message, &signature));
         assert!(!identity.verify(b"Wrong message", &signature));
     }
@@ -86,10 +84,10 @@ mod tests {
             &recipient.encryption_key_hex(),
             "text/plain",
             &serde_json::to_vec(&payload).unwrap(),
-        ).expect("Envelope creation should succeed");
+        )
+        .expect("Envelope creation should succeed");
 
-        let opened = open_envelope(&recipient, &envelope)
-            .expect("Envelope opening should succeed");
+        let opened = open_envelope(&recipient, &envelope).expect("Envelope opening should succeed");
 
         assert!(opened.signature_valid);
         assert_eq!(opened.from_public_key, sender.public_key_hex());

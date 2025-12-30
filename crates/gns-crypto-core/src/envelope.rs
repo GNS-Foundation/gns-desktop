@@ -161,6 +161,7 @@ pub fn create_envelope(
 }
 
 /// Create envelope with additional metadata
+#[allow(clippy::too_many_arguments)]
 pub fn create_envelope_with_metadata(
     sender: &GnsIdentity,
     sender_handle: Option<&str>,

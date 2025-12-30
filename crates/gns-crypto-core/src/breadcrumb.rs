@@ -175,7 +175,7 @@ pub fn h3_grid_distance(h3_a: &str, h3_b: &str) -> Result<u32, CryptoError> {
             .map_err(|_| CryptoError::InvalidEnvelope("Invalid H3 index".to_string()))?;
 
         // Very rough approximation
-        let diff = if a > b { a - b } else { b - a };
+        let diff = a.abs_diff(b);
         Ok((diff % 1000) as u32)
     }
 }

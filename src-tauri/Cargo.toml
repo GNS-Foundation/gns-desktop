@@ -48,6 +48,8 @@ hex = "0.4"
 base64 = "0.21"
 thiserror = "1.0"
 anyhow = "1.0"
+open = "5.0"
+dirs = "5.0"
 
 # Logging
 tracing = "0.1"
@@ -72,5 +74,5 @@ custom-protocol = ["tauri/custom-protocol"]
 panic = "abort"
 codegen-units = 1
 lto = true
-opt-level = "s"  # Optimize for size
+opt-level = "s"
 strip = true

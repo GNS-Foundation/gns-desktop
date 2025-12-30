@@ -8,10 +8,10 @@
 //! Ed25519-to-X25519 conversion, ensuring a single seed controls both.
 
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
+use rand::rngs::OsRng;
+use sha2::{Digest, Sha512};
 use x25519_dalek::{PublicKey as X25519PublicKey, StaticSecret as X25519Secret};
 use zeroize::ZeroizeOnDrop;
-use rand::rngs::OsRng;
-use sha2::{Sha512, Digest};
 
 use crate::encryption::EncryptedPayload;
 use crate::errors::CryptoError;
@@ -25,10 +25,10 @@ pub struct GnsIdentity {
     /// Ed25519 signing key (also contains public key)
     #[zeroize(skip)] // SigningKey handles its own zeroization
     signing_key: SigningKey,
-    
+
     /// X25519 secret for encryption (derived from Ed25519)
     x25519_secret: [u8; 32],
-    
+
     /// Cached X25519 public key
     #[zeroize(skip)]
     x25519_public: X25519PublicKey,
@@ -116,7 +116,10 @@ impl GnsIdentity {
 
     /// Verify a signature (using own public key)
     pub fn verify(&self, message: &[u8], signature: &Signature) -> bool {
-        self.signing_key.verifying_key().verify(message, signature).is_ok()
+        self.signing_key
+            .verifying_key()
+            .verify(message, signature)
+            .is_ok()
     }
 
     /// Verify signature from bytes
@@ -138,10 +141,7 @@ impl GnsIdentity {
 
     /// Decrypt a message sent to us
     pub fn decrypt(&self, encrypted: &EncryptedPayload) -> Result<Vec<u8>, CryptoError> {
-        crate::encryption::decrypt_from_sender(
-            &self.x25519_secret,
-            encrypted,
-        )
+        crate::encryption::decrypt_from_sender(&self.x25519_secret, encrypted)
     }
 
     /// Get X25519 secret for internal use (encryption operations)
@@ -208,7 +208,7 @@ mod tests {
     #[test]
     fn test_identity_generation() {
         let identity = GnsIdentity::generate();
-        
+
         // Check key lengths
         assert_eq!(identity.public_key_hex().len(), 64); // 32 bytes = 64 hex chars
         assert_eq!(identity.encryption_key_hex().len(), 64);
@@ -218,9 +218,9 @@ mod tests {
     fn test_identity_restore_from_hex() {
         let original = GnsIdentity::generate();
         let private_hex = original.private_key_hex();
-        
+
         let restored = GnsIdentity::from_hex(&private_hex).unwrap();
-        
+
         assert_eq!(original.public_key_hex(), restored.public_key_hex());
         assert_eq!(original.encryption_key_hex(), restored.encryption_key_hex());
     }
@@ -231,7 +231,7 @@ mod tests {
         let message = b"Test message";
 
         let signature = identity.sign(message);
-        
+
         assert!(identity.verify(message, &signature));
         assert!(!identity.verify(b"Different message", &signature));
     }
@@ -240,28 +240,30 @@ mod tests {
     fn test_verify_with_external_public_key() {
         let identity = GnsIdentity::generate();
         let message = b"Test message";
-        
+
         let signature = identity.sign_bytes(message);
-        
-        let valid = verify_with_public_key(
-            &identity.public_key_hex(),
-            message,
-            &signature,
-        ).unwrap();
-        
+
+        let valid =
+            verify_with_public_key(&identity.public_key_hex(), message, &signature).unwrap();
+
         assert!(valid);
     }
 
     #[test]
     fn test_x25519_derivation_is_deterministic() {
         let identity1 = GnsIdentity::from_hex(
-            "0000000000000000000000000000000000000000000000000000000000000001"
-        ).unwrap();
-        
+            "0000000000000000000000000000000000000000000000000000000000000001",
+        )
+        .unwrap();
+
         let identity2 = GnsIdentity::from_hex(
-            "0000000000000000000000000000000000000000000000000000000000000001"
-        ).unwrap();
-        
-        assert_eq!(identity1.encryption_key_hex(), identity2.encryption_key_hex());
+            "0000000000000000000000000000000000000000000000000000000000000001",
+        )
+        .unwrap();
+
+        assert_eq!(
+            identity1.encryption_key_hex(),
+            identity2.encryption_key_hex()
+        );
     }
 }

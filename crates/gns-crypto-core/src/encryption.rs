@@ -99,8 +99,7 @@ pub fn decrypt_from_sender(
     }
 
     // Parse ephemeral public key
-    let ephemeral_public_bytes: [u8; 32] =
-        encrypted.ephemeral_public_key.clone().try_into().unwrap();
+    let ephemeral_public_bytes: [u8; 32] = encrypted.ephemeral_public_key.clone().try_into().unwrap();
     let ephemeral_public = X25519PublicKey::from(ephemeral_public_bytes);
 
     // Perform ECDH with our static secret
@@ -181,13 +180,14 @@ mod tests {
 
     #[test]
     fn test_encrypt_decrypt_roundtrip() {
-        let sender = GnsIdentity::generate();
+        let _sender = GnsIdentity::generate();
         let recipient = GnsIdentity::generate();
 
         let plaintext = b"Hello, this is a secret message!";
 
-        let encrypted = encrypt_for_recipient(plaintext, &recipient.encryption_public_key_bytes())
-            .expect("Encryption should succeed");
+        let encrypted =
+            encrypt_for_recipient(plaintext, &recipient.encryption_public_key_bytes())
+                .expect("Encryption should succeed");
 
         let decrypted = decrypt_from_sender(recipient.x25519_secret(), &encrypted)
             .expect("Decryption should succeed");
@@ -197,14 +197,15 @@ mod tests {
 
     #[test]
     fn test_wrong_recipient_cannot_decrypt() {
-        let sender = GnsIdentity::generate();
+        let _sender = GnsIdentity::generate();
         let recipient = GnsIdentity::generate();
         let wrong_recipient = GnsIdentity::generate();
 
         let plaintext = b"Secret message";
 
-        let encrypted = encrypt_for_recipient(plaintext, &recipient.encryption_public_key_bytes())
-            .expect("Encryption should succeed");
+        let encrypted =
+            encrypt_for_recipient(plaintext, &recipient.encryption_public_key_bytes())
+                .expect("Encryption should succeed");
 
         // Wrong recipient should fail to decrypt
         let result = decrypt_from_sender(wrong_recipient.x25519_secret(), &encrypted);
@@ -236,8 +237,9 @@ mod tests {
         let recipient = GnsIdentity::generate();
         let plaintext = b"Test message";
 
-        let encrypted = encrypt_for_recipient(plaintext, &recipient.encryption_public_key_bytes())
-            .expect("Encryption should succeed");
+        let encrypted =
+            encrypt_for_recipient(plaintext, &recipient.encryption_public_key_bytes())
+                .expect("Encryption should succeed");
 
         // Serialize to JSON
         let json = serde_json::to_string(&encrypted).expect("Serialization should succeed");

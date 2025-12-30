@@ -1,0 +1,18 @@
+# macOS
+.DS_Store
+
+# Rust
+target/
+Cargo.lock
+
+# Node
+node_modules/
+dist/
+
+# IDE
+.idea/
+.vscode/
+
+# Tauri
+src-tauri/target/
+src-tauri/gen/

@@ -1,0 +1,75 @@
+# Dependabot configuration
+# Keeps dependencies up to date automatically
+
+version: 2
+updates:
+  # Rust dependencies (Cargo)
+  - package-ecosystem: "cargo"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps(rust)"
+    labels:
+      - "dependencies"
+      - "rust"
+    groups:
+      crypto:
+        patterns:
+          - "ed25519-*"
+          - "x25519-*"
+          - "chacha20*"
+          - "sha2"
+          - "blake3"
+          - "hkdf"
+      tauri:
+        patterns:
+          - "tauri*"
+      serde:
+        patterns:
+          - "serde*"
+
+  # npm dependencies (UI)
+  - package-ecosystem: "npm"
+    directory: "/ui"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps(npm)"
+    labels:
+      - "dependencies"
+      - "javascript"
+    groups:
+      react:
+        patterns:
+          - "react*"
+          - "@tanstack/*"
+      tauri-js:
+        patterns:
+          - "@tauri-apps/*"
+      dev-deps:
+        patterns:
+          - "typescript"
+          - "vite*"
+          - "@vitejs/*"
+          - "eslint*"
+          - "@typescript-eslint/*"
+          - "tailwindcss"
+          - "postcss"
+          - "autoprefixer"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "ci"
+    labels:
+      - "dependencies"
+      - "github-actions"

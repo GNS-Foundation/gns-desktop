@@ -1,0 +1,132 @@
+# Quick PR Checks - Fast feedback for pull requests
+# Only runs Rust tests and type checking (no full builds)
+
+name: PR Checks
+
+on:
+  pull_request:
+    branches: [main, develop]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # ============================================
+  # Rust Checks (fast)
+  # ============================================
+  rust-checks:
+    name: Rust Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-action@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Clippy (warnings as errors)
+        run: cargo clippy --workspace -- -D warnings
+
+      - name: Run tests
+        run: cargo test --workspace
+
+  # ============================================
+  # TypeScript Checks (fast)
+  # ============================================
+  typescript-checks:
+    name: TypeScript Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./ui
+        run: npm ci
+
+      - name: Type check
+        working-directory: ./ui
+        run: npm run typecheck
+
+      - name: Lint
+        working-directory: ./ui
+        run: npm run lint
+
+  # ============================================
+  # Security Audit
+  # ============================================
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-action@stable
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit
+
+      - name: Run audit
+        run: cargo audit
+        continue-on-error: true  # Don't fail PR on audit warnings
+
+      - name: Check for vulnerabilities (npm)
+        working-directory: ./ui
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
+  # ============================================
+  # Build Check (verify it compiles)
+  # ============================================
+  build-check:
+    name: Build Check (Linux)
+    runs-on: ubuntu-22.04
+    needs: [rust-checks, typescript-checks]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-action@stable
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install UI dependencies
+        working-directory: ./ui
+        run: npm ci
+
+      - name: Build UI
+        working-directory: ./ui
+        run: npm run build
+
+      - name: Check Rust builds
+        run: cargo build --release
+        working-directory: ./src-tauri

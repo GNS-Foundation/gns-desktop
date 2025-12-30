@@ -1,0 +1,183 @@
+# Deploy WASM to Cloudflare Pages
+# This publishes the crypto WASM module for Panthera browser
+
+name: Deploy WASM
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'crates/gns-crypto-core/**'
+      - 'crates/gns-crypto-wasm/**'
+  workflow_dispatch:
+
+jobs:
+  deploy-wasm:
+    name: Build & Deploy WASM
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-action@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        run: cargo install wasm-pack
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build WASM (optimized)
+        working-directory: ./crates/gns-crypto-wasm
+        run: |
+          wasm-pack build --target web --release
+          
+          # Show output size
+          echo "📦 WASM bundle sizes:"
+          ls -lh pkg/*.wasm
+          
+          # Optimize with wasm-opt if available
+          if command -v wasm-opt &> /dev/null; then
+            wasm-opt -Os pkg/gns_crypto_wasm_bg.wasm -o pkg/gns_crypto_wasm_bg.wasm
+            echo "✅ Optimized with wasm-opt"
+            ls -lh pkg/*.wasm
+          fi
+
+      - name: Create deployment package
+        run: |
+          mkdir -p deploy/wasm
+          cp crates/gns-crypto-wasm/pkg/*.js deploy/wasm/
+          cp crates/gns-crypto-wasm/pkg/*.wasm deploy/wasm/
+          cp crates/gns-crypto-wasm/pkg/*.d.ts deploy/wasm/ 2>/dev/null || true
+          
+          # Create version file
+          echo "{\"version\": \"$(cargo metadata --format-version 1 | jq -r '.packages[] | select(.name==\"gns-crypto-wasm\") | .version')\", \"built\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\", \"commit\": \"${{ github.sha }}\"}" > deploy/wasm/version.json
+          
+          # Create index.html for testing
+          cat > deploy/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>GNS Crypto WASM Test</title>
+            <style>
+              body { font-family: system-ui; max-width: 800px; margin: 40px auto; padding: 20px; }
+              pre { background: #1a1a2e; color: #fff; padding: 20px; border-radius: 8px; overflow-x: auto; }
+              button { background: #3b82f6; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; margin: 4px; }
+              button:hover { background: #2563eb; }
+              .success { color: #22c55e; }
+              .error { color: #ef4444; }
+            </style>
+          </head>
+          <body>
+            <h1>🔐 GNS Crypto WASM</h1>
+            <p>Test the WebAssembly crypto module</p>
+            
+            <div>
+              <button onclick="testGenerateIdentity()">Generate Identity</button>
+              <button onclick="testSignVerify()">Sign & Verify</button>
+              <button onclick="testEncryptDecrypt()">Encrypt & Decrypt</button>
+            </div>
+            
+            <pre id="output">Click a button to test...</pre>
+            
+            <script type="module">
+              import init, * as crypto from './wasm/gns_crypto_wasm.js';
+              
+              let initialized = false;
+              
+              async function ensureInit() {
+                if (!initialized) {
+                  await init();
+                  initialized = true;
+                  log('✅ WASM initialized');
+                }
+              }
+              
+              function log(msg) {
+                document.getElementById('output').textContent += '\n' + msg;
+              }
+              
+              function clear() {
+                document.getElementById('output').textContent = '';
+              }
+              
+              window.testGenerateIdentity = async () => {
+                clear();
+                try {
+                  await ensureInit();
+                  const identity = crypto.generate_identity();
+                  log('🔑 Generated Identity:');
+                  log('Public Key: ' + identity.public_key.slice(0, 16) + '...');
+                  log('Encryption Key: ' + identity.encryption_key.slice(0, 16) + '...');
+                  log('Private Key: [hidden]');
+                  log('\n✅ SUCCESS');
+                } catch (e) {
+                  log('❌ ERROR: ' + e.message);
+                }
+              };
+              
+              window.testSignVerify = async () => {
+                clear();
+                try {
+                  await ensureInit();
+                  const identity = crypto.generate_identity();
+                  const message = new TextEncoder().encode('Hello GNS!');
+                  
+                  log('📝 Signing message...');
+                  const signature = crypto.sign_message(identity.private_key, message);
+                  log('Signature: ' + signature.slice(0, 32) + '...');
+                  
+                  log('\n🔍 Verifying...');
+                  const valid = crypto.verify_signature(identity.public_key, message, signature);
+                  log('Valid: ' + valid);
+                  
+                  log('\n' + (valid ? '✅ SUCCESS' : '❌ FAILED'));
+                } catch (e) {
+                  log('❌ ERROR: ' + e.message);
+                }
+              };
+              
+              window.testEncryptDecrypt = async () => {
+                clear();
+                try {
+                  await ensureInit();
+                  const sender = crypto.generate_identity();
+                  const recipient = crypto.generate_identity();
+                  const message = new TextEncoder().encode('Secret message!');
+                  
+                  log('🔒 Encrypting...');
+                  const encrypted = crypto.encrypt_for_recipient(message, recipient.encryption_key);
+                  log('Encrypted: ' + JSON.stringify(encrypted).slice(0, 50) + '...');
+                  
+                  log('\n🔓 Decrypting...');
+                  const decrypted = crypto.decrypt_message(recipient.private_key, JSON.stringify(encrypted));
+                  const text = new TextDecoder().decode(new Uint8Array(decrypted));
+                  log('Decrypted: ' + text);
+                  
+                  log('\n✅ SUCCESS');
+                } catch (e) {
+                  log('❌ ERROR: ' + e.message);
+                }
+              };
+            </script>
+          </body>
+          </html>
+          EOF
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: gns-crypto-wasm
+          directory: deploy
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gns-crypto-wasm
+          path: deploy/wasm/

@@ -6,6 +6,7 @@ use crate::AppState;
 // TODO: Add envelope function when implemented
 // use gns_crypto_core::GnsIdentity;
 use tauri::State;
+use gns_crypto_core::create_envelope_with_metadata;
 
 /// Send an encrypted message
 #[tauri::command]

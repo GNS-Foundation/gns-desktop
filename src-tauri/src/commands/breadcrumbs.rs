@@ -123,7 +123,7 @@ pub struct BreadcrumbStatus {
     pub collection_strategy: String,
 
     /// Is collection currently enabled
-    pub collection__enabled: bool,
+    pub collection_enabled: bool,
 
     /// Has the user claimed a handle
     pub handle_claimed: bool,

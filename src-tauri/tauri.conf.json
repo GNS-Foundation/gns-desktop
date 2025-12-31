@@ -65,17 +65,6 @@
   "plugins": {
     "shell": {
       "open": true
-    },
-    "http": {
-      "enabled": true,
-      "scope": [
-        "https://api.gcrumbs.com/*",
-        "https://app.gcrumbs.com/*",
-        "https://*.gcrumbs.com/*"
-      ]
-    },
-    "notification": {
-      "enabled": true
     }
   }
 }

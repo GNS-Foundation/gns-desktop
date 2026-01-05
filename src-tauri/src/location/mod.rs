@@ -182,7 +182,7 @@ impl BreadcrumbCollector {
         latitude: f64,
         longitude: f64,
     ) -> Result<Breadcrumb, CollectorError> {
-        create_breadcrumb(identity, latitude, longitude, None)
+        create_breadcrumb(identity, latitude, longitude, None, None)
             .map_err(|e| CollectorError::CryptoError(e.to_string()))
     }
 }

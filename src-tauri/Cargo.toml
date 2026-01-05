@@ -8,6 +8,14 @@ repository = "https://github.com/gcrumbs/gns-browser"
 edition = "2021"
 rust-version = "1.70"
 
+[lib]
+name = "gns_browser"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[[bin]]
+name = "gns-browser"
+path = "src/main.rs"
+
 [build-dependencies]
 tauri-build = { version = "2.0", features = [] }
 
@@ -51,6 +59,9 @@ thiserror = "1.0"
 anyhow = "1.0"
 open = "5.0"
 dirs = "5.0"
+regex = "1.10"
+sha2 = "0.10"
+stellar-xdr = { version = "21.1", features = ["std", "curr"] }
 
 # Logging
 tracing = "0.1"

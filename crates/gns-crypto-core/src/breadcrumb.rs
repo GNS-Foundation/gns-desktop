@@ -46,6 +46,11 @@ pub struct Breadcrumb {
 
     /// H3 resolution used (for verification)
     pub resolution: u8,
+
+    /// Hash of previous breadcrumb (for chain verification)
+    /// None for the first breadcrumb in the chain
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prev_hash: Option<String>,
 }
 
 /// Create a breadcrumb from coordinates
@@ -57,6 +62,7 @@ pub fn create_breadcrumb(
     latitude: f64,
     longitude: f64,
     resolution: Option<u8>,
+    prev_hash: Option<String>,
 ) -> Result<Breadcrumb, CryptoError> {
     let resolution = resolution.unwrap_or(DEFAULT_H3_RESOLUTION);
 
@@ -64,13 +70,23 @@ pub fn create_breadcrumb(
     let h3_index = lat_lng_to_h3(latitude, longitude, resolution)?;
     let timestamp = chrono::Utc::now().timestamp();
 
-    // Create signing payload
-    let signing_data = format!(
-        "gns-breadcrumb-v1:{}:{}:{}",
-        h3_index,
-        timestamp,
-        identity.public_key_hex()
-    );
+    // Create signing payload (include prev_hash if present)
+    let signing_data = if let Some(ref prev) = prev_hash {
+        format!(
+            "gns-breadcrumb-v1:{}:{}:{}:{}",
+            h3_index,
+            timestamp,
+            identity.public_key_hex(),
+            prev
+        )
+    } else {
+        format!(
+            "gns-breadcrumb-v1:{}:{}:{}",
+            h3_index,
+            timestamp,
+            identity.public_key_hex()
+        )
+    };
 
     // Sign
     let signature = identity.sign_bytes(signing_data.as_bytes());
@@ -81,6 +97,7 @@ pub fn create_breadcrumb(
         public_key: identity.public_key_hex(),
         signature: hex::encode(signature),
         resolution,
+        prev_hash,
     })
 }
 
@@ -89,15 +106,26 @@ pub fn create_breadcrumb_from_h3(
     identity: &GnsIdentity,
     h3_index: &str,
     resolution: u8,
+    prev_hash: Option<String>,
 ) -> Result<Breadcrumb, CryptoError> {
     let timestamp = chrono::Utc::now().timestamp();
 
-    let signing_data = format!(
-        "gns-breadcrumb-v1:{}:{}:{}",
-        h3_index,
-        timestamp,
-        identity.public_key_hex()
-    );
+    let signing_data = if let Some(ref prev) = prev_hash {
+        format!(
+            "gns-breadcrumb-v1:{}:{}:{}:{}",
+            h3_index,
+            timestamp,
+            identity.public_key_hex(),
+            prev
+        )
+    } else {
+        format!(
+            "gns-breadcrumb-v1:{}:{}:{}",
+            h3_index,
+            timestamp,
+            identity.public_key_hex()
+        )
+    };
 
     let signature = identity.sign_bytes(signing_data.as_bytes());
 
@@ -107,15 +135,23 @@ pub fn create_breadcrumb_from_h3(
         public_key: identity.public_key_hex(),
         signature: hex::encode(signature),
         resolution,
+        prev_hash,
     })
 }
 
 /// Verify a breadcrumb's signature
 pub fn verify_breadcrumb(breadcrumb: &Breadcrumb) -> Result<bool, CryptoError> {
-    let signing_data = format!(
-        "gns-breadcrumb-v1:{}:{}:{}",
-        breadcrumb.h3_index, breadcrumb.timestamp, breadcrumb.public_key
-    );
+    let signing_data = if let Some(ref prev) = breadcrumb.prev_hash {
+        format!(
+            "gns-breadcrumb-v1:{}:{}:{}:{}",
+            breadcrumb.h3_index, breadcrumb.timestamp, breadcrumb.public_key, prev
+        )
+    } else {
+        format!(
+            "gns-breadcrumb-v1:{}:{}:{}",
+            breadcrumb.h3_index, breadcrumb.timestamp, breadcrumb.public_key
+        )
+    };
 
     verify_signature_hex(
         &breadcrumb.public_key,
@@ -292,7 +328,7 @@ mod tests {
     fn test_create_and_verify_breadcrumb() {
         let identity = GnsIdentity::generate();
 
-        let breadcrumb = create_breadcrumb(&identity, 40.7128, -74.0060, None)
+        let breadcrumb = create_breadcrumb(&identity, 40.7128, -74.0060, None, None)
             .expect("Breadcrumb creation should succeed");
 
         assert!(breadcrumb.verify().expect("Verification should succeed"));
@@ -303,7 +339,7 @@ mod tests {
     fn test_tampered_breadcrumb_fails_verification() {
         let identity = GnsIdentity::generate();
 
-        let mut breadcrumb = create_breadcrumb(&identity, 40.7128, -74.0060, None)
+        let mut breadcrumb = create_breadcrumb(&identity, 40.7128, -74.0060, None, None)
             .expect("Breadcrumb creation should succeed");
 
         // Tamper with timestamp
@@ -316,7 +352,7 @@ mod tests {
     fn test_breadcrumb_json_roundtrip() {
         let identity = GnsIdentity::generate();
 
-        let breadcrumb = create_breadcrumb(&identity, 51.5074, -0.1278, None)
+        let breadcrumb = create_breadcrumb(&identity, 51.5074, -0.1278, None, None)
             .expect("Breadcrumb creation should succeed");
 
         let json = breadcrumb.to_json().expect("Serialization should succeed");
@@ -335,7 +371,7 @@ mod tests {
         for i in 0..5 {
             let lat = 40.0 + (i as f64 * 0.1);
             let lng = -74.0 + (i as f64 * 0.1);
-            let breadcrumb = create_breadcrumb(&identity, lat, lng, None)
+            let breadcrumb = create_breadcrumb(&identity, lat, lng, None, None)
                 .expect("Breadcrumb creation should succeed");
             trajectory.add(breadcrumb).expect("Adding should succeed");
         }

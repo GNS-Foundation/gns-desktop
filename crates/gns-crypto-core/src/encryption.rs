@@ -22,6 +22,7 @@ use crate::errors::CryptoError;
 
 /// Encrypted payload structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct EncryptedPayload {
     /// Ephemeral X25519 public key (32 bytes)
     #[serde(with = "hex_bytes")]

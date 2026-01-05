@@ -38,6 +38,7 @@ use crate::signing::{canonicalize_for_signing, verify_signature_hex};
 
 /// GNS Envelope - the message container
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GnsEnvelope {
     /// Unique envelope ID
     pub id: String,
@@ -245,6 +246,7 @@ pub fn open_envelope(
 
 /// Header structure for signing (excludes actual encrypted content)
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct EnvelopeHeader {
     id: String,
     from_public_key: String,

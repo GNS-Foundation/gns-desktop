@@ -28,11 +28,11 @@ pub async fn send_message(
     let my_handle = identity_mgr.cached_handle();
 
     // Resolve recipient
-    let (recipient_pk, recipient_enc_key) = if let Some(handle) = recipient_handle {
+    let (recipient_pk, recipient_enc_key) = if let Some(handle) = &recipient_handle {
         // Resolve handle to keys
         let info = state
             .api
-            .resolve_handle(&handle)
+            .resolve_handle(handle)
             .await
             .map_err(|e| format!("Failed to resolve handle: {}", e))?
             .ok_or("Handle not found")?;
@@ -78,7 +78,7 @@ pub async fn send_message(
 
     // Store locally
     let mut db = state.database.lock().await;
-    db.save_sent_message(&envelope, &payload_bytes)
+    db.save_sent_message(&envelope, &payload_bytes, recipient_handle.as_deref(), reply_to_id)
         .map_err(|e| format!("Failed to save locally: {}", e))?;
 
     Ok(SendResult {
@@ -102,17 +102,27 @@ pub async fn get_threads(
     Ok(threads)
 }
 
+/// Get a single thread
+#[tauri::command]
+pub async fn get_thread(
+    thread_id: String,
+    state: State<'_, AppState>,
+) -> Result<Option<ThreadPreview>, String> {
+    let db = state.database.lock().await;
+    db.get_thread(&thread_id).map_err(|e| e.to_string())
+}
+
 /// Get messages in a thread
 #[tauri::command]
 pub async fn get_messages(
     thread_id: String,
     limit: Option<u32>,
-    before_id: Option<String>,
+    _before_id: Option<String>,
     state: State<'_, AppState>,
 ) -> Result<Vec<Message>, String> {
     let db = state.database.lock().await;
     let messages = db
-        .get_messages(&thread_id, limit.unwrap_or(50), before_id.as_deref())
+        .get_messages(&thread_id, limit.unwrap_or(50))
         .map_err(|e| e.to_string())?;
 
     Ok(messages)
@@ -130,6 +140,95 @@ pub async fn mark_thread_read(thread_id: String, state: State<'_, AppState>) -> 
 pub async fn delete_thread(thread_id: String, state: State<'_, AppState>) -> Result<(), String> {
     let mut db = state.database.lock().await;
     db.delete_thread(&thread_id).map_err(|e| e.to_string())
+}
+
+/// Delete a message
+#[tauri::command]
+pub async fn delete_message(message_id: String, state: State<'_, AppState>) -> Result<(), String> {
+    let mut db = state.database.lock().await;
+    db.delete_message(&message_id).map_err(|e| e.to_string())
+}
+
+/// Add a reaction to a message
+#[tauri::command]
+pub async fn add_reaction(
+    message_id: String,
+    emoji: String,
+    recipient_public_key: String,
+    _recipient_handle: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    // Get our identity
+    let identity_mgr = state.identity.lock().await;
+    let identity = identity_mgr
+        .get_identity()
+        .ok_or("No identity configured")?;
+    let my_handle = identity_mgr.cached_handle();
+
+    // Resolve recipient encryption key
+    let info = state
+        .api
+        .get_identity(&recipient_public_key)
+        .await
+        .map_err(|e| format!("Failed to get identity: {}", e))?
+        .ok_or("Identity not found")?;
+    let recipient_enc_key = info.encryption_key;
+
+    // Create payload
+    let payload = serde_json::json!({
+        "target_message_id": message_id,
+        "emoji": emoji
+    });
+    let payload_bytes = serde_json::to_vec(&payload).map_err(|e| e.to_string())?;
+
+    // Create envelope
+    let envelope = create_envelope_with_metadata(
+        &identity,
+        my_handle.as_deref(),
+        &recipient_public_key,
+        &recipient_enc_key,
+        "reaction",
+        &payload_bytes,
+        None,
+        None,
+    )
+    .map_err(|e| format!("Failed to create envelope: {}", e))?;
+
+    // Send via relay
+    let relay = state.relay.lock().await;
+    relay
+        .send_envelope(&envelope)
+        .await
+        .map_err(|e| format!("Failed to send: {}", e))?;
+
+    // Store locally
+    let mut db = state.database.lock().await;
+    db.save_reaction(&message_id, &identity.public_key_hex(), &emoji, envelope.timestamp)
+        .map_err(|e| format!("Failed to save reaction: {}", e))?;
+
+    Ok(())
+}
+
+/// Resolve a handle to identity info
+#[tauri::command]
+pub async fn resolve_handle(
+    handle: String,
+    state: State<'_, AppState>,
+) -> Result<Option<HandleInfo>, String> {
+    let info = state
+        .api
+        .resolve_handle(&handle)
+        .await
+        .map_err(|e| format!("Failed to resolve handle: {}", e))?;
+
+    Ok(info.map(|i| HandleInfo {
+        public_key: i.public_key,
+        encryption_key: i.encryption_key,
+        handle: i.handle,
+        display_name: i.display_name,
+        avatar_url: i.avatar_url,
+        is_verified: i.is_verified,
+    }))
 }
 
 // ==================== Types ====================
@@ -152,7 +251,13 @@ pub struct ThreadPreview {
     pub is_muted: bool,
 }
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, Clone)]
+pub struct Reaction {
+    pub emoji: String,
+    pub from_public_key: String,
+}
+
+#[derive(serde::Serialize, Clone)]
 pub struct Message {
     pub id: String,
     pub thread_id: String,
@@ -163,4 +268,18 @@ pub struct Message {
     pub timestamp: i64,
     pub is_outgoing: bool,
     pub status: String,
+    pub reply_to_id: Option<String>,
+    pub is_starred: bool,
+    pub forwarded_from_id: Option<String>,
+    pub reactions: Vec<Reaction>,
+}
+
+#[derive(serde::Serialize)]
+pub struct HandleInfo {
+    pub public_key: String,
+    pub encryption_key: String,
+    pub handle: Option<String>,
+    pub display_name: Option<String>,
+    pub avatar_url: Option<String>,
+    pub is_verified: bool,
 }

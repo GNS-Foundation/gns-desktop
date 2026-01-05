@@ -8,6 +8,7 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
+    host: true,  // 👈 Expose on network for iOS device
   },
   
   // Prevent Vite from obscuring Rust errors

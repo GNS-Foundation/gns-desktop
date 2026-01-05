@@ -1,202 +1,274 @@
-//! Handle Commands
+//! Handle Module - Handle validation, reservation, and claiming
 //!
-//! Commands for resolving and claiming @handles.
+//! Implements the GNS handle lifecycle:
+//! 1. Validate handle format
+//! 2. Check availability
+//! 3. Reserve handle (before breadcrumbs)
+//! 4. Claim handle (after 100 breadcrumbs with PoT)
 
-use crate::AppState;
-use tauri::State;
+use serde::{Deserialize, Serialize};
+use regex::Regex;
+use std::sync::LazyLock;
 
-/// Resolve a handle to identity information
-#[tauri::command]
-pub async fn resolve_handle(
-    handle: String,
-    state: State<'_, AppState>,
-) -> Result<Option<HandleInfo>, String> {
-    let clean_handle = handle.trim_start_matches('@').to_lowercase();
+// ==================== Command Result Wrapper ====================
 
-    let info = state
-        .api
-        .resolve_handle(&clean_handle)
-        .await
-        .map_err(|e| format!("Failed to resolve handle: {}", e))?;
-
-    Ok(info.map(|i| HandleInfo {
-        handle: clean_handle,
-        public_key: i.public_key,
-        encryption_key: i.encryption_key,
-        avatar_url: i.avatar_url,
-        display_name: i.display_name,
-        is_verified: i.is_verified,
-    }))
+#[derive(Debug, Clone, Serialize)]
+pub struct CommandResult<T> {
+    pub success: bool,
+    pub data: Option<T>,
+    pub error: Option<String>,
 }
 
-/// Check if a handle is available for claiming
-#[tauri::command]
-pub async fn check_handle_available(
-    handle: String,
-    state: State<'_, AppState>,
-) -> Result<HandleAvailability, String> {
-    let clean_handle = handle.trim_start_matches('@').to_lowercase();
 
-    // Validate format
-    if !is_valid_handle_format(&clean_handle) {
-        return Ok(HandleAvailability {
-            handle: clean_handle,
-            available: false,
-            reason: Some(
-                "Invalid format. Use 3-20 characters, letters, numbers, and underscores only."
-                    .to_string(),
-            ),
-        });
+// ==================== Validation ====================
+
+static HANDLE_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^[a-z0-9_]{3,20}$").unwrap()
+});
+
+const RESERVED_HANDLES: &[&str] = &[
+    "admin", "root", "system", "gns", "layer", "browser", 
+    "support", "help", "official", "verified", "echo", "bot",
+    "api", "www", "app", "mail", "ftp", "ssh", "localhost",
+];
+
+/// Validate a handle format
+pub fn validate_handle(handle: &str) -> Result<String, HandleError> {
+    let clean = handle.trim().to_lowercase().replace('@', "");
+    
+    if clean.is_empty() {
+        return Err(HandleError::Empty);
     }
-
-    // Check if already taken
-    let existing = state
-        .api
-        .resolve_handle(&clean_handle)
-        .await
-        .map_err(|e| format!("Failed to check handle: {}", e))?;
-
-    if existing.is_some() {
-        return Ok(HandleAvailability {
-            handle: clean_handle,
-            available: false,
-            reason: Some("This handle is already claimed.".to_string()),
-        });
+    
+    if clean.len() < 3 {
+        return Err(HandleError::TooShort { min: 3, got: clean.len() });
     }
-
-    // Check reserved handles
-    if is_reserved_handle(&clean_handle) {
-        return Ok(HandleAvailability {
-            handle: clean_handle,
-            available: false,
-            reason: Some("This handle is reserved.".to_string()),
-        });
+    
+    if clean.len() > 20 {
+        return Err(HandleError::TooLong { max: 20, got: clean.len() });
     }
-
-    Ok(HandleAvailability {
-        handle: clean_handle,
-        available: true,
-        reason: None,
-    })
+    
+    if !HANDLE_REGEX.is_match(&clean) {
+        return Err(HandleError::InvalidCharacters);
+    }
+    
+    if RESERVED_HANDLES.contains(&clean.as_str()) {
+        return Err(HandleError::Reserved);
+    }
+    
+    Ok(clean)
 }
 
-/// Claim a handle (requires 100+ breadcrumbs)
-#[tauri::command]
-pub async fn claim_handle(
-    handle: String,
-    state: State<'_, AppState>,
-) -> Result<ClaimResult, String> {
-    let clean_handle = handle.trim_start_matches('@').to_lowercase();
+// ==================== Handle Status ====================
 
-    // Check availability first
-    let availability = check_handle_available(clean_handle.clone(), state.clone()).await?;
-    if !availability.available {
-        return Err(availability
-            .reason
-            .unwrap_or("Handle not available".to_string()));
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum HandleStatus {
+    /// No handle associated
+    None,
+    /// Handle is reserved but not yet claimed (collecting breadcrumbs)
+    Reserved { 
+        handle: String, 
+        reserved_at: String,
+        network_reserved: bool,
+    },
+    /// Handle is fully claimed and verified
+    Claimed { 
+        handle: String,
+        claimed_at: String,
+    },
+}
+
+impl HandleStatus {
+    pub fn display_name(&self) -> String {
+        match self {
+            HandleStatus::None => "Anonymous".to_string(),
+            HandleStatus::Reserved { handle, .. } => format!("@{} (pending)", handle),
+            HandleStatus::Claimed { handle, .. } => format!("@{}", handle),
+        }
     }
-
-    // Check breadcrumb count
-    let db = state.database.lock().await;
-    let breadcrumb_count = db.count_breadcrumbs().unwrap_or(0);
-
-    if breadcrumb_count < 100 {
-        return Err(format!(
-            "Need 100 breadcrumbs to claim a handle. You have {}.",
-            breadcrumb_count
-        ));
+    
+    pub fn handle(&self) -> Option<&str> {
+        match self {
+            HandleStatus::None => None,
+            HandleStatus::Reserved { handle, .. } => Some(handle),
+            HandleStatus::Claimed { handle, .. } => Some(handle),
+        }
     }
-
-    // Get identity
-    let identity_mgr = state.identity.lock().await;
-    let identity = identity_mgr
-        .get_identity()
-        .ok_or("No identity configured")?;
-
-    // Create claim signature
-    let claim_data = format!(
-        "gns-claim-v1:{}:{}:{}",
-        clean_handle,
-        identity.public_key_hex(),
-        chrono::Utc::now().timestamp()
-    );
-    let signature = identity.sign_bytes(claim_data.as_bytes());
-
-    // Get breadcrumbs for submission
-    let breadcrumbs = db
-        .get_recent_breadcrumbs(100)
-        .map_err(|e| format!("Failed to get breadcrumbs: {}", e))?;
-
-    drop(db); // Release lock before API call
-
-    // Submit claim to API
-    let result = state
-        .api
-        .claim_handle(
-            &clean_handle,
-            &identity.public_key_hex(),
-            &identity.encryption_key_hex(),
-            &hex::encode(signature),
-            breadcrumbs.clone(),
-        )
-        .await
-        .map_err(|e| format!("Claim failed: {}", e))?;
-
-    // Cache the claimed handle
-    drop(identity_mgr);
-    let mut identity_mgr = state.identity.lock().await;
-    identity_mgr.set_cached_handle(Some(clean_handle.clone()));
-
-    Ok(ClaimResult {
-        success: true,
-        handle: clean_handle,
-        transaction_id: result.transaction_id,
-    })
-}
-
-// ==================== Helpers ====================
-
-fn is_valid_handle_format(handle: &str) -> bool {
-    if handle.len() < 3 || handle.len() > 20 {
-        return false;
+    
+    pub fn is_claimed(&self) -> bool {
+        matches!(self, HandleStatus::Claimed { .. })
     }
-
-    handle
-        .chars()
-        .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
+    
+    pub fn is_reserved(&self) -> bool {
+        matches!(self, HandleStatus::Reserved { .. })
+    }
 }
 
-fn is_reserved_handle(handle: &str) -> bool {
-    const RESERVED: &[&str] = &[
-        "admin", "root", "system", "support", "help", "gns", "globe", "crumbs", "official",
-        "verified", "bot", "echo", "news", "alerts", "security",
-    ];
+// ==================== API Types ====================
 
-    RESERVED.contains(&handle)
-}
-
-// ==================== Types ====================
-
-#[derive(serde::Serialize)]
-pub struct HandleInfo {
-    pub handle: String,
-    pub public_key: String,
-    pub encryption_key: String,
-    pub avatar_url: Option<String>,
-    pub display_name: Option<String>,
-    pub is_verified: bool,
-}
-
-#[derive(serde::Serialize)]
-pub struct HandleAvailability {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HandleCheckResult {
     pub handle: String,
     pub available: bool,
     pub reason: Option<String>,
 }
 
-#[derive(serde::Serialize)]
-pub struct ClaimResult {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HandleReservationResult {
     pub success: bool,
     pub handle: String,
-    pub transaction_id: Option<String>,
+    pub network_reserved: bool,
+    pub expires_at: Option<String>,
+    pub message: Option<String>,
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HandleClaimResult {
+    pub success: bool,
+    pub handle: Option<String>,
+    pub message: Option<String>,
+    pub error: Option<String>,
+    pub requirements: Option<ClaimRequirements>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ClaimRequirements {
+    pub breadcrumbs_required: u32,
+    pub breadcrumbs_current: u32,
+    pub trust_required: f64,
+    pub trust_current: f64,
+}
+
+impl ClaimRequirements {
+    pub fn new(breadcrumbs: u32, trust: f64) -> Self {
+        Self {
+            breadcrumbs_required: 100,
+            breadcrumbs_current: breadcrumbs,
+            trust_required: 20.0,
+            trust_current: trust,
+        }
+    }
+    
+    pub fn is_met(&self) -> bool {
+        self.breadcrumbs_current >= self.breadcrumbs_required &&
+        self.trust_current >= self.trust_required
+    }
+}
+
+// ==================== Errors ====================
+
+#[derive(Debug, Clone, Serialize, thiserror::Error)]
+pub enum HandleError {
+    #[error("Handle cannot be empty")]
+    Empty,
+    
+    #[error("Handle must be at least {min} characters (got {got})")]
+    TooShort { min: usize, got: usize },
+    
+    #[error("Handle cannot exceed {max} characters (got {got})")]
+    TooLong { max: usize, got: usize },
+    
+    #[error("Handle can only contain lowercase letters, numbers, and underscores")]
+    InvalidCharacters,
+    
+    #[error("This handle is reserved")]
+    Reserved,
+    
+    #[error("Handle is already taken")]
+    Taken,
+    
+    #[error("Network error: {0}")]
+    NetworkError(String),
+    
+    #[error("Not enough breadcrumbs")]
+    InsufficientBreadcrumbs { required: u32, current: u32 },
+    
+    #[error("Trust score too low")]
+    InsufficientTrust { required: f64, current: f64 },
+    
+    #[error("No handle reserved")]
+    NoReservation,
+    
+    #[error("Signature error: {0}")]
+    SignatureError(String),
+}
+
+// ==================== Canonical JSON for Signing ====================
+
+/// Create canonical JSON for signing (sorted keys, no null values)
+/// Must match the server's canonicalJson() function exactly
+pub fn canonical_json(value: &serde_json::Value) -> String {
+    match value {
+        serde_json::Value::Null => "null".to_string(),
+        serde_json::Value::Bool(b) => b.to_string(),
+        serde_json::Value::Number(n) => {
+            // Handle integers vs floats to match JavaScript
+            if let Some(i) = n.as_i64() {
+                i.to_string()
+            } else if let Some(f) = n.as_f64() {
+                if f == f.trunc() {
+                    (f as i64).to_string()
+                } else {
+                    f.to_string()
+                }
+            } else {
+                n.to_string()
+            }
+        }
+        serde_json::Value::String(s) => format!("\"{}\"", s.replace('\\', "\\\\").replace('"', "\\\"")),
+        serde_json::Value::Array(arr) => {
+            let items: Vec<String> = arr.iter().map(canonical_json).collect();
+            format!("[{}]", items.join(","))
+        }
+        serde_json::Value::Object(obj) => {
+            // Sort keys alphabetically
+            let mut keys: Vec<&String> = obj.keys().collect();
+            keys.sort();
+            
+            let pairs: Vec<String> = keys
+                .iter()
+                .filter(|k| !obj[k.as_str()].is_null()) // Filter out null values
+                .map(|k| format!("\"{}\":{}", k, canonical_json(&obj[k.as_str()])))
+                .collect();
+            
+            format!("{{{}}}", pairs.join(","))
+        }
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[test]
+    fn test_validate_handle() {
+        assert!(validate_handle("alice").is_ok());
+        assert!(validate_handle("bob_123").is_ok());
+        assert!(validate_handle("@alice").is_ok()); // @ is stripped
+        
+        assert!(validate_handle("ab").is_err()); // Too short
+        assert!(validate_handle("admin").is_err()); // Reserved
+        assert!(validate_handle("has space").is_err()); // Invalid chars
+        assert!(validate_handle("HAS_CAPS").is_ok()); // Converted to lowercase
+    }
+    
+    #[test]
+    fn test_canonical_json() {
+        let json = serde_json::json!({
+            "z_key": "last",
+            "a_key": "first",
+            "number": 100.0,
+            "null_value": null
+        });
+        
+        let canonical = canonical_json(&json);
+        
+        // Keys should be sorted, null filtered, 100.0 -> 100
+        assert!(canonical.starts_with("{\"a_key\""));
+        assert!(canonical.contains("\"number\":100"));
+        assert!(!canonical.contains("null_value"));
+    }
 }

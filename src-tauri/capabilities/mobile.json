@@ -1,0 +1,25 @@
+{
+    "$schema": "https://schema.tauri.app/config/2.0.0",
+    "identifier": "mobile-capabilities",
+    "description": "Mobile-only capabilities for GNS Browser",
+    "platforms": [
+        "iOS",
+        "android"
+    ],
+    "windows": [
+        "main"
+    ],
+    "permissions": [
+        "geolocation:default",
+        "geolocation:allow-get-current-position",
+        "geolocation:allow-watch-position",
+        "geolocation:allow-clear-watch",
+        "geolocation:allow-check-permissions",
+        "geolocation:allow-request-permissions",
+        "shell:allow-open",
+        "http:default",
+        "notification:default",
+        "dialog:default",
+        "core:default"
+    ]
+}

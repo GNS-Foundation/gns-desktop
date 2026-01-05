@@ -46,7 +46,8 @@
     "longDescription": "GNS Browser is your gateway to the decentralized identity web. Claim your @handle, send encrypted messages, and prove your humanity through proof-of-trajectory.",
     "copyright": "© 2024 Globe Crumbs",
     "iOS": {
-      "minimumSystemVersion": "13.0"
+      "minimumSystemVersion": "13.0",
+      "infoPlist": "Info.iOS.plist"
     },
     "android": {
       "minSdkVersion": 26

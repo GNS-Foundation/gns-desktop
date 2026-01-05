@@ -70,6 +70,11 @@ export interface ThreadPreview {
   is_muted: boolean;
 }
 
+export interface Reaction {
+  emoji: string;
+  from_public_key: string;
+}
+
 export interface Message {
   id: string;
   thread_id: string;
@@ -80,6 +85,11 @@ export interface Message {
   timestamp: number;
   is_outgoing: boolean;
   status: string;
+  reply_to_id?: string;
+  is_starred?: boolean;
+  forwarded_from_id?: string;
+  reply_to?: Message;
+  reactions: Reaction[];
 }
 
 export interface SendResult {
@@ -107,6 +117,21 @@ export interface OfflineStatus {
   breadcrumb_count: number;
   pending_messages: number;
   last_sync?: string;
+}
+
+export interface Breadcrumb {
+  h3_index: string;
+  timestamp: number;
+  public_key: string;
+  signature: string;
+  resolution: number;
+  prev_hash?: string;
+}
+
+export interface CommandResult<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
 }
 
 // ==================== Identity Commands ====================
@@ -139,6 +164,10 @@ export async function exportIdentityBackup(): Promise<IdentityBackup> {
   return invoke<IdentityBackup>('export_identity_backup');
 }
 
+export async function deleteIdentity(): Promise<void> {
+  return invoke('delete_identity');
+}
+
 // ==================== Handle Commands ====================
 
 export async function resolveHandle(handle: string): Promise<HandleInfo | null> {
@@ -151,6 +180,10 @@ export async function checkHandleAvailable(handle: string): Promise<HandleAvaila
 
 export async function claimHandle(handle: string): Promise<ClaimResult> {
   return invoke<ClaimResult>('claim_handle', { handle });
+}
+
+export async function publishIdentity(): Promise<CommandResult<boolean>> {
+  return invoke<CommandResult<boolean>>('publish_identity');
 }
 
 // ==================== Messaging Commands ====================
@@ -166,11 +199,24 @@ export async function sendMessage(params: {
   return invoke<SendResult>('send_message', params);
 }
 
+export async function addReaction(params: {
+  messageId: string;
+  emoji: string;
+  recipientPublicKey: string;
+  recipientHandle?: string;
+}): Promise<void> {
+  return invoke('add_reaction', params);
+}
+
 export async function getThreads(params?: {
   includeArchived?: boolean;
   limit?: number;
 }): Promise<ThreadPreview[]> {
   return invoke<ThreadPreview[]>('get_threads', params ?? {});
+}
+
+export async function getThread(threadId: string): Promise<ThreadPreview | null> {
+  return invoke<ThreadPreview | null>('get_thread', { threadId });
 }
 
 export async function getMessages(params: {
@@ -189,10 +235,22 @@ export async function deleteThread(threadId: string): Promise<void> {
   return invoke('delete_thread', { threadId });
 }
 
+export async function deleteMessage(messageId: string): Promise<void> {
+  return invoke('delete_message', { messageId });
+}
+
 // ==================== Breadcrumb Commands ====================
 
 export async function getBreadcrumbCount(): Promise<number> {
   return invoke<number>('get_breadcrumb_count');
+}
+
+export async function listBreadcrumbs(limit = 50, offset = 0): Promise<Breadcrumb[]> {
+  return invoke<Breadcrumb[]>('list_breadcrumbs', { limit, offset });
+}
+
+export async function restoreBreadcrumbs(): Promise<number> {
+  return invoke<number>('restore_breadcrumbs');
 }
 
 export async function getBreadcrumbStatus(): Promise<BreadcrumbStatus> {
@@ -225,6 +283,81 @@ export async function openExternalUrl(url: string): Promise<void> {
 
 export async function getOfflineStatus(): Promise<OfflineStatus> {
   return invoke<OfflineStatus>('get_offline_status');
+}
+
+// ==================== Stellar/GNS Token Types ====================
+
+export interface ClaimableBalance {
+  balance_id: string;
+  amount: string;
+  asset_code: string;
+  sponsor: string | null;
+}
+
+export interface StellarBalances {
+  stellar_address: string;
+  account_exists: boolean;
+  xlm_balance: number;
+  gns_balance: number;
+  has_trustline: boolean;
+  claimable_gns: ClaimableBalance[];
+  use_testnet: boolean;
+}
+
+export interface TransactionResponse {
+  success: boolean;
+  hash: string | null;
+  error: string | null;
+  message: string | null;
+}
+
+export interface SendGnsRequest {
+  recipient_handle?: string;
+  recipient_public_key?: string;
+  amount: number;
+  memo?: string;
+}
+
+export interface PaymentHistoryItem {
+  id: string;
+  tx_hash: string;
+  created_at: string;
+  direction: string;
+  amount: string;
+  asset_code: string;
+  from_address: string;
+  to_address: string;
+  memo: string | null;
+}
+
+// ==================== Stellar Commands ====================
+
+export async function getStellarAddress(): Promise<string> {
+  return invoke<string>('get_stellar_address');
+}
+
+export async function getStellarBalances(): Promise<StellarBalances> {
+  return invoke<StellarBalances>('get_stellar_balances');
+}
+
+export async function claimGnsTokens(): Promise<TransactionResponse> {
+  return invoke<TransactionResponse>('claim_gns_tokens');
+}
+
+export async function createGnsTrustline(): Promise<TransactionResponse> {
+  return invoke<TransactionResponse>('create_gns_trustline');
+}
+
+export async function sendGns(request: SendGnsRequest): Promise<TransactionResponse> {
+  return invoke<TransactionResponse>('send_gns', { request });
+}
+
+export async function fundTestnetAccount(): Promise<TransactionResponse> {
+  return invoke<TransactionResponse>('fund_testnet_account');
+}
+
+export async function getPaymentHistory(limit?: number): Promise<PaymentHistoryItem[]> {
+  return invoke<PaymentHistoryItem[]>('get_payment_history', { limit });
 }
 
 // ==================== React Hooks ====================
@@ -356,7 +489,12 @@ export function useThreads() {
       setLoading(true);
       setError(null);
       const t = await getThreads();
-      setThreads(t);
+      if (Array.isArray(t)) {
+        setThreads(t);
+      } else {
+        console.error('getThreads returned non-array:', t);
+        setThreads([]);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unknown error');
     } finally {
@@ -374,4 +512,60 @@ export function useThreads() {
   });
 
   return { threads, loading, error, refresh };
+}
+
+/**
+ * Hook for Stellar balances
+ */
+export function useStellarBalances() {
+  const [balances, setBalances] = useState<StellarBalances | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const b = await getStellarBalances();
+      setBalances(b);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Unknown error');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  return { balances, loading, error, refresh };
+}
+
+/**
+ * Hook for payment history
+ */
+export function usePaymentHistory(limit: number = 20) {
+  const [history, setHistory] = useState<PaymentHistoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const h = await getPaymentHistory(limit);
+      setHistory(h);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Unknown error');
+    } finally {
+      setLoading(false);
+    }
+  }, [limit]);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  return { history, loading, error, refresh };
 }

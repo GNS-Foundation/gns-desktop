@@ -4,10 +4,11 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Send, MoreVertical } from 'lucide-react';
-import { getMessages, sendMessage, Message as MessageType } from '../lib/tauri';
-import { format } from 'date-fns';
-import clsx from 'clsx';
+import { ArrowLeft, Send, Trash2, X } from 'lucide-react';
+import { getMessages, sendMessage, getThread, deleteThread, deleteMessage, addReaction, Message as MessageType, ThreadPreview } from '../lib/tauri';
+import { MessageBubble } from './messaging/MessageBubble';
+import { MessageContextMenu } from './messaging/MessageContextMenu';
+import { ReplyPreview } from './messaging/ReplyPreview';
 
 interface LocationState {
   recipientPublicKey?: string;
@@ -20,26 +21,76 @@ export function ConversationScreen() {
   const navigate = useNavigate();
   const location = useLocation();
   const state = location.state as LocationState | null;
-  
+
   const [messages, setMessages] = useState<MessageType[]>([]);
   const [loading, setLoading] = useState(true);
   const [inputText, setInputText] = useState('');
   const [sending, setSending] = useState(false);
+  const [threadDetails, setThreadDetails] = useState<ThreadPreview | null>(null);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedMessages, setSelectedMessages] = useState<Set<string>>(new Set());
+  const [contextMenu, setContextMenu] = useState<{
+    message: MessageType;
+    position: { x: number; y: number };
+  } | null>(null);
+  const [replyingTo, setReplyingTo] = useState<MessageType | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Get recipient info from navigation state
-  const recipientPublicKey = state?.recipientPublicKey;
-  const recipientHandle = state?.recipientHandle;
+  // Get recipient info from navigation state OR fetched thread details
+  const recipientPublicKey = state?.recipientPublicKey || threadDetails?.participant_public_key;
+  const recipientHandle = state?.recipientHandle || threadDetails?.participant_handle;
 
   useEffect(() => {
     if (threadId) {
       loadMessages();
+      loadThreadDetails();
     }
   }, [threadId]);
+
+  const loadThreadDetails = async () => {
+    if (!threadId) return;
+    try {
+      const details = await getThread(threadId);
+      setThreadDetails(details);
+    } catch (e) {
+      console.error('Failed to load thread details:', e);
+    }
+  };
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Listen for incoming messages
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+
+    const setupListener = async () => {
+      try {
+        const { listen } = await import('@tauri-apps/api/event');
+        unlisten = await listen<MessageType>('new_message', (event) => {
+          console.log('New message received:', event.payload);
+
+          // Only add if it belongs to this thread
+          if (event.payload.thread_id === threadId) {
+            setMessages((prev) => {
+              // Avoid duplicates
+              if (prev.some(m => m.id === event.payload.id)) return prev;
+              return [...prev, event.payload];
+            });
+          }
+        });
+      } catch (e) {
+        console.error('Failed to setup event listener:', e);
+      }
+    };
+
+    setupListener();
+
+    return () => {
+      if (unlisten) unlisten();
+    };
+  }, [threadId]);
 
   const loadMessages = async () => {
     if (!threadId) return;
@@ -60,7 +111,7 @@ export function ConversationScreen() {
 
   const handleSend = async () => {
     if (!inputText.trim() || sending) return;
-    
+
     // Must have either handle or public key
     if (!recipientHandle && !recipientPublicKey) {
       console.error('No recipient info available');
@@ -82,6 +133,8 @@ export function ConversationScreen() {
         timestamp: Date.now(),
         is_outgoing: true,
         status: 'sending',
+        reply_to_id: replyingTo?.id, // Add reply_to_id to optimistic message
+        reactions: [],
       };
       setMessages((prev) => [...prev, optimisticMessage]);
 
@@ -92,7 +145,10 @@ export function ConversationScreen() {
         payloadType: 'text/plain',
         payload: { text },
         threadId,
+        replyToId: replyingTo?.id, // Add replyToId here
       });
+
+      setReplyingTo(null); // Clear replyingTo state after sending
 
       // Update status
       setMessages((prev) =>
@@ -102,6 +158,7 @@ export function ConversationScreen() {
       );
     } catch (e) {
       console.error('Failed to send message:', e);
+      alert(`Failed to send: ${e}`);
       setMessages((prev) =>
         prev.map((m) =>
           m.id.startsWith('temp-') ? { ...m, status: 'failed' } : m
@@ -119,35 +176,99 @@ export function ConversationScreen() {
     }
   };
 
-  const displayName = recipientHandle 
-    ? `@${recipientHandle}` 
+  const toggleSelection = (id: string) => {
+    const newSelected = new Set(selectedMessages);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+      if (newSelected.size === 0) {
+        setSelectionMode(false);
+      }
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedMessages(newSelected);
+  };
+
+  const deleteSelected = async () => {
+    if (!confirm(`Delete ${selectedMessages.size} messages?`)) return;
+
+    try {
+      await Promise.all(Array.from(selectedMessages).map(id => deleteMessage(id)));
+      setSelectionMode(false);
+      setSelectedMessages(new Set());
+      loadMessages(); // Refresh list
+    } catch (e) {
+      alert('Failed to delete messages: ' + e);
+    }
+  };
+
+  const displayName = recipientHandle
+    ? `@${recipientHandle}`
     : recipientPublicKey?.slice(0, 12) + '...' || 'Unknown';
 
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="sticky top-0 bg-slate-900/95 backdrop-blur-lg border-b border-slate-800 p-4">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate('/messages')}
-            className="p-2 rounded-lg hover:bg-slate-800 transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          
-          <div className="flex-1 min-w-0">
-            <h1 className="font-semibold truncate">{displayName}</h1>
-            {recipientPublicKey && (
-              <p className="text-slate-500 text-xs truncate">
-                {recipientPublicKey.slice(0, 16)}...
-              </p>
-            )}
+      <div className="sticky top-0 bg-slate-900/95 backdrop-blur-lg border-b border-slate-800 p-4 z-20">
+        {selectionMode ? (
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => {
+                  setSelectionMode(false);
+                  setSelectedMessages(new Set());
+                }}
+                className="p-2 rounded-lg hover:bg-slate-800 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <span className="font-semibold">{selectedMessages.size} Selected</span>
+            </div>
+            <button
+              onClick={deleteSelected}
+              className="p-2 rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors"
+            >
+              <Trash2 className="w-5 h-5" />
+            </button>
           </div>
+        ) : (
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/messages')}
+              className="p-2 rounded-lg hover:bg-slate-800 transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
 
-          <button className="p-2 rounded-lg hover:bg-slate-800 transition-colors">
-            <MoreVertical className="w-5 h-5" />
-          </button>
-        </div>
+            <div className="flex-1 min-w-0">
+              <h1 className="font-semibold truncate">{displayName}</h1>
+              {recipientPublicKey && (
+                <p className="text-slate-500 text-xs truncate">
+                  {recipientPublicKey.slice(0, 16)}...
+                </p>
+              )}
+            </div>
+
+            <button
+              onClick={async () => {
+                if (confirm('Delete this conversation?')) {
+                  try {
+                    if (threadId) {
+                      await deleteThread(threadId);
+                      navigate('/messages');
+                    }
+                  } catch (e) {
+                    alert('Failed to delete: ' + e);
+                  }
+                }
+              }}
+              className="p-2 rounded-lg hover:bg-slate-800 hover:text-red-500 transition-colors"
+              title="Delete conversation"
+            >
+              <Trash2 className="w-5 h-5" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Messages */}
@@ -162,16 +283,91 @@ export function ConversationScreen() {
             <p className="text-sm mt-1">Send a message to start the conversation</p>
           </div>
         ) : (
-          messages.map((message) => (
-            <MessageBubble key={message.id} message={message} />
-          ))
+          messages.map((msg) => {
+            // Populate reply_to if it exists
+            const replyToMsg = msg.reply_to_id
+              ? messages.find(m => m.id === msg.reply_to_id)
+              : undefined;
+
+            return (
+              <MessageBubble
+                key={msg.id}
+                message={{ ...msg, reply_to: replyToMsg }}
+                isMe={msg.is_outgoing}
+                isSelected={selectedMessages.has(msg.id)}
+                selectionMode={selectionMode}
+                onSelect={(m) => toggleSelection(m.id)}
+                onLongPress={(m, pos) => {
+                  // Vibrate
+                  if (navigator.vibrate) navigator.vibrate(50);
+                  setContextMenu({ message: m, position: pos });
+                }}
+              />
+            );
+          })
         )}
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Context Menu */}
+      {contextMenu && (
+        <MessageContextMenu
+          message={contextMenu.message}
+          position={contextMenu.position}
+          isOutgoing={contextMenu.message.is_outgoing}
+          onClose={() => setContextMenu(null)}
+          onReply={(m) => {
+            setReplyingTo(m);
+            setContextMenu(null);
+          }}
+          onForward={(m) => console.log('Forward', m)}
+          onCopy={(text) => {
+            navigator.clipboard.writeText(text);
+            setContextMenu(null);
+          }}
+          onInfo={(m) => console.log('Info', m)}
+          onStar={(m) => console.log('Star', m)}
+          onDelete={async (m) => {
+            if (confirm('Delete this message?')) {
+              await deleteMessage(m.id);
+              loadMessages();
+            }
+          }}
+          onReact={async (m, emoji) => {
+            if (recipientPublicKey) {
+              setMessages(prev => prev.map(msg => {
+                if (msg.id === m.id) {
+                  return {
+                    ...msg,
+                    reactions: [...(msg.reactions || []), { emoji, from_public_key: 'me' }] // 'me' is placeholder, backend uses real key
+                  };
+                }
+                return msg;
+              }));
+
+              await addReaction({
+                messageId: m.id,
+                emoji,
+                recipientPublicKey: recipientPublicKey,
+                recipientHandle: recipientHandle || undefined
+              });
+
+              // Reload to get consistent state
+              loadMessages();
+            }
+          }}
+        />
+      )}
+
       {/* Input */}
-      <div className="sticky bottom-0 bg-slate-900/95 backdrop-blur-lg border-t border-slate-800 p-4">
-        <div className="flex items-center gap-2">
+      <div className="sticky bottom-0 bg-slate-900/95 backdrop-blur-lg border-t border-slate-800">
+        {replyingTo && (
+          <ReplyPreview
+            message={replyingTo}
+            onClose={() => setReplyingTo(null)}
+          />
+        )}
+        <div className="p-4 flex items-center gap-2">
           <input
             type="text"
             value={inputText}
@@ -194,36 +390,4 @@ export function ConversationScreen() {
   );
 }
 
-function MessageBubble({ message }: { message: MessageType }) {
-  const isOutgoing = message.is_outgoing;
-  const text = typeof message.payload === 'object' && message.payload.text 
-    ? message.payload.text 
-    : JSON.stringify(message.payload);
-  
-  const time = format(new Date(message.timestamp), 'HH:mm');
-  const isFailed = message.status === 'failed';
-  const isSending = message.status === 'sending';
 
-  return (
-    <div className={clsx('flex', isOutgoing ? 'justify-end' : 'justify-start')}>
-      <div
-        className={clsx(
-          'max-w-[75%] rounded-2xl px-4 py-2',
-          isOutgoing
-            ? 'bg-blue-600 rounded-br-md'
-            : 'bg-slate-800 rounded-bl-md'
-        )}
-      >
-        <p className="break-words">{text}</p>
-        <div className={clsx(
-          'text-xs mt-1 flex items-center justify-end gap-1',
-          isOutgoing ? 'text-blue-200' : 'text-slate-500'
-        )}>
-          <span>{time}</span>
-          {isSending && <span>⏳</span>}
-          {isFailed && <span className="text-red-400">×</span>}
-        </div>
-      </div>
-    </div>
-  );
-}

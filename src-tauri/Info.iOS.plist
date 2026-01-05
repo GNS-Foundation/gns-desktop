@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>Gcrumbs needs your location to collect breadcrumbs for proof-of-trajectory, proving you're a real human.</string>
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+    <string>Gcrumbs collects location in the background to build your proof-of-trajectory and claim your @handle.</string>
+</dict>
+</plist>

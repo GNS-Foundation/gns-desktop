@@ -1,0 +1,60 @@
+# ============================================================================
+# GNS-PAYMENTS - Stellar Integration Crate
+# ============================================================================
+# Real Stellar mainnet integration for the GNS platform.
+# Handles XLM/GNS transfers, trustlines, claimable balances.
+#
+# Key insight: GNS Ed25519 public key = Stellar wallet address!
+# ============================================================================
+
+[package]
+name = "gns-payments"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Stellar blockchain integration for GNS platform"
+repository.workspace = true
+
+[dependencies]
+# Async runtime
+tokio = { workspace = true }
+async-trait = { workspace = true }
+
+# HTTP client
+reqwest = { workspace = true }
+
+# Pin dependencies to avoid pulling in crates requiring Rust 1.81+
+url = "=2.4.1"
+indexmap = "=2.2.6"
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Cryptography
+ed25519-dalek = { workspace = true }
+
+# Hashing
+sha2 = { workspace = true }
+
+# Encoding
+hex = { workspace = true }
+base64 = { workspace = true }
+
+# Error handling
+thiserror = { workspace = true }
+
+# Logging
+tracing = { workspace = true }
+
+# Time
+chrono = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util", "macros"] }
+
+[features]
+default = ["mainnet"]
+mainnet = []
+testnet = []

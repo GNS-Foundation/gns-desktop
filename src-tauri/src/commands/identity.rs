@@ -122,6 +122,34 @@ pub async fn export_identity_backup(state: State<'_, AppState>) -> Result<Identi
     })
 }
 
+/// Delete identity from Keychain and clear all local data
+/// ⚠️ This is destructive and cannot be undone!
+#[tauri::command]
+pub async fn delete_identity(state: State<'_, AppState>) -> Result<(), String> {
+    tracing::warn!("🗑️ delete_identity called - clearing Keychain and local data");
+    
+    // 1. Clear the identity from IdentityManager (clears Keychain)
+    {
+        let mut identity = state.identity.lock().await;
+        identity.clear().map_err(|e| format!("Failed to clear identity: {}", e))?;
+    }
+    
+    // 2. Clear the database
+    {
+        let mut db = state.database.lock().await;
+        db.clear_all().map_err(|e| format!("Failed to clear database: {}", e))?;
+    }
+    
+    // 3. Disconnect from relay
+    {
+        let relay = state.relay.lock().await;
+        let _ = relay.disconnect().await;
+    }
+    
+    tracing::info!("✅ Identity deleted successfully");
+    Ok(())
+}
+
 /// Identity information (safe to expose)
 #[derive(serde::Serialize)]
 pub struct IdentityInfo {

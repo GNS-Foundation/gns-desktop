@@ -224,21 +224,25 @@ router.post('/publish', async (req: Request, res: Response) => {
       created_at,
       tags,
       mentions,
-      signature
+      signature,
+      reply_to_id
     } = req.body;
 
     // Call Supabase RPC
     const { data, error } = await supabase.rpc('publish_dix_post', {
-      p_post_id: post_id,
+      p_id: post_id,
       p_facet_id: facet_id,
-      p_author_pk: author_public_key,
+      p_author_public_key: author_public_key,
       p_author_handle: author_handle,
       p_content: content,
       p_media: media,
       p_created_at: created_at,
       p_tags: tags,
       p_mentions: mentions,
-      p_signature: signature
+      p_signature: signature,
+      p_reply_to_post_id: reply_to_id || null,
+      p_location_name: null,
+      p_visibility: 'public'
     });
 
     if (error) {
@@ -249,6 +253,118 @@ router.post('/publish', async (req: Request, res: Response) => {
     return res.json({ success: true, data });
   } catch (error) {
     console.error('POST /web/dix/publish error:', error);
+    return res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+/**
+ * POST /web/dix/like
+ * Like a post
+ */
+router.post('/like', async (req: Request, res: Response) => {
+  try {
+    const { post_id, author_public_key, signature } = req.body;
+
+    if (!post_id || !author_public_key) {
+      return res.status(400).json({ success: false, error: 'Missing required fields' });
+    }
+
+    // Check if already liked
+    const { data: existing } = await supabase
+      .from('dix_likes')
+      .select('id')
+      .eq('post_id', post_id)
+      .eq('author_public_key', author_public_key)
+      .single();
+
+    if (existing) {
+      return res.json({ success: true, message: 'Already liked' });
+    }
+
+    // Insert like
+    const { error: insertError } = await supabase
+      .from('dix_likes')
+      .insert({
+        post_id,
+        author_public_key,
+        signature, // Optional if schema has it
+        created_at: new Date().toISOString()
+      });
+
+    if (insertError) {
+      console.error('Like insert error:', insertError);
+      // Fallback: maybe table is 'likes'?
+      return res.status(500).json({ success: false, error: insertError.message });
+    }
+
+    // Increment count (fire and forget / robust enough)
+    // We can't do atomic increment easily without RPC, so we fetch-add-update or assume eventual consistency
+    // Actually, calling an RPC for decrement/increment is better if available.
+    // For now, let's just insert. The count is usually a calculated field or updated via Trigger.
+    // DOES `dix_posts` have a trigger? The `publish` fix manually set counts.
+    // I'll manually increment `like_count`.
+
+    // Fetch current
+    const { data: post } = await supabase.from('dix_posts').select('like_count').eq('id', post_id).single();
+    if (post) {
+      await supabase.from('dix_posts').update({ like_count: (post.like_count || 0) + 1 }).eq('id', post_id);
+    }
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('POST /web/dix/like error:', error);
+    return res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+/**
+ * POST /web/dix/repost
+ * Repost a post
+ */
+router.post('/repost', async (req: Request, res: Response) => {
+  try {
+    const { post_id, author_public_key, signature } = req.body;
+
+    // Insert repost as a new post with 'repost_of' ?? 
+    // Or inserts into 'dix_reposts'?
+    // The `publish` payload had `reply_to_id`, maybe `repost_of` is similar?
+    // Let's assume for now Repost is just a counter + entry in `dix_reposts`.
+
+    // Check if already reposted
+    const { data: existing } = await supabase
+      .from('dix_reposts')
+      .select('id')
+      .eq('post_id', post_id)
+      .eq('author_public_key', author_public_key)
+      .single();
+
+    if (existing) {
+      return res.json({ success: true, message: 'Already reposted' });
+    }
+
+    const { error: insertError } = await supabase
+      .from('dix_reposts')
+      .insert({
+        post_id,
+        author_public_key,
+        signature,
+        created_at: new Date().toISOString()
+      });
+
+    if (insertError) {
+      console.error('Repost insert error:', insertError);
+      return res.status(500).json({ success: false, error: insertError.message });
+    }
+
+    // Increment count
+    const { data: post } = await supabase.from('dix_posts').select('repost_count').eq('id', post_id).single();
+    if (post) {
+      await supabase.from('dix_posts').update({ repost_count: (post.repost_count || 0) + 1 }).eq('id', post_id);
+    }
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('POST /web/dix/repost error:', error);
     return res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });

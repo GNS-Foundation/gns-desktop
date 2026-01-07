@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { Search, Globe, Megaphone, Mail, MessageCircle, Video, Home, User, ArrowLeft, ArrowRight, RotateCw, Star, Menu, X, Building, MapPin, Package, Moon, Sun, Download, Loader2, ExternalLink, Copy, Check, Send, LogOut, Wifi, WifiOff, Inbox, ChevronLeft, Shield, Smartphone, RefreshCw, AlertTriangle, Sparkles } from 'lucide-react';
+import { Search, Globe, Megaphone, Mail, MessageCircle, Video, Home, User, ArrowLeft, ArrowRight, RotateCw, Star, Menu, X, Building, MapPin, Package, Moon, Sun, Download, Loader2, ExternalLink, Copy, Check, Send, LogOut, Wifi, WifiOff, Inbox, ChevronLeft, Shield, Smartphone, RefreshCw, AlertTriangle, Sparkles, Plus, Trash2, GripVertical, Image, Link2, List, Type, Calendar, DollarSign, Eye, Save, ChevronDown, ChevronUp, Edit2, Camera, AtSign, Bell, Lock, Palette, Layout } from 'lucide-react';
 import { getProfileByHandle, searchIdentities } from './gnsApi';
 import { getSession, signIn, signOut, isAuthenticated } from './auth';
 import { fetchInbox, fetchConversation } from './messaging';
@@ -372,6 +372,28 @@ export default function App() {
 
   // WebSocket state
   const [wsConnected, setWsConnected] = useState(false);
+
+  // Studio state
+  const [studioTool, setStudioTool] = useState(null); // null, 'gsite', 'profile', 'facets', 'settings'
+  const [gsiteData, setGsiteData] = useState({
+    blocks: [],
+    style: { mood: 'cool', accent: 'blue', density: 'balanced' },
+    title: '',
+    published: false,
+  });
+  const [profileData, setProfileData] = useState({
+    displayName: '',
+    bio: '',
+    avatar: null,
+    location: '',
+    website: '',
+  });
+  const [facets, setFacets] = useState([]);
+  const [settingsData, setSettingsData] = useState({
+    notifications: true,
+    privateMode: false,
+    theme: 'system',
+  });
 
   // Refs for performance (avoid re-renders on typing)
   const messageRef = useRef(null);
@@ -1559,120 +1581,870 @@ export default function App() {
 
 
   // Studio View - Creative Space
-  const StudioView = () => (
-    <div className={`min-h-full ${theme.bg} py-8 px-4`}>
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center">
-              <Sparkles size={20} className="text-white" />
-            </div>
-            <div>
-              <h1 className={`text-2xl font-bold ${theme.text}`}>
-                studio@{authUser?.handle || 'you'}
-              </h1>
-              <p className={`text-sm ${theme.textSecondary}`}>
-                Your Creative Space
-              </p>
-            </div>
-          </div>
-        </div>
+  const StudioView = () => {
+    // If a tool is selected, show that tool's view
+    if (studioTool === 'gsite') return <GSiteEditorView />;
+    if (studioTool === 'profile') return <ProfileEditorView />;
+    if (studioTool === 'facets') return <FacetsManagerView />;
+    if (studioTool === 'settings') return <SettingsView />;
 
-        {/* Pro Upgrade Banner */}
-        <div className={`mb-8 p-4 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-800`}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Star className="text-amber-500" size={24} />
+    // Otherwise show the dashboard
+    return (
+      <div className={`min-h-full ${theme.bg} py-8 px-4`}>
+        <div className="max-w-6xl mx-auto">
+          {/* Header */}
+          <div className="mb-8">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center">
+                <Sparkles size={20} className="text-white" />
+              </div>
               <div>
-                <p className={`font-medium ${theme.text}`}>Upgrade to Pro</p>
-                <p className={`text-sm ${theme.textSecondary}`}>Get analytics, custom domains, and more</p>
+                <h1 className={`text-2xl font-bold ${theme.text}`}>
+                  studio@{authUser?.handle || 'you'}
+                </h1>
+                <p className={`text-sm ${theme.textSecondary}`}>
+                  Your Creative Space
+                </p>
               </div>
             </div>
-            <button className="px-4 py-2 bg-gradient-to-r from-amber-400 to-orange-500 text-white font-medium rounded-lg hover:from-amber-500 hover:to-orange-600 transition-colors">
-              Upgrade
+          </div>
+
+          {/* Pro Upgrade Banner */}
+          <div className={`mb-8 p-4 rounded-xl bg-gradient-to-r ${darkMode ? 'from-amber-900/30 to-orange-900/30 border-amber-700' : 'from-amber-50 to-orange-50 border-amber-200'} border`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Star className="text-amber-500" size={24} />
+                <div>
+                  <p className={`font-medium ${theme.text}`}>Upgrade to Pro</p>
+                  <p className={`text-sm ${theme.textSecondary}`}>Get analytics, custom domains, and more</p>
+                </div>
+              </div>
+              <button className="px-4 py-2 bg-gradient-to-r from-amber-400 to-orange-500 text-white font-medium rounded-lg hover:from-amber-500 hover:to-orange-600 transition-colors">
+                Upgrade
+              </button>
+            </div>
+          </div>
+
+          {/* Tools Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* GSite Builder */}
+            <button
+              onClick={() => setStudioTool('gsite')}
+              className={`text-left p-6 rounded-2xl ${theme.bgSecondary} border ${theme.border} hover:border-cyan-500 hover:shadow-xl transition-all group`}
+            >
+              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <Globe size={28} className="text-white" />
+              </div>
+              <h3 className={`text-lg font-semibold ${theme.text} mb-1`}>GSite Builder</h3>
+              <p className={`text-sm ${theme.textSecondary}`}>Create your professional page with blocks</p>
+            </button>
+
+            {/* Edit Profile */}
+            <button
+              onClick={() => setStudioTool('profile')}
+              className={`text-left p-6 rounded-2xl ${theme.bgSecondary} border ${theme.border} hover:border-purple-500 hover:shadow-xl transition-all group`}
+            >
+              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <User size={28} className="text-white" />
+              </div>
+              <h3 className={`text-lg font-semibold ${theme.text} mb-1`}>Edit Profile</h3>
+              <p className={`text-sm ${theme.textSecondary}`}>Photo, bio, display name, and more</p>
+            </button>
+
+            {/* Facets Manager */}
+            <button
+              onClick={() => setStudioTool('facets')}
+              className={`text-left p-6 rounded-2xl ${theme.bgSecondary} border ${theme.border} hover:border-green-500 hover:shadow-xl transition-all group`}
+            >
+              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <Package size={28} className="text-white" />
+              </div>
+              <h3 className={`text-lg font-semibold ${theme.text} mb-1`}>Facets Manager</h3>
+              <p className={`text-sm ${theme.textSecondary}`}>Create work@, friends@, pro@ identities</p>
+            </button>
+
+            {/* Analytics (Pro) */}
+            <button className={`text-left p-6 rounded-2xl ${theme.bgSecondary} border ${theme.border} opacity-60 cursor-not-allowed relative`}>
+              <div className="absolute top-4 right-4 flex items-center gap-1 px-2 py-1 bg-gradient-to-r from-amber-400 to-orange-500 rounded-full text-xs font-bold text-white">
+                <Star size={12} fill="white" />
+                PRO
+              </div>
+              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center mb-4">
+                <Building size={28} className="text-white" />
+              </div>
+              <h3 className={`text-lg font-semibold ${theme.text} mb-1`}>Analytics</h3>
+              <p className={`text-sm ${theme.textSecondary}`}>Views, clicks, visitors, and trends</p>
+            </button>
+
+            {/* Custom Domains (Pro) */}
+            <button className={`text-left p-6 rounded-2xl ${theme.bgSecondary} border ${theme.border} opacity-60 cursor-not-allowed relative`}>
+              <div className="absolute top-4 right-4 flex items-center gap-1 px-2 py-1 bg-gradient-to-r from-amber-400 to-orange-500 rounded-full text-xs font-bold text-white">
+                <Star size={12} fill="white" />
+                PRO
+              </div>
+              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-pink-500 to-rose-500 flex items-center justify-center mb-4">
+                <ExternalLink size={28} className="text-white" />
+              </div>
+              <h3 className={`text-lg font-semibold ${theme.text} mb-1`}>Custom Domains</h3>
+              <p className={`text-sm ${theme.textSecondary}`}>Connect yourname.com to your GSite</p>
+            </button>
+
+            {/* Settings */}
+            <button
+              onClick={() => setStudioTool('settings')}
+              className={`text-left p-6 rounded-2xl ${theme.bgSecondary} border ${theme.border} hover:border-gray-400 hover:shadow-xl transition-all group`}
+            >
+              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-gray-500 to-slate-500 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <Menu size={28} className="text-white" />
+              </div>
+              <h3 className={`text-lg font-semibold ${theme.text} mb-1`}>Settings</h3>
+              <p className={`text-sm ${theme.textSecondary}`}>Privacy, security, and preferences</p>
             </button>
           </div>
-        </div>
 
-        {/* Tools Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* GSite Builder */}
-          <button className={`text-left p-6 rounded-2xl ${theme.bgSecondary} border ${theme.border} hover:border-cyan-500 hover:shadow-xl transition-all group`}>
-            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-              <Globe size={28} className="text-white" />
+          {/* Create GSite CTA */}
+          <div className={`mt-8 rounded-xl border ${theme.border} ${theme.bgSecondary} p-6`}>
+            <div className="text-center py-8">
+              <Globe size={48} className={`mx-auto ${theme.textMuted} mb-4`} />
+              <p className={theme.textSecondary}>Create your GSite to start building your professional presence</p>
+              <button
+                onClick={() => setStudioTool('gsite')}
+                className="mt-4 px-6 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-medium rounded-lg hover:from-cyan-400 hover:to-blue-400 transition-colors"
+              >
+                Create GSite
+              </button>
             </div>
-            <h3 className={`text-lg font-semibold ${theme.text} mb-1`}>GSite Builder</h3>
-            <p className={`text-sm ${theme.textSecondary}`}>Create your professional page with blocks</p>
-          </button>
-
-          {/* Edit Profile */}
-          <button className={`text-left p-6 rounded-2xl ${theme.bgSecondary} border ${theme.border} hover:border-purple-500 hover:shadow-xl transition-all group`}>
-            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-              <User size={28} className="text-white" />
-            </div>
-            <h3 className={`text-lg font-semibold ${theme.text} mb-1`}>Edit Profile</h3>
-            <p className={`text-sm ${theme.textSecondary}`}>Photo, bio, display name, and more</p>
-          </button>
-
-          {/* Facets Manager */}
-          <button className={`text-left p-6 rounded-2xl ${theme.bgSecondary} border ${theme.border} hover:border-green-500 hover:shadow-xl transition-all group`}>
-            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-              <Package size={28} className="text-white" />
-            </div>
-            <h3 className={`text-lg font-semibold ${theme.text} mb-1`}>Facets Manager</h3>
-            <p className={`text-sm ${theme.textSecondary}`}>Create work@, friends@, pro@ identities</p>
-          </button>
-
-          {/* Analytics (Pro) */}
-          <button className={`text-left p-6 rounded-2xl ${theme.bgSecondary} border ${theme.border} opacity-60 cursor-not-allowed relative`}>
-            <div className="absolute top-4 right-4 flex items-center gap-1 px-2 py-1 bg-gradient-to-r from-amber-400 to-orange-500 rounded-full text-xs font-bold text-white">
-              <Star size={12} fill="white" />
-              PRO
-            </div>
-            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center mb-4">
-              <Building size={28} className="text-white" />
-            </div>
-            <h3 className={`text-lg font-semibold ${theme.text} mb-1`}>Analytics</h3>
-            <p className={`text-sm ${theme.textSecondary}`}>Views, clicks, visitors, and trends</p>
-          </button>
-
-          {/* Custom Domains (Pro) */}
-          <button className={`text-left p-6 rounded-2xl ${theme.bgSecondary} border ${theme.border} opacity-60 cursor-not-allowed relative`}>
-            <div className="absolute top-4 right-4 flex items-center gap-1 px-2 py-1 bg-gradient-to-r from-amber-400 to-orange-500 rounded-full text-xs font-bold text-white">
-              <Star size={12} fill="white" />
-              PRO
-            </div>
-            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-pink-500 to-rose-500 flex items-center justify-center mb-4">
-              <ExternalLink size={28} className="text-white" />
-            </div>
-            <h3 className={`text-lg font-semibold ${theme.text} mb-1`}>Custom Domains</h3>
-            <p className={`text-sm ${theme.textSecondary}`}>Connect yourname.com to your GSite</p>
-          </button>
-
-          {/* Settings */}
-          <button className={`text-left p-6 rounded-2xl ${theme.bgSecondary} border ${theme.border} hover:border-gray-400 hover:shadow-xl transition-all group`}>
-            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-gray-500 to-slate-500 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-              <Menu size={28} className="text-white" />
-            </div>
-            <h3 className={`text-lg font-semibold ${theme.text} mb-1`}>Settings</h3>
-            <p className={`text-sm ${theme.textSecondary}`}>Privacy, security, and preferences</p>
-          </button>
-        </div>
-
-        {/* Create GSite CTA */}
-        <div className={`mt-8 rounded-xl border ${theme.border} ${theme.bgSecondary} p-6`}>
-          <div className="text-center py-8">
-            <Globe size={48} className={`mx-auto ${theme.textMuted} mb-4`} />
-            <p className={theme.textSecondary}>Create your GSite to start building your professional presence</p>
-            <button className="mt-4 px-6 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-medium rounded-lg hover:from-cyan-400 hover:to-blue-400 transition-colors">
-              Create GSite
-            </button>
           </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
+
+  // ==========================================
+  // 1. GSITE EDITOR VIEW
+  // ==========================================
+  const GSiteEditorView = () => {
+    const [selectedBlock, setSelectedBlock] = useState(null);
+    const [showBlockPicker, setShowBlockPicker] = useState(false);
+    const [previewMode, setPreviewMode] = useState('desktop');
+    const [hasChanges, setHasChanges] = useState(false);
+
+    const blockTypes = [
+      { type: 'text', icon: Type, label: 'Text', description: 'Heading, paragraph, or quote', color: 'blue' },
+      { type: 'media', icon: Image, label: 'Media', description: 'Image, gallery, or video', color: 'purple' },
+      { type: 'link', icon: Link2, label: 'Link', description: 'Smart link with preview', color: 'cyan' },
+      { type: 'list', icon: List, label: 'List', description: 'Skills, services, features', color: 'green' },
+    ];
+
+    const addBlock = (type) => {
+      const newBlock = {
+        id: `block_${Date.now()}`,
+        type,
+        content: type === 'text' ? '' : type === 'list' ? [] : null,
+        variant: type === 'text' ? 'paragraph' : 'default',
+      };
+      setGsiteData(prev => ({
+        ...prev,
+        blocks: [...prev.blocks, newBlock],
+      }));
+      setSelectedBlock(newBlock.id);
+      setShowBlockPicker(false);
+      setHasChanges(true);
+    };
+
+    const updateBlock = (blockId, updates) => {
+      setGsiteData(prev => ({
+        ...prev,
+        blocks: prev.blocks.map(b => b.id === blockId ? { ...b, ...updates } : b),
+      }));
+      setHasChanges(true);
+    };
+
+    const deleteBlock = (blockId) => {
+      setGsiteData(prev => ({
+        ...prev,
+        blocks: prev.blocks.filter(b => b.id !== blockId),
+      }));
+      if (selectedBlock === blockId) setSelectedBlock(null);
+      setHasChanges(true);
+    };
+
+    const moveBlock = (index, direction) => {
+      setGsiteData(prev => {
+        const newBlocks = [...prev.blocks];
+        const newIndex = direction === 'up' ? index - 1 : index + 1;
+        if (newIndex < 0 || newIndex >= newBlocks.length) return prev;
+        [newBlocks[index], newBlocks[newIndex]] = [newBlocks[newIndex], newBlocks[index]];
+        return { ...prev, blocks: newBlocks };
+      });
+      setHasChanges(true);
+    };
+
+    const handleSave = () => {
+      localStorage.setItem(`gsite_${authUser?.handle}`, JSON.stringify(gsiteData));
+      setHasChanges(false);
+      alert('GSite saved to draft!');
+    };
+
+    const handlePublish = () => {
+      // TODO: Mobile signing flow
+      alert('Publishing requires mobile app approval. Coming soon!');
+    };
+
+    // Block Picker Modal
+    const BlockPickerModal = () => (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowBlockPicker(false)} />
+        <div className={`relative w-full max-w-md rounded-2xl shadow-2xl ${theme.bgSecondary} p-6`}>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className={`text-lg font-semibold ${theme.text}`}>Add Block</h3>
+            <button onClick={() => setShowBlockPicker(false)} className={`p-2 rounded-lg ${theme.hover}`}>
+              <X size={20} className={theme.textSecondary} />
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {blockTypes.map(block => (
+              <button
+                key={block.type}
+                onClick={() => addBlock(block.type)}
+                className={`p-4 rounded-xl border ${theme.border} ${theme.hover} text-left transition-all hover:shadow-md`}
+              >
+                <block.icon size={24} className="text-cyan-500 mb-2" />
+                <h4 className={`font-medium ${theme.text}`}>{block.label}</h4>
+                <p className={`text-xs ${theme.textSecondary}`}>{block.description}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+
+    // Render a block
+    const renderBlock = (block, index) => {
+      const isSelected = selectedBlock === block.id;
+
+      return (
+        <div
+          key={block.id}
+          onClick={() => setSelectedBlock(block.id)}
+          className={`group relative p-4 rounded-xl transition-all ${isSelected
+              ? 'ring-2 ring-cyan-500 ring-offset-2'
+              : `${theme.hover} hover:ring-2 hover:ring-gray-300`
+            } ${darkMode ? 'ring-offset-gray-900' : 'ring-offset-white'}`}
+        >
+          {/* Block Controls */}
+          <div className={`absolute -right-2 top-1/2 -translate-y-1/2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity`}>
+            <button
+              onClick={(e) => { e.stopPropagation(); moveBlock(index, 'up'); }}
+              disabled={index === 0}
+              className={`p-1.5 rounded-lg ${theme.bgSecondary} border ${theme.border} shadow-sm disabled:opacity-30`}
+            >
+              <ChevronUp size={14} />
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); moveBlock(index, 'down'); }}
+              disabled={index === gsiteData.blocks.length - 1}
+              className={`p-1.5 rounded-lg ${theme.bgSecondary} border ${theme.border} shadow-sm disabled:opacity-30`}
+            >
+              <ChevronDown size={14} />
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); deleteBlock(block.id); }}
+              className={`p-1.5 rounded-lg ${theme.bgSecondary} border ${theme.border} shadow-sm hover:bg-red-100 hover:border-red-300 hover:text-red-500`}
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
+
+          {/* Block Content */}
+          {block.type === 'text' && (
+            <textarea
+              value={block.content || ''}
+              onChange={(e) => updateBlock(block.id, { content: e.target.value })}
+              placeholder={block.variant === 'heading' ? 'Enter heading...' : 'Write your content...'}
+              className={`w-full bg-transparent resize-none focus:outline-none ${block.variant === 'heading'
+                  ? `text-2xl font-bold ${theme.text}`
+                  : `${theme.text}`
+                }`}
+              rows={block.variant === 'heading' ? 1 : 3}
+            />
+          )}
+
+          {block.type === 'media' && (
+            <div className={`border-2 border-dashed ${theme.border} rounded-xl p-8 text-center`}>
+              <Image size={32} className={`mx-auto ${theme.textMuted} mb-2`} />
+              <p className={theme.textSecondary}>Click to upload image</p>
+            </div>
+          )}
+
+          {block.type === 'link' && (
+            <input
+              type="url"
+              value={block.content || ''}
+              onChange={(e) => updateBlock(block.id, { content: e.target.value })}
+              placeholder="Paste a URL..."
+              className={`w-full p-3 rounded-lg border ${theme.border} bg-transparent ${theme.text} focus:outline-none focus:border-cyan-500`}
+            />
+          )}
+
+          {block.type === 'list' && (
+            <div className="space-y-2">
+              {(block.content || []).map((item, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <span className="text-cyan-500">•</span>
+                  <input
+                    type="text"
+                    value={item}
+                    onChange={(e) => {
+                      const newItems = [...(block.content || [])];
+                      newItems[i] = e.target.value;
+                      updateBlock(block.id, { content: newItems });
+                    }}
+                    className={`flex-1 bg-transparent ${theme.text} focus:outline-none`}
+                    placeholder="List item..."
+                  />
+                </div>
+              ))}
+              <button
+                onClick={() => updateBlock(block.id, { content: [...(block.content || []), ''] })}
+                className={`text-sm ${theme.textSecondary} hover:text-cyan-500 flex items-center gap-1`}
+              >
+                <Plus size={14} /> Add item
+              </button>
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    return (
+      <div className={`min-h-full ${theme.bg}`}>
+        {/* Header */}
+        <header className={`sticky top-0 z-40 ${theme.bgSecondary} border-b ${theme.border}`}>
+          <div className="flex items-center justify-between px-4 py-3">
+            <div className="flex items-center gap-4">
+              <button onClick={() => setStudioTool(null)} className={`p-2 ${theme.hover} rounded-lg`}>
+                <ArrowLeft size={20} className={theme.textSecondary} />
+              </button>
+              <div>
+                <h1 className={`font-semibold ${theme.text}`}>GSite Builder</h1>
+                <p className={`text-xs ${theme.textSecondary}`}>
+                  {hasChanges ? 'Unsaved changes' : gsiteData.published ? 'Published' : 'Draft'}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleSave}
+                disabled={!hasChanges}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg ${hasChanges ? `${theme.bgTertiary} ${theme.hover}` : 'opacity-50 cursor-not-allowed'
+                  } ${theme.text}`}
+              >
+                <Save size={18} />
+                <span className="text-sm hidden sm:inline">Save</span>
+              </button>
+              <button
+                onClick={handlePublish}
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-lg hover:from-cyan-400 hover:to-blue-400"
+              >
+                <Eye size={18} />
+                <span className="text-sm font-medium">Publish</span>
+              </button>
+            </div>
+          </div>
+        </header>
+
+        {/* Editor */}
+        <div className="max-w-3xl mx-auto p-4 md:p-8">
+          <div className={`rounded-2xl ${theme.bgSecondary} border ${theme.border} shadow-sm overflow-hidden`}>
+            <div className="p-6 md:p-8 space-y-4">
+              {/* Title */}
+              <input
+                type="text"
+                value={gsiteData.title}
+                onChange={(e) => { setGsiteData(prev => ({ ...prev, title: e.target.value })); setHasChanges(true); }}
+                placeholder="Your GSite title..."
+                className={`w-full text-2xl font-bold bg-transparent ${theme.text} focus:outline-none`}
+              />
+
+              {/* Blocks */}
+              {gsiteData.blocks.length === 0 ? (
+                <div className="text-center py-12">
+                  <Globe size={48} className={`mx-auto ${theme.textMuted} mb-4`} />
+                  <h3 className={`text-lg font-medium ${theme.text} mb-2`}>Start building your GSite</h3>
+                  <p className={`${theme.textSecondary} mb-6`}>Add blocks to create your professional page</p>
+                  <button
+                    onClick={() => setShowBlockPicker(true)}
+                    className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-medium rounded-xl"
+                  >
+                    Add Your First Block
+                  </button>
+                </div>
+              ) : (
+                <>
+                  {gsiteData.blocks.map((block, index) => renderBlock(block, index))}
+                  <button
+                    onClick={() => setShowBlockPicker(true)}
+                    className={`w-full py-6 border-2 border-dashed ${theme.border} rounded-xl hover:border-cyan-500 hover:bg-cyan-50/10 transition-colors group`}
+                  >
+                    <Plus size={24} className={`mx-auto ${theme.textMuted} group-hover:text-cyan-500`} />
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {showBlockPicker && <BlockPickerModal />}
+      </div>
+    );
+  };
+
+  // ==========================================
+  // 2. PROFILE EDITOR VIEW
+  // ==========================================
+  const ProfileEditorView = () => {
+    const [localProfile, setLocalProfile] = useState({
+      displayName: authUser?.handle || '',
+      bio: '',
+      avatar: null,
+      location: '',
+      website: '',
+    });
+    const [hasChanges, setHasChanges] = useState(false);
+
+    const updateField = (field, value) => {
+      setLocalProfile(prev => ({ ...prev, [field]: value }));
+      setHasChanges(true);
+    };
+
+    const handleSave = () => {
+      setProfileData(localProfile);
+      localStorage.setItem(`profile_${authUser?.handle}`, JSON.stringify(localProfile));
+      setHasChanges(false);
+      alert('Profile saved!');
+    };
+
+    return (
+      <div className={`min-h-full ${theme.bg}`}>
+        {/* Header */}
+        <header className={`sticky top-0 z-40 ${theme.bgSecondary} border-b ${theme.border}`}>
+          <div className="flex items-center justify-between px-4 py-3">
+            <div className="flex items-center gap-4">
+              <button onClick={() => setStudioTool(null)} className={`p-2 ${theme.hover} rounded-lg`}>
+                <ArrowLeft size={20} className={theme.textSecondary} />
+              </button>
+              <div>
+                <h1 className={`font-semibold ${theme.text}`}>Edit Profile</h1>
+                <p className={`text-xs ${theme.textSecondary}`}>@{authUser?.handle}</p>
+              </div>
+            </div>
+            <button
+              onClick={handleSave}
+              disabled={!hasChanges}
+              className={`px-4 py-2 rounded-lg font-medium ${hasChanges
+                  ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                  : `${theme.bgTertiary} ${theme.textMuted} cursor-not-allowed`
+                }`}
+            >
+              Save Changes
+            </button>
+          </div>
+        </header>
+
+        {/* Editor */}
+        <div className="max-w-2xl mx-auto p-4 md:p-8">
+          {/* Avatar Section */}
+          <div className={`${theme.bgSecondary} border ${theme.border} rounded-2xl p-6 mb-6`}>
+            <h3 className={`font-semibold ${theme.text} mb-4`}>Profile Photo</h3>
+            <div className="flex items-center gap-6">
+              <div className={`w-24 h-24 rounded-full ${theme.bgTertiary} border-2 ${theme.border} flex items-center justify-center overflow-hidden`}>
+                {localProfile.avatar ? (
+                  <img src={localProfile.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <User size={40} className={theme.textMuted} />
+                )}
+              </div>
+              <div className="flex flex-col gap-2">
+                <button className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-medium flex items-center gap-2">
+                  <Camera size={18} />
+                  Upload Photo
+                </button>
+                <p className={`text-xs ${theme.textSecondary}`}>JPG, PNG. Max 5MB</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Basic Info */}
+          <div className={`${theme.bgSecondary} border ${theme.border} rounded-2xl p-6 mb-6`}>
+            <h3 className={`font-semibold ${theme.text} mb-4`}>Basic Information</h3>
+            <div className="space-y-4">
+              <div>
+                <label className={`text-sm font-medium ${theme.textSecondary} block mb-2`}>Display Name</label>
+                <input
+                  type="text"
+                  value={localProfile.displayName}
+                  onChange={(e) => updateField('displayName', e.target.value)}
+                  placeholder="Your name"
+                  className={`w-full px-4 py-3 rounded-xl border ${theme.border} bg-transparent ${theme.text} focus:outline-none focus:border-purple-500`}
+                />
+              </div>
+              <div>
+                <label className={`text-sm font-medium ${theme.textSecondary} block mb-2`}>Bio</label>
+                <textarea
+                  value={localProfile.bio}
+                  onChange={(e) => updateField('bio', e.target.value)}
+                  placeholder="Tell the world about yourself..."
+                  rows={3}
+                  className={`w-full px-4 py-3 rounded-xl border ${theme.border} bg-transparent ${theme.text} focus:outline-none focus:border-purple-500 resize-none`}
+                />
+                <p className={`text-xs ${theme.textSecondary} mt-1`}>{localProfile.bio.length}/160 characters</p>
+              </div>
+              <div>
+                <label className={`text-sm font-medium ${theme.textSecondary} block mb-2`}>Location</label>
+                <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border ${theme.border}`}>
+                  <MapPin size={18} className={theme.textMuted} />
+                  <input
+                    type="text"
+                    value={localProfile.location}
+                    onChange={(e) => updateField('location', e.target.value)}
+                    placeholder="City, Country"
+                    className={`flex-1 bg-transparent ${theme.text} focus:outline-none`}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className={`text-sm font-medium ${theme.textSecondary} block mb-2`}>Website</label>
+                <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border ${theme.border}`}>
+                  <Globe size={18} className={theme.textMuted} />
+                  <input
+                    type="url"
+                    value={localProfile.website}
+                    onChange={(e) => updateField('website', e.target.value)}
+                    placeholder="https://yourwebsite.com"
+                    className={`flex-1 bg-transparent ${theme.text} focus:outline-none`}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* GNS Handle (Read-only) */}
+          <div className={`${theme.bgSecondary} border ${theme.border} rounded-2xl p-6`}>
+            <h3 className={`font-semibold ${theme.text} mb-4`}>GNS Identity</h3>
+            <div className={`flex items-center gap-3 px-4 py-3 rounded-xl ${theme.bgTertiary}`}>
+              <AtSign size={18} className="text-cyan-500" />
+              <span className={`font-medium ${theme.text}`}>{authUser?.handle}</span>
+              <span className={`text-xs px-2 py-1 rounded-full bg-green-100 text-green-600`}>Verified</span>
+            </div>
+            <p className={`text-xs ${theme.textSecondary} mt-2`}>Your @handle is permanent and cryptographically linked to your identity</p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // ==========================================
+  // 3. FACETS MANAGER VIEW
+  // ==========================================
+  const FacetsManagerView = () => {
+    const [showCreateModal, setShowCreateModal] = useState(false);
+    const [newFacetName, setNewFacetName] = useState('');
+    const [localFacets, setLocalFacets] = useState([
+      { id: 'public', name: 'public', description: 'Default public facet', isDefault: true, contacts: 0 },
+    ]);
+
+    const createFacet = () => {
+      if (!newFacetName.trim()) return;
+      const newFacet = {
+        id: `facet_${Date.now()}`,
+        name: newFacetName.toLowerCase().replace(/\s+/g, '_'),
+        description: '',
+        isDefault: false,
+        contacts: 0,
+      };
+      setLocalFacets(prev => [...prev, newFacet]);
+      setNewFacetName('');
+      setShowCreateModal(false);
+    };
+
+    const deleteFacet = (id) => {
+      if (localFacets.find(f => f.id === id)?.isDefault) {
+        alert('Cannot delete default facet');
+        return;
+      }
+      setLocalFacets(prev => prev.filter(f => f.id !== id));
+    };
+
+    return (
+      <div className={`min-h-full ${theme.bg}`}>
+        {/* Header */}
+        <header className={`sticky top-0 z-40 ${theme.bgSecondary} border-b ${theme.border}`}>
+          <div className="flex items-center justify-between px-4 py-3">
+            <div className="flex items-center gap-4">
+              <button onClick={() => setStudioTool(null)} className={`p-2 ${theme.hover} rounded-lg`}>
+                <ArrowLeft size={20} className={theme.textSecondary} />
+              </button>
+              <div>
+                <h1 className={`font-semibold ${theme.text}`}>Facets Manager</h1>
+                <p className={`text-xs ${theme.textSecondary}`}>Manage your identity facets</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg font-medium flex items-center gap-2"
+            >
+              <Plus size={18} />
+              New Facet
+            </button>
+          </div>
+        </header>
+
+        {/* Content */}
+        <div className="max-w-2xl mx-auto p-4 md:p-8">
+          {/* Explanation */}
+          <div className={`${theme.bgSecondary} border ${theme.border} rounded-2xl p-6 mb-6`}>
+            <h3 className={`font-semibold ${theme.text} mb-2`}>What are Facets?</h3>
+            <p className={`${theme.textSecondary} text-sm`}>
+              Facets let you share different aspects of your identity with different people.
+              Create a <span className="text-green-500 font-medium">work@</span> facet for professional contacts,
+              a <span className="text-purple-500 font-medium">friends@</span> facet for personal connections,
+              or a <span className="text-cyan-500 font-medium">pro@</span> facet for your premium content.
+            </p>
+          </div>
+
+          {/* Facets List */}
+          <div className="space-y-4">
+            {localFacets.map(facet => (
+              <div key={facet.id} className={`${theme.bgSecondary} border ${theme.border} rounded-2xl p-6`}>
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className={`w-12 h-12 rounded-xl ${facet.isDefault ? 'bg-cyan-500' : 'bg-green-500'} flex items-center justify-center`}>
+                      <Package size={24} className="text-white" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className={`font-semibold ${theme.text}`}>{facet.name}@{authUser?.handle}</h3>
+                        {facet.isDefault && (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-cyan-100 text-cyan-600">Default</span>
+                        )}
+                      </div>
+                      <p className={`text-sm ${theme.textSecondary}`}>{facet.contacts} contacts</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button className={`p-2 ${theme.hover} rounded-lg`}>
+                      <Edit2 size={18} className={theme.textSecondary} />
+                    </button>
+                    {!facet.isDefault && (
+                      <button
+                        onClick={() => deleteFacet(facet.id)}
+                        className={`p-2 ${theme.hover} rounded-lg hover:text-red-500`}
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Create Modal */}
+        {showCreateModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowCreateModal(false)} />
+            <div className={`relative w-full max-w-md rounded-2xl shadow-2xl ${theme.bgSecondary} p-6`}>
+              <h3 className={`text-lg font-semibold ${theme.text} mb-4`}>Create New Facet</h3>
+              <div className="mb-4">
+                <label className={`text-sm ${theme.textSecondary} block mb-2`}>Facet Name</label>
+                <div className={`flex items-center gap-2 px-4 py-3 rounded-xl border ${theme.border}`}>
+                  <input
+                    type="text"
+                    value={newFacetName}
+                    onChange={(e) => setNewFacetName(e.target.value)}
+                    placeholder="work, friends, pro..."
+                    className={`flex-1 bg-transparent ${theme.text} focus:outline-none`}
+                  />
+                  <span className={theme.textSecondary}>@{authUser?.handle}</span>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowCreateModal(false)}
+                  className={`flex-1 px-4 py-2 ${theme.bgTertiary} ${theme.hover} rounded-lg ${theme.text}`}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={createFacet}
+                  disabled={!newFacetName.trim()}
+                  className="flex-1 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg font-medium disabled:opacity-50"
+                >
+                  Create
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // ==========================================
+  // 4. SETTINGS VIEW
+  // ==========================================
+  const SettingsView = () => {
+    const [localSettings, setLocalSettings] = useState({
+      notifications: true,
+      privateMode: false,
+      theme: darkMode ? 'dark' : 'light',
+      language: 'en',
+    });
+
+    const updateSetting = (key, value) => {
+      setLocalSettings(prev => ({ ...prev, [key]: value }));
+      if (key === 'theme') {
+        setDarkMode(value === 'dark');
+      }
+    };
+
+    const SettingToggle = ({ label, description, checked, onChange }) => (
+      <div className={`flex items-center justify-between py-4 border-b ${theme.border} last:border-0`}>
+        <div>
+          <h4 className={`font-medium ${theme.text}`}>{label}</h4>
+          <p className={`text-sm ${theme.textSecondary}`}>{description}</p>
+        </div>
+        <button
+          onClick={() => onChange(!checked)}
+          className={`w-12 h-7 rounded-full transition-colors ${checked ? 'bg-cyan-500' : theme.bgTertiary}`}
+        >
+          <div className={`w-5 h-5 rounded-full bg-white shadow-sm transform transition-transform ${checked ? 'translate-x-6' : 'translate-x-1'}`} />
+        </button>
+      </div>
+    );
+
+    return (
+      <div className={`min-h-full ${theme.bg}`}>
+        {/* Header */}
+        <header className={`sticky top-0 z-40 ${theme.bgSecondary} border-b ${theme.border}`}>
+          <div className="flex items-center gap-4 px-4 py-3">
+            <button onClick={() => setStudioTool(null)} className={`p-2 ${theme.hover} rounded-lg`}>
+              <ArrowLeft size={20} className={theme.textSecondary} />
+            </button>
+            <div>
+              <h1 className={`font-semibold ${theme.text}`}>Settings</h1>
+              <p className={`text-xs ${theme.textSecondary}`}>Privacy, security, and preferences</p>
+            </div>
+          </div>
+        </header>
+
+        {/* Content */}
+        <div className="max-w-2xl mx-auto p-4 md:p-8">
+          {/* Appearance */}
+          <div className={`${theme.bgSecondary} border ${theme.border} rounded-2xl p-6 mb-6`}>
+            <div className="flex items-center gap-3 mb-4">
+              <Palette size={20} className="text-purple-500" />
+              <h3 className={`font-semibold ${theme.text}`}>Appearance</h3>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className={`text-sm ${theme.textSecondary} block mb-2`}>Theme</label>
+                <div className="flex gap-2">
+                  {['light', 'dark', 'system'].map(t => (
+                    <button
+                      key={t}
+                      onClick={() => updateSetting('theme', t)}
+                      className={`px-4 py-2 rounded-lg capitalize ${localSettings.theme === t
+                          ? 'bg-cyan-500 text-white'
+                          : `${theme.bgTertiary} ${theme.text}`
+                        }`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Notifications */}
+          <div className={`${theme.bgSecondary} border ${theme.border} rounded-2xl p-6 mb-6`}>
+            <div className="flex items-center gap-3 mb-4">
+              <Bell size={20} className="text-orange-500" />
+              <h3 className={`font-semibold ${theme.text}`}>Notifications</h3>
+            </div>
+            <SettingToggle
+              label="Push Notifications"
+              description="Receive notifications for messages and updates"
+              checked={localSettings.notifications}
+              onChange={(v) => updateSetting('notifications', v)}
+            />
+          </div>
+
+          {/* Privacy */}
+          <div className={`${theme.bgSecondary} border ${theme.border} rounded-2xl p-6 mb-6`}>
+            <div className="flex items-center gap-3 mb-4">
+              <Lock size={20} className="text-green-500" />
+              <h3 className={`font-semibold ${theme.text}`}>Privacy</h3>
+            </div>
+            <SettingToggle
+              label="Private Mode"
+              description="Hide your profile from public search"
+              checked={localSettings.privateMode}
+              onChange={(v) => updateSetting('privateMode', v)}
+            />
+          </div>
+
+          {/* Security */}
+          <div className={`${theme.bgSecondary} border ${theme.border} rounded-2xl p-6 mb-6`}>
+            <div className="flex items-center gap-3 mb-4">
+              <Shield size={20} className="text-cyan-500" />
+              <h3 className={`font-semibold ${theme.text}`}>Security</h3>
+            </div>
+            <div className="space-y-4">
+              <div className={`flex items-center justify-between py-3`}>
+                <div>
+                  <h4 className={`font-medium ${theme.text}`}>Connected Devices</h4>
+                  <p className={`text-sm ${theme.textSecondary}`}>Manage devices with access to your identity</p>
+                </div>
+                <button className={`px-4 py-2 ${theme.bgTertiary} ${theme.hover} rounded-lg ${theme.text}`}>
+                  Manage
+                </button>
+              </div>
+              <div className={`flex items-center justify-between py-3 border-t ${theme.border}`}>
+                <div>
+                  <h4 className={`font-medium ${theme.text}`}>Export Identity</h4>
+                  <p className={`text-sm ${theme.textSecondary}`}>Download your GNS identity backup</p>
+                </div>
+                <button className={`px-4 py-2 ${theme.bgTertiary} ${theme.hover} rounded-lg ${theme.text}`}>
+                  Export
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Danger Zone */}
+          <div className={`border border-red-200 dark:border-red-800 rounded-2xl p-6`}>
+            <div className="flex items-center gap-3 mb-4">
+              <AlertTriangle size={20} className="text-red-500" />
+              <h3 className={`font-semibold text-red-500`}>Danger Zone</h3>
+            </div>
+            <div className={`flex items-center justify-between`}>
+              <div>
+                <h4 className={`font-medium ${theme.text}`}>Sign Out Everywhere</h4>
+                <p className={`text-sm ${theme.textSecondary}`}>End all active sessions on all devices</p>
+              </div>
+              <button className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg">
+                Sign Out All
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   // Sign In Modal
   const SignInModal = () => (

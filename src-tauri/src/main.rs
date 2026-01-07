@@ -13,6 +13,7 @@ mod network;
 mod stellar;
 mod storage;
 mod dix;
+mod message_handler; // Added
 
 use std::sync::Arc;
 use tauri::{Emitter, Manager};
@@ -42,7 +43,6 @@ pub struct AppState {
     /// WebSocket relay connection
     pub relay: Arc<Mutex<RelayConnection>>,
 
-    /// Stellar network service
     /// Stellar network service
     pub stellar: Arc<Mutex<StellarService>>,
 
@@ -80,7 +80,7 @@ fn main() {
             
             // Get public key for WebSocket auth (if identity exists)
             let public_key = {
-                let identity = futures::executor::block_on(state.identity.lock());
+                let identity = state.identity.try_lock().expect("Failed to lock identity");
                 identity.public_key_hex()
             };
             
@@ -95,48 +95,25 @@ fn main() {
             // Connect to WebSocket relay if we have an identity
             if let Some(pk) = public_key {
                 // Create channel for incoming messages
-                let (tx, mut rx) = tokio::sync::mpsc::channel(100);
+                let (tx, rx) = tokio::sync::mpsc::channel(100);
                 
                 // Configure relay with incoming channel
                 {
-                    let mut relay_guard = futures::executor::block_on(state.relay.lock());
+                    let mut relay_guard = state.relay.try_lock().expect("Failed to lock relay");
                     *relay_guard = relay_guard.clone_with_incoming_channel(tx);
                 }
 
-                // Spawn task to handle incoming messages
+                // Spawn message handler
                 let app_handle = app.handle().clone();
-                let state_clone = state.clone(); // Clone AppState, which is Arc-wrapped
+                let identity = state.identity.clone();
+                let database = state.database.clone();
                 
-                tauri::async_runtime::spawn(async move {
-                    while let Some(msg) = rx.recv().await {
-                        match msg {
-                            crate::network::IncomingMessage::Envelope(envelope) => {
-                                tracing::info!("📩 Received envelope {} from {}", envelope.id, &envelope.from_public_key[..8]);
-                                
-                                // Process envelope (verify, decrypt, save)
-                                let result = process_incoming_envelope(&state_clone, &envelope).await;
-                                
-                                match result {
-                                    Ok(saved_msg) => {
-                                        tracing::info!("✅ Message processed and saved: {}", saved_msg.id);
-                                        // Emit event to frontend
-                                        if let Err(e) = app_handle.emit("new_message", &saved_msg) {
-                                            tracing::error!("❌ Failed to emit new_message event: {}", e);
-                                        } else {
-                                            tracing::info!("📡 Emitted new_message event for {}", saved_msg.id);
-                                        }
-                                    }
-                                    Err(e) => {
-                                        tracing::error!("❌ Failed to process envelope {}: {}", envelope.id, e);
-                                    }
-                                }
-                            }
-                            msg => {
-                                tracing::debug!("Received other message type: {:?}", msg);
-                            }
-                        }
-                    }
-                });
+                message_handler::start_message_handler(
+                    app_handle,
+                    identity,
+                    database,
+                    rx
+                );
 
                 // Connect to relay
                 let relay_clone = state.relay.clone();
@@ -163,21 +140,30 @@ fn main() {
             commands::identity::import_identity,
             commands::identity::export_identity_backup,
             commands::identity::delete_identity,
+            commands::identity::sign_string,
             // Handle commands
             commands::commands_handle::create_identity_with_handle,
             commands::commands_handle::check_handle_available,
             commands::commands_handle::claim_handle,
-            commands::messaging::resolve_handle,
+            commands::commands_handle::publish_identity,
             // Messaging commands
             commands::messaging::send_message,
             commands::messaging::get_threads,
+            commands::messaging::get_thread,
             commands::messaging::get_messages,
             commands::messaging::mark_thread_read,
             commands::messaging::delete_thread,
+            commands::messaging::delete_message,
+            commands::messaging::add_reaction,
+            commands::messaging::save_sent_email_message,
+            commands::messaging::resolve_handle,
             // Breadcrumb commands
             commands::breadcrumbs::get_breadcrumb_count,
             commands::breadcrumbs::get_breadcrumb_status,
             commands::breadcrumbs::set_collection_enabled,
+            commands::breadcrumbs::drop_breadcrumb,
+            commands::breadcrumbs::list_breadcrumbs,
+            commands::breadcrumbs::restore_breadcrumbs,
             // Network commands
             commands::network::get_connection_status,
             commands::network::reconnect,
@@ -197,12 +183,15 @@ fn main() {
             // Dix commands
             commands::dix::create_post,
             commands::dix::get_timeline,
+            commands::dix::like_post,
+            commands::dix::repost_post,
+            commands::dix::get_post,
+            commands::dix::get_posts_by_user,
         ])
         .run(tauri::generate_context!())
         .expect("Error while running GNS Browser");
 }
 
-/// Initialize application state
 /// Initialize application state
 fn setup_app_state() -> Result<AppState, Box<dyn std::error::Error>> {
     // Open database
@@ -255,7 +244,7 @@ fn setup_deep_links(_app_handle: tauri::AppHandle) {
     }
 }
 
-/// Handle incoming deep links
+/// Handle incoming deep links (Unused in main but kept for reference)
 #[allow(dead_code)]
 fn handle_deep_link(app_handle: &tauri::AppHandle, url: &str) {
     tracing::info!("Received deep link: {}", url);
@@ -272,61 +261,4 @@ fn handle_deep_link(app_handle: &tauri::AppHandle, url: &str) {
             let _ = window.emit("migration_token", handle);
         }
     }
-}
-
-/// Process incoming envelope
-async fn process_incoming_envelope(
-    state: &AppState,
-    envelope: &gns_crypto_core::GnsEnvelope,
-) -> Result<commands::messaging::Message, String> {
-    // 1. Get our identity
-    let identity_mgr = state.identity.lock().await;
-    let identity = identity_mgr
-        .get_identity()
-        .ok_or("No identity configured")?;
-
-    // 2. Open envelope (verify signature + decrypt)
-    let opened = gns_crypto_core::open_envelope(&identity, envelope)
-        .map_err(|e| format!("Failed to open envelope: {}", e))?;
-
-    // 3. Parse payload
-    let payload: serde_json::Value = serde_json::from_slice(&opened.payload)
-        .unwrap_or_else(|_| serde_json::json!({"text": String::from_utf8_lossy(&opened.payload).to_string()}));
-
-    // 4. Determine thread ID (same logic as send_message)
-    let thread_id = envelope.thread_id.clone().unwrap_or_else(|| {
-        format!("direct_{}", &envelope.from_public_key[..32.min(envelope.from_public_key.len())])
-    });
-
-    // 5. Save to database
-    let mut db = state.database.lock().await;
-    
-    // ✅ CRITICAL: Pass from_handle to save_received_message
-    db.save_received_message(
-        &envelope.id,
-        &thread_id,
-        &envelope.from_public_key,
-        envelope.from_handle.as_deref(), // Pass the handle!
-        &envelope.payload_type,
-        &payload,
-        envelope.timestamp,
-        opened.signature_valid,
-        envelope.reply_to_id.clone(),
-    ).map_err(|e| format!("Database error: {}", e))?;
-
-    Ok(commands::messaging::Message {
-        id: envelope.id.clone(),
-        thread_id,
-        from_public_key: envelope.from_public_key.clone(),
-        from_handle: envelope.from_handle.clone(),
-        payload_type: envelope.payload_type.clone(),
-        payload,
-        timestamp: envelope.timestamp,
-        is_outgoing: false,
-        status: "received".to_string(),
-        reply_to_id: envelope.reply_to_id.clone(),
-        is_starred: false,
-        forwarded_from_id: None, // Forwarding info not yet in standard envelope metadata
-        reactions: vec![],
-    })
 }

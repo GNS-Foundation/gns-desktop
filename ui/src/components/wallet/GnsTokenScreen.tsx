@@ -163,7 +163,7 @@ export function GnsTokenScreen({ onBack }: GnsTokenScreenProps) {
 
   if (loading) {
     return (
-      <div className="h-full flex items-center justify-center bg-slate-900">
+      <div className="h-full flex items-center justify-center bg-background">
         <div className="text-center">
           <RefreshCw className="w-8 h-8 text-emerald-400 animate-spin mx-auto mb-2" />
           <p className="text-slate-400">Loading wallet...</p>
@@ -174,7 +174,7 @@ export function GnsTokenScreen({ onBack }: GnsTokenScreenProps) {
 
   if (error && !balances) {
     return (
-      <div className="h-full flex flex-col bg-slate-900">
+      <div className="h-full flex flex-col bg-background">
         <header className="flex items-center gap-3 p-4 border-b border-slate-700">
           <button onClick={onBack} className="p-2 hover:bg-slate-800 rounded-lg">
             <ArrowLeft className="w-5 h-5 text-slate-400" />
@@ -199,7 +199,7 @@ export function GnsTokenScreen({ onBack }: GnsTokenScreenProps) {
   }
 
   return (
-    <div className="h-full flex flex-col bg-slate-900">
+    <div className="h-full flex flex-col bg-background">
       {/* Header */}
       <header className="flex items-center justify-between p-4 border-b border-slate-700">
         <div className="flex items-center gap-3">

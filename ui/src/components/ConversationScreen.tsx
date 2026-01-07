@@ -209,7 +209,7 @@ export function ConversationScreen() {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="sticky top-0 bg-slate-900/95 backdrop-blur-lg border-b border-slate-800 p-4 z-20">
+      <div className="sticky top-0 bg-surface/95 backdrop-blur-lg border-b border-border p-4 z-20">
         {selectionMode ? (
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -360,7 +360,7 @@ export function ConversationScreen() {
       )}
 
       {/* Input */}
-      <div className="sticky bottom-0 bg-slate-900/95 backdrop-blur-lg border-t border-slate-800">
+      <div className="sticky bottom-0 bg-surface/95 backdrop-blur-lg border-t border-border">
         {replyingTo && (
           <ReplyPreview
             message={replyingTo}

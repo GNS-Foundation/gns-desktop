@@ -109,7 +109,7 @@ export function MessageBubble({
                         "mb-2 rounded-lg p-2 text-sm border-l-4 cursor-pointer",
                         isMe
                             ? "bg-blue-700/50 border-blue-300"
-                            : "bg-slate-900/30 border-purple-400"
+                            : "bg-surface/30 border-purple-400"
                     )}>
                         <div className={clsx(
                             "font-medium text-xs mb-0.5",

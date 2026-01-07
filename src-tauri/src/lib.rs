@@ -109,7 +109,7 @@ pub fn run() {
             let state = setup_app_state()?;
             
             let public_key = {
-                let identity = futures::executor::block_on(state.identity.lock());
+                let identity = state.identity.try_lock().expect("Failed to lock identity");
                 identity.public_key_hex()
             };
             
@@ -120,7 +120,7 @@ pub fn run() {
             }
 
             let encryption_key = {
-                let identity = futures::executor::block_on(state.identity.lock());
+                let identity = state.identity.try_lock().expect("Failed to lock identity");
                 identity.encryption_key_hex()
             };
 
@@ -208,6 +208,7 @@ pub fn run() {
             commands::identity::import_identity,
             commands::identity::export_identity_backup,
             commands::identity::delete_identity,
+            commands::identity::sign_string,
             // Handle commands
             commands::commands_handle::create_identity_with_handle,
             commands::commands_handle::check_handle_available,
@@ -222,6 +223,7 @@ pub fn run() {
             commands::messaging::delete_thread,
             commands::messaging::delete_message,
             commands::messaging::add_reaction,
+            commands::messaging::save_sent_email_message,
             commands::messaging::resolve_handle,
             // Breadcrumb commands
             commands::breadcrumbs::get_breadcrumb_count,

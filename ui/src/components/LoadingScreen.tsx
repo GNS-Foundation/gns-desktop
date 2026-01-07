@@ -8,11 +8,11 @@ interface LoadingScreenProps {
 
 export function LoadingScreen({ message = 'Loading...' }: LoadingScreenProps) {
   return (
-    <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
       {/* Logo animation */}
       <div className="w-20 h-20 mb-8 relative">
         <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 animate-pulse" />
-        <div className="absolute inset-2 rounded-full bg-slate-900 flex items-center justify-center">
+        <div className="absolute inset-2 rounded-full bg-background flex items-center justify-center">
           <span className="text-3xl">🌐</span>
         </div>
       </div>

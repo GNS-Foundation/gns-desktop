@@ -7,6 +7,7 @@ use crate::AppState;
 // use gns_crypto_core::GnsIdentity;
 use tauri::State;
 use gns_crypto_core::create_envelope_with_metadata;
+use sha2::Digest;
 
 /// Send an encrypted message
 #[tauri::command]
@@ -209,6 +210,85 @@ pub async fn add_reaction(
     Ok(())
 }
 
+/// Save a sent email message locally
+/// This mimics sending a GNS message but for emails sent via REST
+#[tauri::command]
+pub async fn save_sent_email_message(
+    recipient_email: String,
+    subject: String,
+    snippet: String,
+    body: String,
+    gateway_public_key: String,
+    thread_id: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<SendResult, String> {
+    // Get our identity
+    let identity_mgr = state.identity.lock().await;
+    let identity = identity_mgr
+        .get_identity()
+        .ok_or("No identity configured")?;
+    let my_handle = identity_mgr.cached_handle();
+
+    // Create payload
+    let payload = serde_json::json!({
+        "subject": subject,
+        "body": body, // Full body for message view
+        "snippet": snippet, // Preview
+        "to": [recipient_email], // Simplified 
+        "is_email": true
+    });
+    let payload_bytes = serde_json::to_vec(&payload).map_err(|e| e.to_string())?;
+
+    // Determine thread ID
+    // If provided (reply), use it.
+    // If not (new email), generate ID based on Subject Hash to group same-subject emails
+    let final_thread_id = if let Some(tid) = thread_id {
+        tid
+    } else {
+        // Use shared normalization logic for consistency
+        let s = crate::message_handler::normalize_subject(&subject);
+        
+        // Check if subject is effectively empty, fallback to random
+        if s.is_empty() {
+            uuid::Uuid::new_v4().to_string()
+        } else {
+            // Generate SHA256 hash
+            let mut hasher = sha2::Sha256::new();
+            hasher.update(s.as_bytes());
+            let result = hasher.finalize();
+            hex::encode(result)
+        }
+    };
+
+    // Create envelope targeting the Email Gateway
+    let envelope = create_envelope_with_metadata(
+        &identity,
+        my_handle.as_deref(),
+        &gateway_public_key,
+        "0000000000000000000000000000000000000000000000000000000000000000",
+        "email",
+        &payload_bytes,
+        Some(&final_thread_id),
+        None,
+    )
+    .map_err(|e| format!("Failed to create envelope: {}", e))?;
+
+    // Store locally
+    let mut db = state.database.lock().await;
+    // We pass recipient_email as the handle so the thread shows the email address instead of Gateway Key
+    db.save_sent_message(
+        &envelope, 
+        &payload_bytes, 
+        Some(&recipient_email), 
+        None
+    ).map_err(|e| format!("Failed to save locally: {}", e))?;
+
+    Ok(SendResult {
+        message_id: envelope.id.clone(),
+        thread_id: Some(final_thread_id),
+    })
+}
+
 /// Resolve a handle to identity info
 #[tauri::command]
 pub async fn resolve_handle(
@@ -249,6 +329,7 @@ pub struct ThreadPreview {
     pub unread_count: u32,
     pub is_pinned: bool,
     pub is_muted: bool,
+    pub subject: Option<String>,
 }
 
 #[derive(serde::Serialize, Clone)]

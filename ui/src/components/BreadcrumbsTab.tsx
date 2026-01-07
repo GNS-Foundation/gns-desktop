@@ -520,9 +520,9 @@ function BreadcrumbsTabContent() {
       {/* Breadcrumb Details Modal */}
       {selectedBreadcrumb && (
         <div className="fixed inset-0 bg-black/80 z-50 flex items-end justify-center">
-          <div className="bg-slate-900 w-full max-w-lg rounded-t-2xl max-h-[85vh] overflow-y-auto">
+          <div className="bg-surface w-full max-w-lg rounded-t-2xl max-h-[85vh] overflow-y-auto">
             {/* Handle */}
-            <div className="sticky top-0 bg-slate-900 p-4 border-b border-slate-800">
+            <div className="sticky top-0 bg-surface p-4 border-b border-border">
               <div className="w-10 h-1 bg-slate-700 rounded-full mx-auto mb-4" />
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">

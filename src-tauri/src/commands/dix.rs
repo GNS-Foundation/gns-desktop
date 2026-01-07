@@ -9,7 +9,7 @@ pub async fn create_post(
     media: Vec<DixMedia>,
     reply_to_id: Option<String>,
 ) -> Result<DixPost, String> {
-    state.dix.create_post(text, media, reply_to_id, &state.identity).await
+    state.dix.create_post(text, media, reply_to_id).await
 }
 
 #[tauri::command]
@@ -26,7 +26,14 @@ pub async fn like_post(
     state: State<'_, AppState>,
     id: String,
 ) -> Result<(), String> {
-    state.dix.like_post(&id, &state.identity).await
+    let (pk, sig) = {
+        let identity = state.identity.lock().await;
+        // Using public_key_hex() as established in file reading
+        let pk = identity.public_key_hex().ok_or("No identity")?;
+        let sig = identity.sign_string(&id).ok_or("Failed to sign")?;
+        (pk, sig)
+    };
+    state.dix.like_post(&id, &pk, &sig).await
 }
 
 #[tauri::command]
@@ -34,7 +41,14 @@ pub async fn repost_post(
     state: State<'_, AppState>,
     id: String,
 ) -> Result<(), String> {
-    state.dix.repost_post(&id, &state.identity).await
+    let (pk, sig) = {
+        let identity = state.identity.lock().await;
+        // Using public_key_hex() as established in file reading
+        let pk = identity.public_key_hex().ok_or("No identity")?;
+        let sig = identity.sign_string(&id).ok_or("Failed to sign")?;
+        (pk, sig)
+    };
+    state.dix.repost_post(&id, &pk, &sig).await
 }
 
 #[tauri::command]

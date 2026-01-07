@@ -4,9 +4,9 @@
   "version": "1.0.0",
   "identifier": "com.gcrumbs.browser",
   "build": {
-    "beforeDevCommand": "cd ../ui && npm run dev",
+    "beforeDevCommand": "echo skipped",
     "devUrl": "http://localhost:5173",
-    "beforeBuildCommand": "cd ../ui && npm run build",
+    "beforeBuildCommand": "echo skipped",
     "frontendDist": "../ui/dist"
   },
   "app": {
@@ -24,7 +24,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; connect-src 'self' https://api.gcrumbs.com https://app.gcrumbs.com wss://relay.gcrumbs.com",
+      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; connect-src 'self' https://api.gcrumbs.com https://app.gcrumbs.com wss://relay.gcrumbs.com https://gns-browser-production.up.railway.app",
       "dangerousDisableAssetCspModification": false
     }
   },

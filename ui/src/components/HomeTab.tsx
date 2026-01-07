@@ -25,8 +25,13 @@ import {
 import { useState } from 'react';
 import { useIdentity, useBreadcrumbStatus, useStellarBalances } from '../lib/tauri';
 
-export function HomeTab() {
+interface HomeTabProps {
+  onViewGSite?: (handle: string) => void;
+}
+
+export function HomeTab({ onViewGSite }: HomeTabProps) {
   const navigate = useNavigate();
+  // const { onViewProfile } = useOutletContext<{ onViewProfile: (h: string) => void }>(); // Removed
   const { publicKey, handle } = useIdentity();
   const { status: breadcrumbStatus } = useBreadcrumbStatus();
   const { balances: stellarBalances } = useStellarBalances();
@@ -92,19 +97,18 @@ export function HomeTab() {
           </div>
 
           {/* Avatar */}
-          <div className={`w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold ${
-            isHandleClaimed 
-              ? 'bg-gradient-to-br from-green-500 to-emerald-600' 
-              : isHandleReserved
-                ? 'bg-gradient-to-br from-yellow-500 to-orange-600'
-                : 'bg-gradient-to-br from-blue-500 to-purple-600'
-          }`}>
+          <div className={`w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold ${isHandleClaimed
+            ? 'bg-gradient-to-br from-green-500 to-emerald-600'
+            : isHandleReserved
+              ? 'bg-gradient-to-br from-yellow-500 to-orange-600'
+              : 'bg-gradient-to-br from-blue-500 to-purple-600'
+            }`}>
             {handle ? handle[0].toUpperCase() : '?'}
           </div>
         </div>
 
         {/* Public Key */}
-        <div className="bg-slate-900/50 rounded-lg p-3 flex items-center justify-between">
+        <div className="bg-surface/50 rounded-lg p-3 flex items-center justify-between">
           <div>
             <p className="text-slate-500 text-xs mb-1">Public Key</p>
             <p className="font-mono text-sm text-white">{shortKey}</p>
@@ -286,14 +290,14 @@ export function HomeTab() {
           icon={<QrCode className="w-5 h-5" />}
           title="Share Identity"
           description="Show QR code for your identity"
-          onClick={() => {}}
+          onClick={() => { }}
         />
 
         <QuickAction
           icon={<ExternalLink className="w-5 h-5" />}
           title="View gSite"
           description="Your public profile page"
-          onClick={() => {}}
+          onClick={() => (handle && onViewGSite) ? onViewGSite(`@${handle}`) : null}
           disabled={!isHandleClaimed}
           disabledReason={isHandleReserved ? 'Claim handle first' : 'No handle yet'}
         />
@@ -321,9 +325,8 @@ function QuickAction({
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`card p-4 w-full flex items-center gap-4 text-left transition-all ${
-        disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-700/30'
-      }`}
+      className={`card p-4 w-full flex items-center gap-4 text-left transition-all ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-700/30'
+        }`}
     >
       <div className="w-10 h-10 rounded-lg bg-slate-700 flex items-center justify-center text-blue-400">
         {icon}

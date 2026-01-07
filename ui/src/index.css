@@ -13,6 +13,34 @@
   --gns-bg-dark: #0f172a;
   --gns-bg-card: #1e293b;
   --gns-border: #334155;
+
+  /* GNS THEME VARIABLES - Matches Mobile App (RGB Triplets) */
+  --color-background: 13 17 23;
+  --color-surface: 22 27 34;
+  --color-surface-light: 33 38 45;
+  --color-border: 48 54 61;
+  --color-text-primary: 255 255 255;
+  --color-text-secondary: 139 148 158;
+  --color-text-muted: 110 118 129;
+}
+
+:root.light,
+.light {
+  --color-background: 246 248 250;
+  --color-surface: 255 255 255;
+  --color-surface-light: 240 243 246;
+  --color-border: 208 215 222;
+  --color-text-primary: 31 35 40;
+  --color-text-secondary: 101 109 118;
+  --color-text-muted: 140 149 159;
+}
+
+html,
+body,
+#root {
+  background-color: rgb(var(--color-background));
+  color: rgb(var(--color-text-primary));
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 * {
@@ -22,10 +50,12 @@
 html {
   /* Prevent iOS text size adjustment */
   -webkit-text-size-adjust: 100%;
+  @apply bg-background;
+  /* Ensure overscroll matches theme */
 }
 
 body {
-  @apply bg-slate-900 text-white antialiased;
+  @apply bg-background text-text-primary antialiased;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   /* Safe area insets for notched devices */
   padding-top: env(safe-area-inset-top);
@@ -45,11 +75,11 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-slate-700 rounded-full;
+  @apply bg-border rounded-full;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-slate-600;
+  @apply bg-text-muted;
 }
 
 /* Input focus styles */
@@ -71,11 +101,11 @@ select:focus {
   }
 
   .btn-secondary {
-    @apply bg-slate-700 hover:bg-slate-600 text-white;
+    @apply bg-surface-light hover:bg-border text-text-primary;
   }
 
   .btn-ghost {
-    @apply bg-transparent hover:bg-slate-700/50 text-slate-300;
+    @apply bg-transparent hover:bg-surface-light/50 text-text-secondary;
   }
 
   .btn-danger {
@@ -84,13 +114,13 @@ select:focus {
 
   /* Card styles */
   .card {
-    @apply bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-xl;
+    @apply bg-surface/50 backdrop-blur-sm border border-border rounded-xl;
   }
 
   /* Input styles */
   .input {
-    @apply bg-slate-800 border border-slate-700 rounded-lg px-4 py-3;
-    @apply text-white placeholder-slate-500;
+    @apply bg-surface-light border border-border rounded-lg px-4 py-3;
+    @apply text-text-primary placeholder-text-muted;
     @apply focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20;
     @apply transition-all duration-200;
   }
@@ -109,7 +139,7 @@ select:focus {
 
   /* Progress bar */
   .progress-bar {
-    @apply h-2 bg-slate-700 rounded-full overflow-hidden;
+    @apply h-2 bg-surface-light rounded-full overflow-hidden;
   }
 
   .progress-bar-fill {
@@ -127,19 +157,19 @@ select:focus {
   }
 
   .message-bubble-incoming {
-    @apply bg-slate-700 text-white rounded-bl-md;
+    @apply bg-surface-light text-text-primary rounded-bl-md;
   }
 
   /* Tab bar */
   .tab-bar {
-    @apply fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-lg;
-    @apply border-t border-slate-800;
+    @apply fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-lg;
+    @apply border-t border-border;
     padding-bottom: env(safe-area-inset-bottom);
   }
 
   .tab-item {
     @apply flex flex-col items-center justify-center py-2 px-4;
-    @apply text-slate-500 transition-colors duration-200;
+    @apply text-text-muted transition-colors duration-200;
   }
 
   .tab-item-active {
@@ -163,9 +193,12 @@ select:focus {
 
 /* Animations */
 @keyframes pulse-glow {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
   }
+
   50% {
     box-shadow: 0 0 0 8px rgba(59, 130, 246, 0);
   }
@@ -175,14 +208,28 @@ select:focus {
   animation: pulse-glow 2s infinite;
 }
 
+/* Animations for Settings UI */
 @keyframes slide-up {
   from {
+    transform: translateY(100%);
     opacity: 0;
-    transform: translateY(20px);
   }
+
   to {
-    opacity: 1;
     transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes scale-in {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+
+  to {
+    transform: scale(1);
+    opacity: 1;
   }
 }
 
@@ -190,10 +237,15 @@ select:focus {
   animation: slide-up 0.3s ease-out;
 }
 
+.animate-scale-in {
+  animation: scale-in 0.2s ease-out;
+}
+
 @keyframes fade-in {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -209,9 +261,11 @@ select:focus {
     transform: translateY(-20px) scale(0.8);
     opacity: 0;
   }
+
   50% {
     transform: translateY(0) scale(1.1);
   }
+
   100% {
     transform: translateY(0) scale(1);
     opacity: 1;

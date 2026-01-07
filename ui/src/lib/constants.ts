@@ -1,0 +1,1 @@
+export const EMAIL_GATEWAY_PUBLIC_KEY = '007dd9b2c19308dd0e2dfc044da05a522a1d1adbd6f1c84147cc4e0b7a4bd53d';

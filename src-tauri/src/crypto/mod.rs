@@ -3,7 +3,7 @@
 //! Wraps the gns-crypto-core crate and provides keychain integration.
 
 
-use gns_crypto_core::GnsIdentity;
+pub use gns_crypto_core::GnsIdentity;
 use keyring::Entry;
 
 const SERVICE_NAME: &str = "com.gcrumbs.browser";

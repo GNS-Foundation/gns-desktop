@@ -82,7 +82,7 @@ export function IdentityViewer() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-slate-700 border-t-blue-500 rounded-full animate-spin" />
       </div>
     );
@@ -90,7 +90,7 @@ export function IdentityViewer() {
 
   if (error || !identity) {
     return (
-      <div className="min-h-screen bg-slate-900 flex flex-col">
+      <div className="min-h-screen bg-background flex flex-col">
         <header className="p-4">
           <button
             onClick={() => navigate(-1)}
@@ -117,9 +117,9 @@ export function IdentityViewer() {
     : `${identity.public_key.slice(0, 16)}...`;
 
   return (
-    <div className="min-h-screen bg-slate-900">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="p-4 flex items-center gap-4 sticky top-0 bg-slate-900 z-10">
+      <header className="p-4 flex items-center gap-4 sticky top-0 bg-background z-10">
         <button
           onClick={() => navigate(-1)}
           className="p-2 -ml-2 rounded-lg hover:bg-slate-800 transition-colors"
@@ -169,7 +169,7 @@ export function IdentityViewer() {
             )}
 
             {/* Public Key */}
-            <div className="bg-slate-900/50 rounded-lg p-3 flex items-center gap-3 mb-6 border border-white/5">
+            <div className="bg-surface/50 rounded-lg p-3 flex items-center gap-3 mb-6 border border-border">
               <p className="font-mono text-xs text-slate-400 truncate flex-1">
                 {identity.public_key}
               </p>
@@ -226,7 +226,7 @@ export function IdentityViewer() {
                 />
               ))}
               {(!dixData?.posts || dixData.posts.length === 0) && (
-                <div className="text-center p-12 text-slate-500 bg-slate-900/30 m-4 rounded-xl border border-white/5 border-dashed">
+                <div className="text-center p-12 text-slate-500 bg-surface/30 m-4 rounded-xl border border-border border-dashed">
                   No posts to show
                 </div>
               )}

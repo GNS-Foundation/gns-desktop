@@ -2,7 +2,7 @@
 //!
 //! Handles creating, signing, and publishing posts to DIX via Supabase.
 
-use crate::crypto::IdentityManager;
+use crate::crypto::{IdentityManager, GnsIdentity};
 use crate::network::ApiClient;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -138,16 +138,22 @@ impl DixService {
         let created_at = chrono::Utc::now().to_rfc3339();
         
         // 4. Create canonical JSON for signing (CRITICAL: must match server/flutter)
-        // Fields: id, facet_id, author_public_key, content, created_at
-        let signed_data = json!({
-            "id": post_id,
-            "facet_id": "dix",
-            "author_public_key": public_key,
-            "content": text,
-            "created_at": created_at,
-        });
+        // Fields: id, facet_id, author_public_key, content, created_at, reply_to_id (if present)
+        let mut signed_map = serde_json::Map::new();
+        signed_map.insert("id".to_string(), json!(post_id));
+        signed_map.insert("facet_id".to_string(), json!("dix"));
+        signed_map.insert("author_public_key".to_string(), json!(public_key));
+        signed_map.insert("content".to_string(), json!(text));
+        signed_map.insert("created_at".to_string(), json!(created_at));
+        
+        if let Some(rid) = &reply_to_id {
+            signed_map.insert("reply_to_id".to_string(), json!(rid));
+        }
+        
+        let signed_data = serde_json::Value::Object(signed_map);
         
         let canonical_message = generate_canonical_json(&signed_data);
+        println!("📝 [DIX] Signing Canonical Message: {}", canonical_message);
         
         // 5. Sign
         let signature = identity.sign_string(&canonical_message)
@@ -185,9 +191,6 @@ impl DixService {
         
         // Log success
         println!("✅ Dix Post published: {}", post_id);
-        
-        
-        // Return the post object
         
         // Return the post object
         Ok(DixPost {
@@ -230,7 +233,6 @@ impl DixService {
         })
     }
     
-    // ... Implement get_timeline similarly ...
     pub async fn get_timeline(&self, limit: u32, offset: u32) -> Result<Vec<DixPost>, String> {
         let base_url = self.api.base_url();
         let url = format!("{}/web/dix/timeline?limit={}&offset={}", base_url, limit, offset);
@@ -245,7 +247,9 @@ impl DixService {
         if !wrapper.success {
              return Err(wrapper.error.unwrap_or("Unknown error".into()));
         }
-        
+        Ok(wrapper.data.map(|d| d.posts).ok_or("No data returned")?)
+    }
+
     pub async fn get_post(&self, post_id: &str) -> Result<DixPostData, String> {
         let base_url = self.api.base_url();
         let url = format!("{}/web/dix/post/{}", base_url, post_id);
@@ -265,14 +269,7 @@ impl DixService {
         Ok(wrapper.data.ok_or("No data returned")?)
     }
 
-    pub async fn like_post(&self, post_id: &str, identity: &Arc<std::sync::Mutex<GnsIdentity>>) -> Result<(), String> {
-        let (public_key, signature) = {
-             let locked = identity.lock().unwrap();
-             let pk = locked.public_key.clone();
-             let sig = locked.sign_string(post_id).ok_or("Failed to sign").map_err(|e| e.to_string())?;
-             (pk, sig)
-        };
-
+    pub async fn like_post(&self, post_id: &str, public_key: &str, signature: &str) -> Result<(), String> {
         let url = format!("{}/web/dix/like", self.api.base_url());
         let payload = serde_json::json!({
             "post_id": post_id,
@@ -280,7 +277,8 @@ impl DixService {
             "signature": signature
         });
 
-        let response = self.api.client().post(&url)
+        let client = reqwest::Client::new();
+        let response = client.post(&url)
             .json(&payload)
             .send()
             .await
@@ -288,6 +286,7 @@ impl DixService {
 
         if !response.status().is_success() {
              let error_text = response.text().await.unwrap_or_default();
+             println!("❌ [DIX] Like Error: {}", error_text);
              if error_text.contains("Already liked") {
                  return Ok(());
              }
@@ -297,14 +296,7 @@ impl DixService {
         Ok(())
     }
     
-    pub async fn repost_post(&self, post_id: &str, identity: &Arc<std::sync::Mutex<GnsIdentity>>) -> Result<(), String> {
-        let (public_key, signature) = {
-             let locked = identity.lock().unwrap();
-             let pk = locked.public_key.clone();
-             let sig = locked.sign_string(post_id).ok_or("Failed to sign").map_err(|e| e.to_string())?;
-             (pk, sig)
-        };
-
+    pub async fn repost_post(&self, post_id: &str, public_key: &str, signature: &str) -> Result<(), String> {
         let url = format!("{}/web/dix/repost", self.api.base_url());
         let payload = serde_json::json!({
              "post_id": post_id,
@@ -312,7 +304,8 @@ impl DixService {
              "signature": signature
         });
 
-        let response = self.api.client().post(&url)
+        let client = reqwest::Client::new();
+        let response = client.post(&url)
              .json(&payload)
              .send()
              .await
@@ -320,6 +313,7 @@ impl DixService {
 
         if !response.status().is_success() {
               let error_text = response.text().await.unwrap_or_default();
+              println!("❌ [DIX] Repost Error: {}", error_text);
               if error_text.contains("Already reposted") {
                   return Ok(());
               }
@@ -327,6 +321,25 @@ impl DixService {
         }
 
         Ok(())
+    }
+
+    pub async fn get_posts_by_user(&self, public_key: &str) -> Result<DixUserData, String> {
+        let base_url = self.api.base_url();
+        let url = format!("{}/web/dix/pk/{}", base_url, public_key);
+
+        let client = reqwest::Client::new();
+        let res = client.get(&url)
+            .send()
+            .await
+            .map_err(|e| e.to_string())?;
+
+        let wrapper: DixUserResponse = res.json().await.map_err(|e| e.to_string())?;
+
+        if !wrapper.success {
+             return Err(wrapper.error.unwrap_or("Unknown error".into()));
+        }
+
+        Ok(wrapper.data.ok_or("No data returned")?)
     }
 }
 

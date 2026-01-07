@@ -7,12 +7,16 @@ import { Home, MessageCircle, MapPin, Settings, Globe } from 'lucide-react';
 import { useConnectionStatus } from '../lib/tauri';
 import clsx from 'clsx';
 
-export function MainLayout() {
+export interface MainLayoutProps {
+  onViewProfile?: (handle: string) => void;
+}
+
+export function MainLayout({ onViewProfile }: MainLayoutProps) {
   const connectionStatus = useConnectionStatus();
   const isOnline = connectionStatus?.relay_connected ?? false;
 
   return (
-    <div className="min-h-screen bg-slate-900 flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Connection status bar */}
       {!isOnline && (
         <div className="bg-yellow-900/50 border-b border-yellow-700/50 px-4 py-2">
@@ -24,7 +28,7 @@ export function MainLayout() {
 
       {/* Main content */}
       <main className="flex-1 overflow-auto pb-20">
-        <Outlet />
+        <Outlet context={{ onViewProfile }} />
       </main>
 
       {/* Tab bar */}

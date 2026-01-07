@@ -99,7 +99,7 @@ export function PaymentHistoryScreen({ onBack }: PaymentHistoryScreenProps) {
 
   if (loading && history.length === 0) {
     return (
-      <div className="h-full flex items-center justify-center bg-slate-900">
+      <div className="h-full flex items-center justify-center bg-background">
         <div className="text-center">
           <RefreshCw className="w-8 h-8 text-emerald-400 animate-spin mx-auto mb-2" />
           <p className="text-slate-400">Loading transactions...</p>
@@ -109,7 +109,7 @@ export function PaymentHistoryScreen({ onBack }: PaymentHistoryScreenProps) {
   }
 
   return (
-    <div className="h-full flex flex-col bg-slate-900">
+    <div className="h-full flex flex-col bg-background">
       {/* Header */}
       <header className="flex items-center justify-between p-4 border-b border-slate-700">
         <div className="flex items-center gap-3">

@@ -70,7 +70,7 @@ export function HandleClaimScreen() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6">
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
         <div className="w-20 h-20 rounded-full bg-green-500/20 flex items-center justify-center mb-6 animate-pulse-glow">
           <Check className="w-10 h-10 text-green-400" />
         </div>
@@ -81,7 +81,7 @@ export function HandleClaimScreen() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
       <header className="p-4 flex items-center gap-4">
         <button
@@ -179,8 +179,8 @@ export function HandleClaimScreen() {
             <li
               className={clsx(
                 handle.length > 0 &&
-                  /^[a-z0-9_]+$/.test(handle) &&
-                  'text-green-400'
+                /^[a-z0-9_]+$/.test(handle) &&
+                'text-green-400'
               )}
             >
               • Letters, numbers, and underscores only

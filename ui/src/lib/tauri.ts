@@ -68,6 +68,7 @@ export interface ThreadPreview {
   unread_count: number;
   is_pinned: boolean;
   is_muted: boolean;
+  subject?: string;
 }
 
 export interface Reaction {
@@ -144,6 +145,17 @@ export async function getEncryptionKey(): Promise<string | null> {
   return invoke<string | null>('get_encryption_key');
 }
 
+export async function getIdentity(): Promise<{ handle?: string; publicKey?: string } | null> {
+  try {
+    const publicKey = await getPublicKey();
+    const handle = localStorage.getItem('gns_handle');
+    return { handle: handle || undefined, publicKey: publicKey || undefined };
+  } catch (e) {
+    console.error('getIdentity error:', e);
+    return null;
+  }
+}
+
 export async function getCurrentHandle(): Promise<string | null> {
   return invoke<string | null>('get_current_handle');
 }
@@ -166,6 +178,10 @@ export async function exportIdentityBackup(): Promise<IdentityBackup> {
 
 export async function deleteIdentity(): Promise<void> {
   return invoke('delete_identity');
+}
+
+export async function signString(message: string): Promise<string | null> {
+  return invoke<string | null>('sign_string', { message });
 }
 
 // ==================== Handle Commands ====================
@@ -206,6 +222,20 @@ export async function addReaction(params: {
   recipientHandle?: string;
 }): Promise<void> {
   return invoke('add_reaction', params);
+}
+
+export async function saveSentEmailMessage(params: {
+  recipientEmail: string;
+  subject: string;
+  snippet: string;
+  body: string;
+  gatewayPublicKey: string;
+  threadId?: string;
+}): Promise<SendResult> {
+  return invoke<SendResult>('save_sent_email_message', {
+    ...params,
+    thread_id: params.threadId
+  });
 }
 
 export async function getThreads(params?: {

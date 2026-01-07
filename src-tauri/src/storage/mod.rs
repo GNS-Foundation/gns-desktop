@@ -53,7 +53,8 @@ impl Database {
                 unread_count INTEGER DEFAULT 0,
                 is_pinned INTEGER DEFAULT 0,
                 is_muted INTEGER DEFAULT 0,
-                is_archived INTEGER DEFAULT 0
+                is_archived INTEGER DEFAULT 0,
+                subject TEXT
             );
             
             CREATE TABLE IF NOT EXISTS messages (
@@ -114,6 +115,8 @@ impl Database {
         let _ = self.conn.execute("ALTER TABLE messages ADD COLUMN reply_to_id TEXT", []);
         let _ = self.conn.execute("ALTER TABLE messages ADD COLUMN is_starred INTEGER DEFAULT 0", []);
         let _ = self.conn.execute("ALTER TABLE messages ADD COLUMN forwarded_from_id TEXT", []);
+        // Migration for subject column
+        let _ = self.conn.execute("ALTER TABLE threads ADD COLUMN subject TEXT", []);
 
         Ok(())
     }
@@ -126,20 +129,23 @@ impl Database {
         thread_id: &str,
         participant_public_key: &str,
         participant_handle: Option<&str>,
+        subject: Option<&str>,
     ) -> Result<(), DatabaseError> {
         self.conn
             .execute(
                 r#"
-                INSERT INTO threads (id, participant_public_key, participant_handle, last_message_at, unread_count)
-                VALUES (?, ?, ?, ?, 0)
+                INSERT INTO threads (id, participant_public_key, participant_handle, last_message_at, unread_count, subject)
+                VALUES (?, ?, ?, ?, 0, ?)
                 ON CONFLICT(id) DO UPDATE SET
-                    participant_handle = COALESCE(excluded.participant_handle, threads.participant_handle)
+                    participant_handle = COALESCE(excluded.participant_handle, threads.participant_handle),
+                    subject = COALESCE(threads.subject, excluded.subject) 
                 "#,
                 params![
                     thread_id,
                     participant_public_key,
                     participant_handle,
-                    chrono::Utc::now().timestamp_millis()
+                    chrono::Utc::now().timestamp_millis(),
+                    subject
                 ],
             )
             .map_err(|e| DatabaseError::SqliteError(e.to_string()))?;
@@ -202,7 +208,7 @@ impl Database {
 
         let threads = stmt
             .query_map([limit], |row| {
-                let last_payload: Option<String> = row.get(8).ok();
+                let last_payload: Option<String> = row.get(9).ok();
                 let preview = last_payload.and_then(|p| {
                     serde_json::from_str::<serde_json::Value>(&p)
                         .ok()
@@ -218,6 +224,7 @@ impl Database {
                     unread_count: row.get(4)?,
                     is_pinned: row.get::<_, i32>(5)? == 1,
                     is_muted: row.get::<_, i32>(6)? == 1,
+                    subject: row.get(8).ok(),
                 })
             })
             .map_err(|e| DatabaseError::SqliteError(e.to_string()))?;
@@ -243,7 +250,7 @@ impl Database {
 
         let mut rows = stmt
             .query_map([thread_id], |row| {
-                let last_payload: Option<String> = row.get(8).ok();
+                let last_payload: Option<String> = row.get(9).ok();
                 let preview = last_payload.and_then(|p| {
                     serde_json::from_str::<serde_json::Value>(&p)
                         .ok()
@@ -259,6 +266,7 @@ impl Database {
                     unread_count: row.get(4)?,
                     is_pinned: row.get::<_, i32>(5)? == 1,
                     is_muted: row.get::<_, i32>(6)? == 1,
+                    subject: row.get(8).ok(),
                 })
             })
             .map_err(|e| DatabaseError::SqliteError(e.to_string()))?;
@@ -394,9 +402,12 @@ impl Database {
             format!("direct_{}", &keys.join("_")[..32])
         });
 
+        // Extract subject if available (for email threads)
+        let subject = payload_json.get("subject").and_then(|s| s.as_str());
+
         // Get or create thread
         let recipient_pk = &envelope.to_public_keys[0];
-        self.get_or_create_thread(&thread_id, recipient_pk, _recipient_handle)?;
+        self.get_or_create_thread(&thread_id, recipient_pk, _recipient_handle, subject)?;
 
         // Insert message
         self.conn
@@ -440,8 +451,11 @@ impl Database {
     ) -> Result<(), DatabaseError> {
         tracing::debug!("Saving received message: {}", message_id);
 
+        // Extract subject if available
+        let subject = payload.get("subject").and_then(|s| s.as_str());
+
         // Get or create thread
-        self.get_or_create_thread(thread_id, from_public_key, from_handle)?;
+        self.get_or_create_thread(thread_id, from_public_key, from_handle, subject)?;
 
         // Insert message
         self.conn

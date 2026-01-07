@@ -151,6 +151,7 @@ export function WelcomeScreen({ onComplete }: WelcomeScreenProps) {
 
       if (result.success && result.data) {
         console.log('Identity created:', result.data);
+        localStorage.setItem('gns_handle', result.data.handle);
         onComplete();
       } else {
         setCreateError(result.error || 'Failed to create identity');
@@ -196,7 +197,7 @@ export function WelcomeScreen({ onComplete }: WelcomeScreenProps) {
   // Intro screen
   if (step === 'intro') {
     return (
-      <div className="min-h-screen bg-slate-900 flex flex-col">
+      <div className="min-h-screen bg-background flex flex-col">
         <div className="flex-1 flex flex-col items-center justify-center p-6">
           {/* Logo */}
           <div className="w-24 h-24 mb-8 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
@@ -249,7 +250,7 @@ export function WelcomeScreen({ onComplete }: WelcomeScreenProps) {
 
   // Handle selection screen
   return (
-    <div className="min-h-screen bg-slate-900 flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Back button */}
       <div className="p-4">
         <button
@@ -338,8 +339,8 @@ export function WelcomeScreen({ onComplete }: WelcomeScreenProps) {
           onClick={handleSubmit}
           disabled={validationState !== 'available' || isCreating}
           className={`w-full py-4 rounded-xl font-semibold text-lg transition-all ${validationState === 'available' && !isCreating
-              ? 'btn btn-primary'
-              : 'bg-slate-700 text-slate-500 cursor-not-allowed'
+            ? 'btn btn-primary'
+            : 'bg-slate-700 text-slate-500 cursor-not-allowed'
             }`}
         >
           {isCreating ? (

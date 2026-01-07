@@ -189,7 +189,7 @@ export function SendMoneyScreen({ onBack, prefillRecipient, prefillAmount }: Sen
   };
 
   return (
-    <div className="h-full flex flex-col bg-slate-900">
+    <div className="h-full flex flex-col bg-background">
       {/* Header */}
       <header className="flex items-center gap-3 p-4 border-b border-slate-700">
         <button
@@ -587,8 +587,8 @@ function ResultStep({
         <button
           onClick={success ? onDone : onRetry}
           className={`w-full py-4 font-bold text-lg rounded-xl transition-colors ${success
-              ? 'bg-emerald-600 text-white hover:bg-emerald-500'
-              : 'bg-slate-700 text-white hover:bg-slate-600'
+            ? 'bg-emerald-600 text-white hover:bg-emerald-500'
+            : 'bg-slate-700 text-white hover:bg-slate-600'
             }`}
         >
           {success ? 'DONE' : 'TRY AGAIN'}

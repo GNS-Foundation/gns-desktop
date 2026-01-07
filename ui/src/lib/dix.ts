@@ -3,6 +3,7 @@ import { DixPost, DixMedia, DixPostData, DixUserData } from '../types/dix';
 
 export const DixApi = {
     createPost: async (text: string, media: DixMedia[] = [], replyToId?: string): Promise<DixPost> => {
+        console.log('[DixApi] createPost called with:', { text, media, replyToId });
         return invoke<DixPost>('create_post', {
             text,
             media,

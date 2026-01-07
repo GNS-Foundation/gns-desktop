@@ -13,6 +13,20 @@ pub async fn get_public_key(state: State<'_, AppState>) -> Result<Option<String>
     Ok(identity.public_key_hex())
 }
 
+/// Sign a string message with the user's private key
+#[tauri::command]
+pub async fn sign_string(
+    message: String,
+    state: State<'_, AppState>,
+) -> Result<Option<String>, String> {
+    let identity = state.identity.lock().await; // Do not hold lock across await if possible, but signing is fast
+    // Actually, signing doesn't yield, so it's fine.
+    // However, identity.sign_string might handle the error internally, let's check identity implementation
+    // But wait, the grep showed sign_string returns Option<String> in crypto/mod.rs
+    
+    Ok(identity.sign_string(&message))
+}
+
 /// Get the user's X25519 encryption key (hex)
 #[tauri::command]
 pub async fn get_encryption_key(state: State<'_, AppState>) -> Result<Option<String>, String> {

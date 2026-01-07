@@ -9,6 +9,7 @@ use gns_crypto_core::{open_envelope, GnsEnvelope};
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter};
 use tokio::sync::{mpsc, Mutex};
+use sha2::Digest;
 
 /// Incoming message payload for UI
 #[derive(Debug, Clone, serde::Serialize)]
@@ -67,6 +68,7 @@ async fn handle_envelope(
     envelope: GnsEnvelope,
 ) {
     println!("🔥 [RUST] handle_envelope called: {}", envelope.id);
+    println!("🔥 [RUST] Envelope Sender: {}", envelope.from_public_key);
     tracing::info!("Processing envelope {} from {}", envelope.id, &envelope.from_public_key[..16]);
 
     // Get our identity for decryption
@@ -112,14 +114,42 @@ async fn handle_envelope(
     );
 
     // Generate thread ID if not present
-    let thread_id = opened.thread_id.clone().unwrap_or_else(|| {
-        // Create a deterministic thread ID from participants
+    // Generate thread ID logic
+    // Generate thread ID
+    // CRITICAL: For emails, we MUST use Subject Hashing to group inbound/outbound correctly.
+    // We intentionally ignore `opened.thread_id` from the server because the server groups by participants,
+    // whereas we want to group by Subject (like Gmail).
+    let thread_id = if opened.payload_type == "email" || opened.payload_type == "gns/email" {
+        // Email -> Group by Subject Hash
+        let subject = payload.get("subject").and_then(|s| s.as_str()).unwrap_or("");
+        
+        let s = normalize_subject(subject);
+        println!("🔥 [RUST] Subject Hashing. Original: '{}', Normalized: '{}'", subject, s);
+        if s.is_empty() {
+             opened.thread_id.clone().unwrap_or_else(|| uuid::Uuid::new_v4().to_string())
+        } else {
+             let mut hasher = sha2::Sha256::new();
+             hasher.update(s.as_bytes());
+             let result = hasher.finalize();
+             let hash = hex::encode(result);
+             println!("🔥 [RUST] Generated Thread Hash: {}", hash);
+             hash
+        }
+    } else if let Some(tid) = opened.thread_id.clone() {
+        // Explicit thread ID provided (Chat/Direct)
+        tid
+    } else {
+        // Direct message / Chat -> Deterministic based on participants
         let my_pk = gns_identity.public_key_hex();
         let other_pk = &opened.from_public_key;
         let mut keys = vec![my_pk.as_str(), other_pk.as_str()];
         keys.sort();
         format!("direct_{}", &keys.join("_")[..32])
-    });
+    };
+
+    println!("🔥 [RUST] Decrypted Message: Type={}", opened.payload_type);
+    println!("🔥 [RUST] Thread ID: {}", thread_id);
+    println!("🔥 [RUST] Sender Handle: {:?}", opened.from_handle);
 
     // Store in database
     {
@@ -157,4 +187,30 @@ async fn handle_envelope(
     }
 
     tracing::info!("Message {} processed and emitted to UI", envelope.id);
+}
+
+/// Normalize subject for threading (remove Re:, Fwd:, etc)
+pub fn normalize_subject(subject: &str) -> String {
+    let mut s = subject.trim().to_lowercase();
+    
+    // Loop until no more prefixes found
+    loop {
+        let original_len = s.len();
+        
+        // Remove prefixes
+        if s.starts_with("re:") {
+            s = s[3..].trim_start().to_string();
+        } else if s.starts_with("fwd:") {
+            s = s[4..].trim_start().to_string();
+        } else if s.starts_with("fw:") {
+            s = s[3..].trim_start().to_string();
+        }
+        
+        // If length didn't change, we are done
+        if s.len() == original_len {
+            break;
+        }
+    }
+    
+    s
 }

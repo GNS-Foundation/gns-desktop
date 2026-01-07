@@ -1,198 +1,109 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Trash2 } from 'lucide-react';
-import { useThreads, ThreadPreview, deleteThread } from '../lib/tauri';
-import { SwipeableItem } from './SwipeableItem';
-import { formatDistanceToNow } from 'date-fns';
+// ===========================================
+// GNS BROWSER - MESSAGES TAB
+// With CHAT | EMAIL sub-tabs
+// ===========================================
 
-export function MessagesTab() {
-  console.log('MessagesTab: Mounting');
-  return (
-    <MessagesErrorBoundary>
-      <MessagesTabContent />
-    </MessagesErrorBoundary>
-  );
+import { useState } from 'react';
+import { MessageSquare, Mail } from 'lucide-react';
+import { cn } from '../lib/utils';
+
+// Import existing chat components
+import { ThreadListScreen } from './messaging/ThreadListScreen';
+
+// Import new email tab
+import { EmailTab } from './email/EmailTab';
+
+type SubTab = 'chat' | 'email';
+
+interface MessagesTabProps {
+  userHandle?: string;
+  userPublicKey?: string;
 }
 
-function MessagesTabContent() {
-  console.log('MessagesTabContent: Rendering');
-  const navigate = useNavigate();
-  const { threads, loading, error, refresh } = useThreads();
-  console.log('MessagesTabContent: State', { threads, loading, error });
+export function MessagesTab({ userHandle, userPublicKey }: MessagesTabProps) {
+  const [activeTab, setActiveTab] = useState<SubTab>('chat');
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="sticky top-0 bg-slate-900/95 backdrop-blur-lg border-b border-slate-800 p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-xl font-bold">Messages</h1>
-          <button
-            onClick={() => navigate('/messages/new')}
-            className="p-2 rounded-lg bg-blue-600 hover:bg-blue-700 transition-colors"
-          >
-            <Plus className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
-          <input
-            type="text"
-            placeholder="Search conversations..."
-            className="input w-full pl-10"
-          />
-        </div>
+    <div className="flex flex-col h-full bg-background">
+      {/* Sub-tab Header */}
+      <div className="flex items-center border-b border-border bg-surface/50 px-2">
+        <TabButton
+          icon={<MessageSquare className="w-4 h-4" />}
+          label="Chat"
+          isActive={activeTab === 'chat'}
+          onClick={() => setActiveTab('chat')}
+        />
+        <TabButton
+          icon={<Mail className="w-4 h-4" />}
+          label="Email"
+          isActive={activeTab === 'email'}
+          onClick={() => setActiveTab('email')}
+        // Show badge for unread emails
+        // badge={unreadEmailCount}
+        />
       </div>
 
-      {/* Thread list */}
-      <div className="flex-1 overflow-auto">
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="w-8 h-8 border-2 border-slate-700 border-t-blue-500 rounded-full animate-spin" />
-          </div>
-        ) : error ? (
-          <div className="p-4">
-            <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-4">
-              <p className="text-red-400 text-sm">{error}</p>
-            </div>
-          </div>
-        ) : threads.length === 0 ? (
-          <EmptyState />
+      {/* Tab Content */}
+      <div className="flex-1 overflow-hidden">
+        {activeTab === 'chat' ? (
+          <ChatTab userHandle={userHandle} userPublicKey={userPublicKey} />
         ) : (
-          <div className="divide-y divide-slate-800">
-            {threads.map((thread) => (
-              <ThreadItem
-                key={thread.id}
-                thread={thread}
-                onClick={() => navigate(`/messages/${thread.id}`)}
-                onDelete={async () => {
-                  try {
-                    await deleteThread(thread.id);
-                    refresh();
-                  } catch (e) {
-                    alert('Failed to delete thread: ' + e);
-                  }
-                }}
-              />
-            ))}
-          </div>
+          <EmailTab userHandle={userHandle} />
         )}
       </div>
     </div>
   );
 }
 
-function ThreadItem({
-  thread,
-  onClick,
-  onDelete,
-}: {
-  thread: ThreadPreview;
+// ===========================================
+// TAB BUTTON COMPONENT
+// ===========================================
+
+interface TabButtonProps {
+  icon: React.ReactNode;
+  label: string;
+  isActive: boolean;
   onClick: () => void;
-  onDelete: () => void;
-}) {
-  const displayName = thread.participant_handle
-    ? `@${thread.participant_handle}`
-    : (thread.participant_public_key ? thread.participant_public_key.slice(0, 16) + '...' : 'Unknown');
+  badge?: number;
+}
 
+function TabButton({ icon, label, isActive, onClick, badge }: TabButtonProps) {
   return (
-    <SwipeableItem
-      onDelete={() => {
-        if (confirm('Delete this conversation?')) {
-          onDelete();
-        }
-      }}
-      deleteIcon={<Trash2 className="w-6 h-6" />}
-      className="border-b border-slate-800 last:border-0"
+    <button
+      onClick={onClick}
+      className={cn(
+        "flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors relative",
+        isActive
+          ? "text-indigo-400 border-b-2 border-indigo-400"
+          : "text-slate-400 hover:text-slate-200"
+      )}
     >
-      <div className="w-full flex items-center hover:bg-slate-800/50 transition-colors group bg-slate-900">
-        <button
-          onClick={onClick}
-          className="flex-1 p-4 flex items-center gap-3 text-left min-w-0"
-        >
-          <div className="avatar">
-            {thread.participant_handle?.[0]?.toUpperCase() || '?'}
-          </div>
-
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between mb-1">
-              <h3 className="font-medium truncate">{displayName}</h3>
-              <span className="text-slate-500 text-xs flex-shrink-0">
-                {(() => {
-                  try {
-                    return formatDistanceToNow(new Date(thread.last_message_at), { addSuffix: true });
-                  } catch (e) {
-                    return 'unknown time';
-                  }
-                })()}
-              </span>
-            </div>
-            {thread.last_message_preview && (
-              <p className="text-slate-400 text-sm truncate">
-                {thread.last_message_preview}
-              </p>
-            )}
-          </div>
-
-          {thread.unread_count > 0 && (
-            <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center ml-2">
-              <span className="text-xs font-medium">{thread.unread_count}</span>
-            </div>
-          )}
-        </button>
-
-        {/* Desktop Hover Delete Button (Optional, keeping for accessibility) */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            if (confirm('Delete this conversation?')) {
-              onDelete();
-            }
-          }}
-          className="p-4 text-slate-500 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all hidden sm:block"
-          title="Delete conversation"
-        >
-          <Trash2 className="w-5 h-5" />
-        </button>
-      </div>
-    </SwipeableItem>
+      {icon}
+      {label}
+      {badge && badge > 0 && (
+        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
+          {badge > 99 ? '99+' : badge}
+        </span>
+      )}
+    </button>
   );
 }
 
-class MessagesErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean, error: string }> {
-  constructor(props: { children: React.ReactNode }) {
-    super(props);
-    this.state = { hasError: false, error: '' };
-  }
+// ===========================================
+// CHAT TAB (Real implementation)
+// ===========================================
 
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error: error.message };
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="p-4 text-red-500 bg-red-900/10 rounded-lg m-4 border border-red-500/20">
-          <h2 className="font-bold mb-2">Something went wrong in MessagesTab.</h2>
-          <p className="font-mono text-xs break-all">{this.state.error}</p>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
+interface ChatTabProps {
+  userHandle?: string;
+  userPublicKey?: string;
 }
 
-function EmptyState() {
+function ChatTab({ }: ChatTabProps) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 px-8 text-center">
-      <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center mb-4">
-        <span className="text-3xl">💬</span>
-      </div>
-      <h3 className="font-semibold mb-2">No messages yet</h3>
-      <p className="text-slate-400 text-sm">
-        Start a conversation by searching for a @handle or scanning a QR code
-      </p>
+    <div className="h-full">
+      <ThreadListScreen />
     </div>
   );
 }
+
+export default MessagesTab;

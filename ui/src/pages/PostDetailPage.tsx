@@ -69,7 +69,7 @@ export function PostDetailPage() {
     return (
         <div className="flex flex-col h-full bg-slate-950">
             {/* Header */}
-            <div className="flex items-center gap-4 p-4 border-b border-white/10 bg-slate-900/50 backdrop-blur sticky top-0 z-10">
+            <div className="flex items-center gap-4 p-4 border-b border-border bg-surface/50 backdrop-blur sticky top-0 z-10">
                 <button
                     onClick={() => navigate(-1)}
                     className="p-2 hover:bg-white/10 rounded-full transition-colors"
@@ -81,18 +81,20 @@ export function PostDetailPage() {
 
             <div className="flex-1 overflow-y-auto pb-20">
                 {/* Main Post */}
-                <div className="border-b border-white/10 bg-slate-900/20">
+                <div className="border-b border-border bg-surface/20">
                     <PostCard
                         post={data.post}
                         onLike={handleLike}
                         onRepost={handleRepost}
+                        onReply={() => document.getElementById('reply-input')?.focus()}
                         className="text-lg p-6" // Make main post slightly larger
                     />
                 </div>
 
                 {/* Reply Input */}
-                <div className="p-4 border-b border-white/10 bg-slate-900/10">
+                <div className="p-4 border-b border-border bg-surface/10">
                     <textarea
+                        id="reply-input"
                         value={replyText}
                         onChange={(e) => setReplyText(e.target.value)}
                         placeholder="Post your reply"
@@ -119,7 +121,7 @@ export function PostDetailPage() {
                             onLike={handleLike}
                             onRepost={handleRepost}
                             onReply={() => navigate(`/dix/post/${reply.id}`)}
-                            className="hover:bg-slate-900/30 pl-8 border-l-2 border-slate-800 ml-4 my-1"
+                            className="hover:bg-surface/30 pl-8 border-l-2 border-border ml-4 my-1"
                         />
                     ))}
                     {data.replies.length === 0 && (

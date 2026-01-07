@@ -2,8 +2,8 @@
  * New Conversation - Search for @handle and start chatting
  */
 
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Search, Loader2, User } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 
@@ -18,24 +18,33 @@ interface HandleInfo {
 
 export function NewConversation() {
   const navigate = useNavigate();
-  const [query, setQuery] = useState('');
+  const [searchParams] = useSearchParams();
+
+  const [query, setQuery] = useState(searchParams.get('recipient') || '');
   const [searching, setSearching] = useState(false);
   const [result, setResult] = useState<HandleInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    // Auto-search if recipient provided
+    if (searchParams.get('recipient')) {
+      handleSearch();
+    }
+  }, []);
+
   const handleSearch = async () => {
     if (!query.trim()) return;
-    
+
     setSearching(true);
     setError(null);
     setResult(null);
 
     try {
       const cleanHandle = query.trim().replace(/^@/, '');
-      const info = await invoke<HandleInfo | null>('resolve_handle', { 
-        handle: cleanHandle 
+      const info = await invoke<HandleInfo | null>('resolve_handle', {
+        handle: cleanHandle
       });
-      
+
       if (info) {
         setResult(info);
       } else {
@@ -50,23 +59,23 @@ export function NewConversation() {
 
   const startConversation = () => {
     if (!result) return;
-    
+
     // Create a thread ID based on public keys (deterministic)
     // For now, just navigate to conversation with the public key
     const threadId = `direct_${result.public_key.slice(0, 16)}`;
-    navigate(`/messages/${threadId}`, { 
-      state: { 
+    navigate(`/messages/${threadId}`, {
+      state: {
         recipientPublicKey: result.public_key,
         recipientHandle: result.handle,
         recipientEncryptionKey: result.encryption_key,
-      } 
+      }
     });
   };
 
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="sticky top-0 bg-slate-900/95 backdrop-blur-lg border-b border-slate-800 p-4">
+      <div className="sticky top-0 bg-surface/95 backdrop-blur-lg border-b border-border p-4">
         <div className="flex items-center gap-3 mb-4">
           <button
             onClick={() => navigate('/messages')}

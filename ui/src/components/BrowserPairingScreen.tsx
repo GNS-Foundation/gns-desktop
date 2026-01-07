@@ -17,6 +17,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
+import { getEncryptionKey, signString } from '../lib/tauri';
 
 // ===========================================
 // TYPES
@@ -26,41 +27,53 @@ interface BrowserAuthRequest {
   sessionId: string;
   browserInfo: string;
   expiresAt: number;
+  challenge: string;
+  type: string;
 }
 
 // ===========================================
-// API
+// API HELPERS
 // ===========================================
 
 const API_BASE = 'https://gns-browser-production.up.railway.app';
 
+// Canonical JSON for signing (alphabetical keys)
+function canonicalJson(obj: Record<string, any>): string {
+  const sortedKeys = Object.keys(obj).sort();
+  const pairs = sortedKeys.map(key => {
+    const val = obj[key];
+    const valStr = typeof val === 'string' ? `"${val}"` : val;
+    return `"${key}":${valStr}`;
+  });
+  return `{${pairs.join(',')}}`;
+}
+
 async function approveSession(
-  sessionId: string,
-  handle: string,
-  publicKey: string
+  payload: any
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const response = await fetch(`${API_BASE}/auth/sessions/${sessionId}/approve`, {
+    const response = await fetch(`${API_BASE}/auth/sessions/approve`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        handle,
-        publicKey,
-        // In production, this would include a signature
-      }),
+      body: JSON.stringify(payload),
     });
 
     const data = await response.json();
-    return { success: data.success, error: data.error };
+    if (response.ok && data.success) {
+      return { success: true };
+    }
+    return { success: false, error: data.error || 'Approval failed' };
   } catch (err) {
     return { success: false, error: String(err) };
   }
 }
 
-async function rejectSession(sessionId: string): Promise<void> {
+async function rejectSession(payload: any): Promise<void> {
   try {
-    await fetch(`${API_BASE}/auth/sessions/${sessionId}/reject`, {
+    await fetch(`${API_BASE}/auth/sessions/reject`, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
     });
   } catch {
     // Ignore errors on reject
@@ -162,25 +175,30 @@ export function BrowserPairingScreen() {
   const parseQRCode = (data: string): BrowserAuthRequest | null => {
     try {
       const json = JSON.parse(data);
-      // FIX: Accept both formats
       if (json.sessionId && (json.type === 'gns_browser_auth' || json.type === 'browser_auth')) {
         return {
           sessionId: json.sessionId,
           browserInfo: json.browserInfo || 'Unknown Browser',
           expiresAt: json.expiresAt || Date.now() + 300000,
+          challenge: json.challenge || '', // Essential for signing
+          type: json.type,
         };
       }
     } catch {
-      // Try URL format: gns://pair?session=xxx
+      // Try URL format: gns://pair?session=xxx&challenge=xxx
       if (data.startsWith('gns://pair?')) {
         const url = new URL(data);
         const sessionId = url.searchParams.get('session');
         const browserInfo = url.searchParams.get('browser') || 'Unknown Browser';
+        const challenge = url.searchParams.get('challenge') || '';
+
         if (sessionId) {
           return {
             sessionId,
             browserInfo,
             expiresAt: Date.now() + 300000,
+            challenge,
+            type: 'gns_browser_auth',
           };
         }
       }
@@ -207,21 +225,90 @@ export function BrowserPairingScreen() {
       return;
     }
 
-    const result = await approveSession(request.sessionId, handle, publicKey);
+    try {
+      // 1. Get encryption key for secure channel
+      const encryptionKey = await getEncryptionKey();
+      if (!encryptionKey) {
+        throw new Error('Encryption key not found. Please ensure wallet is initialized.');
+      }
 
-    if (result.success) {
-      setStep('success');
-    } else {
-      setError(result.error || 'Failed to approve session');
+      // 2. Prepare data to sign
+      const signedData = {
+        action: 'approve',
+        challenge: request.challenge,
+        publicKey: publicKey.toLowerCase(),
+        sessionId: request.sessionId,
+      };
+
+      // 3. Sign the data
+      const canonicalString = canonicalJson(signedData);
+      const signature = await signString(canonicalString);
+
+      if (!signature) {
+        throw new Error('Failed to sign approval request.');
+      }
+
+      // 4. Send approval
+      const payload = {
+        sessionId: request.sessionId,
+        publicKey,
+        signature,
+        deviceInfo: {
+          platform: 'tauri-mobile', // TODO: Use getAppVersion platform?
+          approvedAt: new Date().toISOString(),
+        },
+        encryptionKey,
+        // messageSync handled separately later if needed
+      };
+
+      const result = await approveSession(payload);
+
+      if (result.success) {
+        setStep('success');
+      } else {
+        setError(result.error || 'Failed to approve session');
+        setStep('error');
+      }
+    } catch (err) {
+      console.error('Approval error:', err);
+      setError(err instanceof Error ? err.message : 'Unknown error during approval');
       setStep('error');
+    } finally {
+      setIsProcessing(false);
     }
-
-    setIsProcessing(false);
   };
 
   const handleReject = async () => {
     if (!request) return;
-    await rejectSession(request.sessionId);
+
+    try {
+      const publicKey = localStorage.getItem('gns_public_key');
+      if (!publicKey) {
+        navigate(-1);
+        return;
+      }
+
+      const signedData = {
+        action: 'reject',
+        challenge: request.challenge,
+        publicKey: publicKey.toLowerCase(),
+        sessionId: request.sessionId,
+      };
+
+      const canonicalString = canonicalJson(signedData);
+      const signature = await signString(canonicalString);
+
+      if (signature) {
+        await rejectSession({
+          sessionId: request.sessionId,
+          publicKey,
+          signature,
+        });
+      }
+    } catch (e) {
+      console.error('Reject error:', e);
+    }
+
     navigate(-1);
   };
 

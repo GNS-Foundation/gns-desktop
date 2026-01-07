@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+
 import {
   Globe,
   Key,
@@ -14,7 +14,6 @@ import {
   MessageCircle,
   Shield,
   ArrowRight,
-  Smartphone,
   QrCode,
   Loader2,
   RefreshCw,
@@ -49,7 +48,7 @@ export function WelcomeScreen({ onComplete }: WelcomeScreenProps) {
   // Welcome step
   if (step === 'welcome') {
     return (
-      <WelcomeStep 
+      <WelcomeStep
         onGetStarted={() => setStep(isMobile ? 'create' : 'qr-login')}
         isMobile={isMobile}
       />
@@ -59,7 +58,7 @@ export function WelcomeScreen({ onComplete }: WelcomeScreenProps) {
   // QR Login (Web only)
   if (step === 'qr-login') {
     return (
-      <QRLoginStep 
+      <QRLoginStep
         onSuccess={onComplete}
         onBack={() => setStep('welcome')}
       />
@@ -68,7 +67,7 @@ export function WelcomeScreen({ onComplete }: WelcomeScreenProps) {
 
   // Handle claim (Mobile only)
   return (
-    <HandleClaimStep 
+    <HandleClaimStep
       onComplete={onComplete}
       onBack={() => setStep('welcome')}
     />
@@ -79,10 +78,10 @@ export function WelcomeScreen({ onComplete }: WelcomeScreenProps) {
 // WELCOME STEP
 // ===========================================
 
-function WelcomeStep({ 
-  onGetStarted, 
-  isMobile 
-}: { 
+function WelcomeStep({
+  onGetStarted,
+  isMobile
+}: {
   onGetStarted: () => void;
   isMobile: boolean;
 }) {
@@ -152,7 +151,7 @@ function WelcomeStep({
 
       {/* Platform hint */}
       <p className="text-gray-600 text-sm mt-4 text-center">
-        {isMobile 
+        {isMobile
           ? "Create your identity on this device"
           : "Scan QR code with your GNS mobile app"
         }
@@ -173,10 +172,10 @@ interface SessionData {
   expiresIn: number;
 }
 
-function QRLoginStep({ 
-  onSuccess, 
-  onBack 
-}: { 
+function QRLoginStep({
+  onSuccess,
+  onBack
+}: {
   onSuccess: () => void;
   onBack: () => void;
 }) {
@@ -184,9 +183,9 @@ function QRLoginStep({
   const [sessionData, setSessionData] = useState<SessionData | null>(null);
   const [timeLeft, setTimeLeft] = useState(300);
   const [error, setError] = useState<string | null>(null);
-  
-  const pollRef = useRef<NodeJS.Timeout | null>(null);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     requestSession();
@@ -202,7 +201,7 @@ function QRLoginStep({
 
     try {
       const browserInfo = navigator.userAgent.split(' ').slice(-2).join(' ');
-      
+
       const response = await fetch(`${API_BASE}/auth/sessions/request`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -234,7 +233,7 @@ function QRLoginStep({
     pollRef.current = setInterval(async () => {
       try {
         const response = await fetch(`${API_BASE}/auth/sessions/${sessionId}`);
-        
+
         if (!response.ok) {
           if (response.status === 410) {
             setStatus('expired');
@@ -387,9 +386,9 @@ function QRLoginStep({
       {/* Don't have app */}
       <div className="mt-8 text-center">
         <p className="text-gray-600 text-sm">Don't have the app?</p>
-        <a 
-          href="https://gcrumbs.com" 
-          target="_blank" 
+        <a
+          href="https://gcrumbs.com"
+          target="_blank"
           rel="noopener noreferrer"
           className="text-blue-400 text-sm hover:underline"
         >
@@ -404,18 +403,17 @@ function QRLoginStep({
 // HANDLE CLAIM STEP (MOBILE ONLY)
 // ===========================================
 
-function HandleClaimStep({ 
-  onComplete, 
-  onBack 
-}: { 
+function HandleClaimStep({
+  onComplete,
+  onBack
+}: {
   onComplete: () => void;
   onBack: () => void;
 }) {
-  const navigate = useNavigate();
   const [handle, setHandle] = useState('');
   const [status, setStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid'>('idle');
   const [isCreating, setIsCreating] = useState(false);
-  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const checkHandle = async (value: string) => {
     if (value.length < 3) {
@@ -435,7 +433,7 @@ function HandleClaimStep({
         `https://gns-browser-production.up.railway.app/handles/check/${value}`
       );
       const data = await response.json();
-      
+
       setStatus(data.available ? 'available' : 'taken');
     } catch (err) {
       console.error('Handle check error:', err);
@@ -453,14 +451,14 @@ function HandleClaimStep({
 
   const handleCreate = async () => {
     if (status !== 'available') return;
-    
+
     setIsCreating(true);
 
     try {
       // Create identity via Tauri
       const { invoke } = await import('@tauri-apps/api/core');
       await invoke('create_identity', { handle });
-      
+
       localStorage.setItem('gns_handle', handle);
       onComplete();
     } catch (err) {

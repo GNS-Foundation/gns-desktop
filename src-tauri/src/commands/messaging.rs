@@ -244,6 +244,7 @@ pub async fn save_sent_email_message(
     body: String,
     gateway_public_key: String,
     thread_id: Option<String>,
+    message_id: Option<String>, // Added parameter
     state: State<'_, AppState>,
 ) -> Result<SendResult, String> {
     // Get our identity
@@ -285,7 +286,14 @@ pub async fn save_sent_email_message(
     };
 
     // Create envelope targeting the Email Gateway
-    let envelope = create_envelope_with_metadata(
+    // If message_id is provided (from backend), use it??
+    // create_envelope_with_metadata generates a new ID internally usually.
+    // We might need to manually override the ID or construct it differently if we want to match Server ID.
+    // But create_envelope functions usually enforce random ID.
+    // Wait, if we save to DB, we can map it?
+    // Actually, create_envelope usually returns an Envelope struct. We can overwrite the ID field before saving!
+    
+    let mut envelope = create_envelope_with_metadata(
         &identity,
         my_handle.as_deref(),
         &gateway_public_key,
@@ -306,6 +314,25 @@ pub async fn save_sent_email_message(
         Some(&recipient_email), 
         None
     ).map_err(|e| format!("Failed to save locally: {}", e))?;
+
+    // Phase 1.5: Sync to connected Mobile/Browsers (Real-time)
+    // We must tell our other devices that we sent this email.
+    let sync_event = serde_json::json!({
+        "type": "message_synced",
+        "to": [identity.public_key_hex()],
+        "messageId": envelope.id,
+        "conversationWith": gateway_public_key, // Emails are technically with Gateway
+        "decryptedText": snippet, // Use snippet or body? Body might be huge. Mobile expects text.
+        "direction": "outgoing",
+        "timestamp": envelope.timestamp,
+        "payload": payload, // Send full payload for Email reconstruction
+    });
+    
+    let relay = state.relay.lock().await;
+    if let Err(e) = relay.send_raw(&sync_event.to_string()).await {
+            // Non-fatal, just log
+            println!("Failed to sync sent email to devices: {}", e);
+    }
 
     Ok(SendResult {
         message_id: envelope.id.clone(),

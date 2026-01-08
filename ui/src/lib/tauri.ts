@@ -344,13 +344,19 @@ export async function saveSentEmailMessage(params: {
   body: string;
   gatewayPublicKey: string;
   threadId?: string;
-}): Promise<SendResult> {
+  message_id?: string;
+}): Promise<{ message_id: string; thread_id: string }> {
   if (!isTauriApp()) {
     throw new Error('Email not available in web browser');
   }
-  return invoke<SendResult>('save_sent_email_message', {
-    ...params,
-    thread_id: params.threadId
+  return invoke<{ message_id: string; thread_id: string }>('save_sent_email_message', {
+    recipient_email: params.recipientEmail,
+    subject: params.subject,
+    snippet: params.snippet,
+    body: params.body,
+    gateway_public_key: params.gatewayPublicKey,
+    thread_id: params.threadId,
+    message_id: params.message_id,
   });
 }
 

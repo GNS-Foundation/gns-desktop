@@ -1,5 +1,5 @@
 import { EmailThread, EmailMessage, EmailComposeData, EmailStats, EmailAddress } from '../types/email';
-import { signString, getPublicKey, getThreads, getMessages, getThread, deleteThread, markThreadRead, ThreadPreview, Message, saveSentEmailMessage } from './tauri';
+import { signString, getPublicKey, getCurrentHandle, getThreads, getMessages, getThread, deleteThread, markThreadRead, ThreadPreview, Message, saveSentEmailMessage } from './tauri';
 import { EMAIL_GATEWAY_PUBLIC_KEY } from './constants';
 
 const API_BASE = 'https://gns-browser-production.up.railway.app';
@@ -202,6 +202,13 @@ export const EmailApi = {
       throw new Error('Failed to sign email request');
     }
 
+    // Get handle for 'from' field
+    const handle = await getCurrentHandle();
+    if (!handle) {
+      throw new Error('No handle claimed');
+    }
+    const fromAddress = `${handle}@gcrumbs.com`;
+
     const response = await fetch(`${API_BASE}/email/send`, {
       method: 'POST',
       headers: {
@@ -211,12 +218,15 @@ export const EmailApi = {
         'X-GNS-Timestamp': timestamp,
       },
       body: JSON.stringify({
+        from: fromAddress, // Required by backend/mobile
         to: toStr,
         cc: ccStr,
         bcc: bccStr,
         subject: email.subject,
         body: email.body,
-        reply_to_id: email.replyToId,
+        bodyFormat: 'plain', // Matches mobile
+        inReplyTo: email.replyToId, // Matches mobile key
+        references: email.replyToId ? [email.replyToId] : undefined, // Matches mobile
       }),
     });
 
@@ -240,7 +250,8 @@ export const EmailApi = {
         snippet: email.body.substring(0, 100),
         body: email.body,
         gatewayPublicKey: EMAIL_GATEWAY_PUBLIC_KEY,
-        threadId: email.replyToId // Pass thread ID for replies
+        threadId: email.replyToId, // Pass thread ID for replies
+        message_id: data.messageId // Ensure local and server IDs match to prevent duplicates
       });
       console.log('[EmailApi] Saved sent email locally');
     } catch (e) {

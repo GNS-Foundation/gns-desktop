@@ -158,6 +158,7 @@ pub fn run() {
                         app_handle,
                         identity_for_handler,
                         database_for_handler,
+                        relay.clone(),
                         incoming_rx
                     );
 

@@ -227,11 +227,11 @@ async fn handle_envelope(
         let sync_event = serde_json::json!({
             "type": "message_synced",
             "messageId": envelope.id,
-            "conversationWith": opened.from_public_key,
-            "decryptedText": payload.get("text").and_then(|t| t.as_str()).unwrap_or(""),
+            "conversationWith": event.from_public_key,
+            "decryptedText": event.payload.get("text").and_then(|t| t.as_str()).unwrap_or(""),
             "direction": "incoming",
-            "timestamp": opened.timestamp,
-            "fromHandle": opened.from_handle
+            "timestamp": event.timestamp,
+            "fromHandle": event.from_handle
         });
 
         // Send raw JSON

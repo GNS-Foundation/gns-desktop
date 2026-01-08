@@ -77,6 +77,27 @@ pub async fn send_message(
         .await
         .map_err(|e| format!("Failed to send: {}", e))?;
 
+    // Phase 1.5: Sync to connected Browsers (Real-time)
+    // We must tell our other devices (browsers) that we sent this message,
+    // otherwise they will see an encrypted envelope from the server and have no way to decrypt it.
+    let text_content = payload.get("text").and_then(|t| t.as_str()).unwrap_or("");
+    if !text_content.is_empty() {
+        let sync_event = serde_json::json!({
+            "type": "message_synced",
+            "to": [identity.public_key_hex()],
+            "messageId": envelope.id,
+            "conversationWith": recipient_pk,
+            "decryptedText": text_content,
+            "direction": "outgoing",
+            "timestamp": envelope.timestamp,
+        });
+        
+        if let Err(e) = relay.send_raw(&sync_event.to_string()).await {
+             // Non-fatal, just log
+             println!("Failed to sync sent message to browser: {}", e);
+        }
+    }
+
     // Store locally
     let mut db = state.database.lock().await;
     // Sanitize handle (remove leading @ if present) to avoid duplication

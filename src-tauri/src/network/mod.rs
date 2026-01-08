@@ -526,6 +526,10 @@ pub enum IncomingMessage {
         message_id: String,
         timestamp: i64,
     },
+    RequestSync {
+        conversation_with: String,
+        limit: u32,
+    },
     /// Unknown message type
     Unknown(String),
 }
@@ -759,6 +763,12 @@ fn parse_incoming_message(text: &str) -> IncomingMessage {
             IncomingMessage::ReadReceipt {
                 message_id: json["messageId"].as_str().unwrap_or_default().to_string(),
                 timestamp: json["timestamp"].as_i64().unwrap_or_else(|| chrono::Utc::now().timestamp_millis()),
+            }
+        }
+        "request_sync" => {
+            IncomingMessage::RequestSync {
+                conversation_with: json["conversationWith"].as_str().unwrap_or_default().to_string(),
+                limit: json["limit"].as_u64().unwrap_or(50) as u32,
             }
         }
         "envelope" | "message" => {

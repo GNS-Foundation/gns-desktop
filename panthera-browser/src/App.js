@@ -408,6 +408,16 @@ const AppContent = () => {
           );
 
           const combined = [...serverMessages, ...offlineMessages, ...localMessages];
+
+          // Auto-Sync: If we have encrypted messages but no local keys/text, verify with mobile
+          // Only sync if we haven't tried recently for this conversation
+          const lastSyncTime = parseInt(sessionStorage.getItem(`last_sync_${publicKey}`) || '0');
+          if (Date.now() - lastSyncTime > 10000 && combined.length > 0 && combined.some(m => !m.decryptedText && !m.text)) {
+            console.log('🔄 Missing decrypted content, requesting sync from mobile...');
+            sessionStorage.setItem(`last_sync_${publicKey}`, Date.now().toString());
+            wsService.requestSync(publicKey, 50);
+          }
+
           combined.sort((a, b) => new Date(a.created_at || a.timestamp) - new Date(b.created_at || b.timestamp));
           return combined;
         });

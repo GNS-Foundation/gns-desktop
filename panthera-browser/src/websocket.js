@@ -295,6 +295,7 @@ class WebSocketService {
 
     this.send({
       type: 'message_sent_from_browser',
+      to: [this.publicKey],
       messageId,
       to_pk: conversationWith,
       plaintext: plaintext,
@@ -317,6 +318,7 @@ class WebSocketService {
 
     this.send({
       type: 'request_sync',
+      to: [this.publicKey], // Route to my other devices (Mobile)
       conversationWith,
       limit,
     });

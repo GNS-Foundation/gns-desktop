@@ -51,6 +51,53 @@ pub fn start_message_handler(
                         "browsers": browsers,
                     }));
                 }
+                IncomingMessage::RequestSync { conversation_with, limit } => {
+                    tracing::info!("Sync request for: {} (limit={})", conversation_with, limit);
+                    
+                    let identity_guard = identity.lock().await;
+                    if let Some(gns_id) = identity_guard.get_identity() {
+                        let my_pk = gns_id.public_key_hex();
+                        
+                        // Calculate Thread ID (deterministic)
+                        let mut keys = vec![my_pk.as_str(), conversation_with.as_str()];
+                        keys.sort();
+                        let thread_id = format!("direct_{}", &keys.join("_")[..32]);
+                        
+                        // Fetch messages from DB
+                        let result: Result<Vec<crate::commands::messaging::Message>, _> = {
+                            let db = database.lock().await;
+                            db.get_messages(&thread_id, limit)
+                        };
+
+                        if let Ok(messages) = result {
+                            let relay_guard = relay.lock().await;
+                            for msg in &messages {
+                                let text = msg.payload.get("text").and_then(|t| t.as_str()).unwrap_or("");
+                                if text.is_empty() { continue; }
+
+                                let sync_event = serde_json::json!({
+                                    "type": "message_synced",
+                                    "to": [my_pk],
+                                    "messageId": msg.id,
+                                    "conversationWith": conversation_with,
+                                    "decryptedText": text,
+                                    "direction": if msg.is_outgoing { "outgoing" } else { "incoming" },
+                                    "timestamp": msg.timestamp,
+                                    "fromHandle": msg.from_handle
+                                });
+
+                                // Send each as individual sync event
+                                if let Err(e) = relay_guard.send_raw(&sync_event.to_string()).await {
+                                    tracing::error!("Failed to stream sync message: {}", e);
+                                    break;
+                                }
+                            }
+                            tracing::info!("Synced {} messages to browser", messages.len());
+                        } else {
+                            tracing::error!("Failed to fetch messages for sync");
+                        }
+                    }
+                }
                 IncomingMessage::MessageSentFromBrowser { message_id, to_pk, plaintext, timestamp } => {
                     tracing::info!("Syncing browser message: {}", &message_id);
                     
@@ -226,6 +273,16 @@ async fn handle_envelope(
         // Construct sync event
         let sync_event = serde_json::json!({
             "type": "message_synced",
+            "to": [event.from_public_key], // Route to myself (User's devices) - Wait, from_public_key is Sender. 
+            // If Incoming: Sender is Echo. I want to route to ME.
+            // I need MY PK.
+            // event.from_public_key is ECHO.
+            // I need to inject MY PK.
+            // But I don't have MY PK in this scope easily?
+            // `gns_identity` is available in handle_envelope!
+            // Line 153: let gns_identity = ...
+            // So I can use gns_identity.public_key_hex().
+            "to": [gns_identity.public_key_hex()],
             "messageId": envelope.id,
             "conversationWith": event.from_public_key,
             "decryptedText": event.payload.get("text").and_then(|t| t.as_str()).unwrap_or(""),

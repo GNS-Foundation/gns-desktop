@@ -107,11 +107,13 @@ fn main() {
                 let app_handle = app.handle().clone();
                 let identity = state.identity.clone();
                 let database = state.database.clone();
+                let relay = state.relay.clone();
                 
                 message_handler::start_message_handler(
                     app_handle,
                     identity,
                     database,
+                    relay,
                     rx
                 );
 

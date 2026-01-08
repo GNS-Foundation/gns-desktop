@@ -3,7 +3,7 @@
 //! Receives envelopes from WebSocket, decrypts them, stores in DB, and emits UI events.
 
 use crate::crypto::IdentityManager;
-use crate::network::IncomingMessage;
+use crate::network::{IncomingMessage, RelayConnection};
 use crate::storage::Database;
 use gns_crypto_core::{open_envelope, GnsEnvelope};
 use std::sync::Arc;
@@ -29,6 +29,7 @@ pub fn start_message_handler(
     app_handle: AppHandle,
     identity: Arc<Mutex<IdentityManager>>,
     database: Arc<Mutex<Database>>,
+    relay: Arc<Mutex<RelayConnection>>,
     mut incoming_rx: mpsc::Receiver<IncomingMessage>,
 ) {
     tauri::async_runtime::spawn(async move {
@@ -37,7 +38,7 @@ pub fn start_message_handler(
         while let Some(msg) = incoming_rx.recv().await {
             match msg {
                 IncomingMessage::Envelope(envelope) => {
-                    handle_envelope(&app_handle, &identity, &database, envelope).await;
+                    handle_envelope(&app_handle, &identity, &database, &relay, envelope).await;
                 }
                 IncomingMessage::Welcome { public_key } => {
                     tracing::info!("Welcome received for {}", &public_key[..16]);
@@ -94,6 +95,7 @@ async fn handle_envelope(
     app_handle: &AppHandle,
     identity: &Arc<Mutex<IdentityManager>>,
     database: &Arc<Mutex<Database>>,
+    relay: &Arc<Mutex<RelayConnection>>,
     envelope: GnsEnvelope,
 ) {
     println!("🔥 [RUST] handle_envelope called: {}", envelope.id);
@@ -216,6 +218,29 @@ async fn handle_envelope(
     }
 
     tracing::info!("Message {} processed and emitted to UI", envelope.id);
+
+    // Sync to Browser (Phase 1.5)
+    // Forward decrypted content to any connected browsers
+    {
+        let relay_guard = relay.lock().await;
+        // Construct sync event
+        let sync_event = serde_json::json!({
+            "type": "message_synced",
+            "messageId": envelope.id,
+            "conversationWith": opened.from_public_key,
+            "decryptedText": payload.get("text").and_then(|t| t.as_str()).unwrap_or(""),
+            "direction": "incoming",
+            "timestamp": opened.timestamp,
+            "fromHandle": opened.from_handle
+        });
+
+        // Send raw JSON
+        if let Err(e) = relay_guard.send_raw(&sync_event.to_string()).await {
+             tracing::debug!("Failed to sync message to browser (likely no browsers connected): {}", e);
+        } else {
+             tracing::info!("Synced message {} to browser(s)", envelope.id);
+        }
+    }
 }
 
 /// Normalize subject for threading (remove Re:, Fwd:, etc)

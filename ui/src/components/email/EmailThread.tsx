@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTauriEvent } from '../../lib/tauri';
 import { EmailApi } from '../../lib/email';
 import { EmailThread, EmailMessage } from '../../types/email';
 import {
@@ -19,6 +20,7 @@ interface EmailThreadViewProps {
 
 export function EmailThreadView({ thread, onBack, onReply, onForward, onDelete }: EmailThreadViewProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
 
   // Track expanded state for each message
   const [expandedMessages, setExpandedMessages] = useState<Record<string, boolean>>({});
@@ -26,6 +28,11 @@ export function EmailThreadView({ thread, onBack, onReply, onForward, onDelete }
   const { data, isLoading } = useQuery({
     queryKey: ['email-thread', thread.id],
     queryFn: () => EmailApi.getThread(thread.id),
+  });
+
+  // Listen for new messages to refresh thread
+  useTauriEvent('new_message', () => {
+    queryClient.invalidateQueries({ queryKey: ['email-thread', thread.id] });
   });
 
   const messages = data?.messages || [];

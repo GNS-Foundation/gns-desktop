@@ -127,6 +127,73 @@ pub fn start_message_handler(
                         let _ = app_handle.emit("message_read", serde_json::json!({ "id": message_id }));
                     }
                 }
+                IncomingMessage::MessageSynced { message_id, conversation_with, decrypted_text, direction, timestamp, from_handle } => {
+                    tracing::info!("Syncing mobile message: {}", &message_id);
+
+                    let identity_guard = identity.lock().await;
+                     if let Some(_) = identity_guard.get_identity() { // Just check we have identity
+                        let mut db = database.lock().await;
+
+                        // TODO: Refactor `save_browser_sent_message` or create `save_synced_message`?
+                        // `save_received_message` expects an envelope. We don't have one.
+                        // We have pure content.
+                        // We should reuse `save_browser_sent_message` but it assumes outgoing.
+                        // If direction is incoming, we need a way to store "Decrypted Incoming" without envelope source.
+                        // Actually, `save_received_message` requires payload type.
+
+                        // Let's create a new DB method or reuse logic? 
+                        // For now, let's treat it as a "Browser Sent" message if outgoing, 
+                        // and if incoming... well, the DB schema might expect an envelope ID.
+                        // `message_synced` gives us the original ID.
+
+                        // Wait, if it's INCOMING, it implies I am the recipient.
+                        // `save_received_message` does: INSERT INTO messages ...
+                        // If I call `save_received_message`:
+                        // - thread_id: need to generate or use provided?
+                        // - from_pk: We need to know WHO sent it. `conversation_with` is the OTHER person.
+                        // If incoming, `conversation_with` == Sender.
+                        // If outgoing, `conversation_with` == Recipient.
+                        
+                        let (from_pk, is_outgoing) = if direction == "outgoing" {
+                             (String::new(), true) // Placeholder (unused in outgoing path)
+                        } else {
+                             (conversation_with.clone(), false)
+                        };
+
+                        let my_pk = identity_guard.get_identity().map(|i| i.public_key_hex()).unwrap_or_default();
+
+                        if is_outgoing {
+                             if let Err(e) = db.save_browser_sent_message(&message_id, &conversation_with, &decrypted_text, timestamp, &my_pk) {
+                                 tracing::error!("Failed to save synced outgoing message: {}", e);
+                             }
+                        } else {
+                            // Incoming!
+                            // Persist to DB using new method
+                             if let Err(e) = db.save_synced_incoming_message(&message_id, &from_pk, &decrypted_text, timestamp, from_handle.as_deref(), &my_pk) {
+                                 tracing::error!("Failed to save synced incoming message: {}", e);
+                             }
+                        }
+                        
+                        // Emit to UI
+                        // Emit 'message_synced' for specific sync listeners
+                        let _ = app_handle.emit("message_synced", serde_json::json!({
+                            "id": message_id,
+                            "conversationWith": conversation_with,
+                            "text": decrypted_text,
+                            "direction": direction,
+                            "timestamp": timestamp,
+                            "fromHandle": from_handle
+                        }));
+
+                        // Emit 'new_message' to trigger generic UI updates (like EmailList refresh)
+                        // Payload doesn't need to match generic event perfectly if UI just refetches
+                        let _ = app_handle.emit("new_message", serde_json::json!({
+                            "id": message_id,
+                            "payload_type": "email", // Assume email for now
+                            "timestamp": timestamp
+                        }));
+                     }
+                }
                 IncomingMessage::Unknown(text) => {
                     tracing::trace!("Unknown message type: {}", &text[..text.len().min(100)]);
                 }

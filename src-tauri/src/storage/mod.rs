@@ -502,6 +502,51 @@ impl Database {
         Ok(())
     }
 
+    /// Save a synced incoming message (from Mobile -> Web)
+    pub fn save_synced_incoming_message(
+        &mut self,
+        message_id: &str,
+        from_pk: &str,
+        text: &str,
+        timestamp: i64,
+        from_handle: Option<&str>,
+        my_pk: &str,
+    ) -> Result<(), DatabaseError> {
+        // Determine thread ID (Direct Message fallback style)
+        // Note: This relies on participants. If emails need Subject grouping, 
+        // we are limited here until Mobile sends Subject.
+        let mut keys = vec![my_pk, from_pk];
+        keys.sort();
+        let thread_id = format!("direct_{}", &keys.join("_")[..32]);
+        
+        // Get or create thread
+        self.get_or_create_thread(&thread_id, from_pk, from_handle, None)?;
+        
+        // Insert Message
+        let payload_json = serde_json::json!({ "text": text });
+        
+        self.conn.execute(
+            r#"
+            INSERT OR REPLACE INTO messages 
+            (id, thread_id, from_public_key, from_handle, payload_type, payload_json, timestamp, is_outgoing, status, signature_valid)
+            VALUES (?, ?, ?, ?, 'text', ?, ?, 0, 'received', 1)
+            "#,
+            params![
+                message_id,
+                thread_id,
+                from_pk,
+                from_handle,
+                serde_json::to_string(&payload_json).unwrap_or_default(),
+                timestamp,
+            ],
+        ).map_err(|e| DatabaseError::SqliteError(e.to_string()))?;
+        
+        // Update Thread
+        self.update_thread_for_message(&thread_id, timestamp, true)?;
+        
+        Ok(())
+    }
+
     /// Save a message sent from the browser (synced)
     pub fn save_browser_sent_message(
         &mut self,

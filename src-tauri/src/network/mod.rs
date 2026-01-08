@@ -521,6 +521,15 @@ pub enum IncomingMessage {
         plaintext: String,
         timestamp: i64,
     },
+    /// Message synced from Browser/Mobile (Decrypted Payload)
+    MessageSynced {
+        message_id: String,
+        conversation_with: String,
+        decrypted_text: String,
+        direction: String,
+        timestamp: i64,
+        from_handle: Option<String>,
+    },
     /// Read receipt
     ReadReceipt {
         message_id: String,
@@ -731,7 +740,10 @@ impl RelayConnection {
 
 /// Parse incoming WebSocket message into typed enum
 fn parse_incoming_message(text: &str) -> IncomingMessage {
-    println!("🔥 [RUST] WebSocket received: {}", &text[..text.len().min(300)]);
+    // Truncate log for privacy/size
+    let log_len = std::cmp::min(text.len(), 300);
+    println!("🔥 [RUST] WebSocket received: {}", &text[..log_len]);
+    
     // Try to parse as JSON
     let json: serde_json::Value = match serde_json::from_str(text) {
         Ok(v) => v,
@@ -757,6 +769,16 @@ fn parse_incoming_message(text: &str) -> IncomingMessage {
                 to_pk: json["to_pk"].as_str().unwrap_or_default().to_string(),
                 plaintext: json["plaintext"].as_str().unwrap_or_default().to_string(),
                 timestamp: json["timestamp"].as_i64().unwrap_or_else(|| chrono::Utc::now().timestamp_millis()),
+            }
+        }
+        "message_synced" => {
+            IncomingMessage::MessageSynced {
+                message_id: json["messageId"].as_str().unwrap_or_default().to_string(),
+                conversation_with: json["conversationWith"].as_str().unwrap_or_default().to_string(),
+                decrypted_text: json["decryptedText"].as_str().unwrap_or_default().to_string(),
+                direction: json["direction"].as_str().unwrap_or("incoming").to_string(),
+                timestamp: json["timestamp"].as_i64().unwrap_or_else(|| chrono::Utc::now().timestamp_millis()),
+                from_handle: json["fromHandle"].as_str().map(|s| s.to_string()),
             }
         }
         "read_receipt" => {

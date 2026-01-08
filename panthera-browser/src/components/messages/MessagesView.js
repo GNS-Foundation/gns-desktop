@@ -12,11 +12,15 @@ const MessagesView = ({
     inboxLoading,
     onSendReply, // Renamed from handleSendReply to onSendReply (expects text)
     setSelectedConversation,
-    fetchProfile
+    fetchProfile,
+    messages = [] // ✅ Accept messages prop with default empty array
 }) => {
     const { theme } = useTheme();
     const { authUser } = useAuth();
     const replyRef = useRef(null);
+
+    // Use passed messages prop OR fallback (legacy)
+    const messagesToList = messages.length > 0 ? messages : (selectedConversation?.messages || []);
 
     const handleSend = () => {
         if (replyRef.current && replyRef.current.value.trim()) {
@@ -51,94 +55,86 @@ const MessagesView = ({
                         </p>
                     </div>
                 ) : (
-                    <div className="divide-y divide-gray-100">
-                        {inboxMessages.map((conv) => (
-                            <button
-                                key={conv.publicKey}
-                                onClick={() => loadConversation(conv.publicKey, conv.handle)}
-                                className={`w-full p-4 text-left ${theme.hover} transition-colors ${selectedConversation?.publicKey === conv.publicKey ? 'bg-cyan-50' : ''
-                                    }`}
-                            >
-                                <div className="flex items-start gap-3">
-                                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400 to-cyan-600 flex items-center justify-center text-white font-bold flex-shrink-0">
-                                        {conv.handle[0]?.toUpperCase() || '?'}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center justify-between">
-                                            <span className={`font-semibold ${theme.text} truncate`}>
-                                                @{conv.handle}
-                                            </span>
-                                            <span className={`text-xs ${theme.textMuted}`}>
-                                                {formatTime(conv.lastMessage?.created_at)}
-                                            </span>
+                    <div className="overflow-y-auto h-[calc(100vh-140px)]">
+                        {inboxMessages.map(conversation => {
+                            const isSelected = selectedConversation?.publicKey === conversation.publicKey;
+                            // ... (rest of list rendering)
+                            return (
+                                <div
+                                    key={conversation.publicKey}
+                                    onClick={() => setSelectedConversation(conversation)}
+                                    className={`p-4 border-b ${theme.border} cursor-pointer hover:${theme.bgTertiary} ${isSelected ? theme.bgTertiary : ''}`}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white font-medium">
+                                            {conversation.handle?.[0]?.toUpperCase() || <User size={20} />}
                                         </div>
-                                        <p className={`${theme.textSecondary} text-sm truncate`}>
-                                            {parseMessageContent(conv.lastMessage)}
-                                        </p>
-                                        {conv.unreadCount > 0 && (
-                                            <span className="inline-block mt-1 px-2 py-0.5 bg-cyan-500 text-white text-xs rounded-full">
-                                                {conv.unreadCount} new
-                                            </span>
-                                        )}
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex justify-between items-baseline mb-1">
+                                                <h3 className={`font-semibold ${theme.text} truncate`}>{conversation.handle || 'Unknown'}</h3>
+                                                <span className={`text-xs ${theme.textSecondary}`}>
+                                                    {formatTime(conversation.lastMessage?.created_at || conversation.lastMessage?.timestamp)}
+                                                </span>
+                                            </div>
+                                            <p className={`text-sm ${theme.textSecondary} truncate`}>
+                                                {parseMessageContent(conversation.lastMessage)}
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
-                            </button>
-                        ))}
+                            );
+                        })}
                     </div>
                 )}
             </div>
 
             {/* Conversation View */}
-            <div className={`flex-1 flex flex-col ${!selectedConversation ? 'hidden md:flex' : ''}`}>
+            <div className={`flex-1 flex flex-col h-[calc(100vh-64px)] ${!selectedConversation ? 'hidden md:flex' : ''}`}>
                 {selectedConversation ? (
                     <>
-                        {/* Conversation Header */}
-                        <div className={`p-4 border-b ${theme.border} ${theme.bgSecondary} flex items-center gap-3`}>
+                        {/* Header */}
+                        <div className={`p-4 border-b ${theme.border} flex items-center gap-3 ${theme.bgSecondary}`}>
                             <button
                                 onClick={() => setSelectedConversation(null)}
-                                className={`md:hidden p-2 ${theme.hover} rounded`}
+                                className="md:hidden p-2 -ml-2 hover:bg-white/5 rounded-full"
                             >
-                                <ChevronLeft size={20} />
+                                <ChevronLeft size={20} className={theme.text} />
                             </button>
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-400 to-cyan-600 flex items-center justify-center text-white font-bold">
-                                {selectedConversation.handle[0]?.toUpperCase() || '?'}
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white font-medium cursor-pointer"
+                                onClick={() => fetchProfile(selectedConversation.handle)}>
+                                {selectedConversation.handle?.[0]?.toUpperCase() || <User size={20} />}
                             </div>
                             <div className="flex-1">
-                                <h3 className={`font-semibold ${theme.text}`}>@{selectedConversation.handle}</h3>
-                                <p className={`text-xs ${theme.textMuted} font-mono`}>
-                                    {selectedConversation.publicKey.substring(0, 16)}...
+                                <h3 className={`font-bold ${theme.text} cursor-pointer hover:underline`}
+                                    onClick={() => fetchProfile(selectedConversation.handle)}>
+                                    {selectedConversation.handle}
+                                </h3>
+                                <p className={`text-xs ${theme.textSecondary} font-mono`}>
+                                    {selectedConversation.publicKey?.substring(0, 16)}...
                                 </p>
                             </div>
-                            <button
-                                onClick={() => {
-                                    // Try to view profile
-                                    fetchProfile(selectedConversation.handle);
-                                }}
-                                className={`p-2 ${theme.hover} rounded ${theme.textSecondary}`}
-                                title="View Profile"
-                            >
-                                <User size={18} />
-                            </button>
                         </div>
 
-                        {/* Messages */}
+                        {/* Messages List */}
                         <div className={`flex-1 overflow-auto p-4 space-y-4 ${theme.bg}`}>
-                            {selectedConversation.messages?.length === 0 ? (
+                            {messagesToList.length === 0 ? (
                                 <div className="text-center py-12">
-                                    <p className={theme.textSecondary}>No messages in this conversation</p>
+                                    <p className={theme.textSecondary}>No messages yet. Start the conversation!</p>
                                 </div>
                             ) : (
-                                selectedConversation.messages?.map((msg, i) => {
-                                    const isOutgoing = msg.isOutgoing || msg.from_pk === authUser?.publicKey;
+                                messagesToList.map((msg, i) => {
+                                    const isOutgoing = msg.isOutgoing;
+                                    const content = parseMessageContent(msg);
+
                                     return (
                                         <div key={msg.id || i} className={`flex ${isOutgoing ? 'justify-end' : 'justify-start'}`}>
-                                            <div className={`max-w-[75%] rounded-2xl px-4 py-3 ${isOutgoing
-                                                ? 'bg-cyan-500 text-white rounded-br-md'
-                                                : `${theme.bgSecondary} ${theme.text} rounded-bl-md border ${theme.border}`
+                                            <div className={`max-w-[70%] rounded-2xl p-3 ${isOutgoing
+                                                    ? 'bg-blue-600 text-white rounded-br-none'
+                                                    : `${theme.bgTertiary} ${theme.text} rounded-bl-none`
                                                 }`}>
-                                                <p className="break-words">{parseMessageContent(msg)}</p>
-                                                <p className={`text-xs mt-1 ${isOutgoing ? 'text-cyan-100' : theme.textMuted}`}>
-                                                    {formatTime(msg.created_at)}
+                                                <p className="whitespace-pre-wrap break-words">{content}</p>
+                                                <p className={`text-[10px] mt-1 ${isOutgoing ? 'text-blue-200' : theme.textSecondary}`}>
+                                                    {formatTime(msg.created_at || msg.timestamp)}
                                                 </p>
                                             </div>
                                         </div>

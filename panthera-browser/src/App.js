@@ -192,6 +192,7 @@ const AppContent = () => {
           <MessagesView
             inboxMessages={inboxMessages}
             selectedConversation={selectedConversation}
+            messages={conversationMessages}
             loadConversation={loadConversation}
             loadInbox={loadInbox}
             inboxLoading={inboxLoading}

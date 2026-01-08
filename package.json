@@ -1,0 +1,14 @@
+{
+    "name": "gns-browser-monorepo",
+    "private": true,
+    "scripts": {
+        "build:all": "pnpm -r build",
+        "dev:desktop": "pnpm --filter @gns/desktop dev",
+        "dev:web": "pnpm --filter @gns/web dev"
+    },
+    "devDependencies": {
+        "typescript": "^5.0.0",
+        "turbo": "^1.13.0"
+    },
+    "packageManager": "pnpm@10.27.0"
+}

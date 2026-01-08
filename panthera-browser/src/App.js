@@ -6,21 +6,28 @@ import { getSession, signIn, signOut, isAuthenticated } from './auth';
 import wsService from './websocket';
 import crypto from './crypto';
 
-// New Components
-import BrowserChrome from './components/views/BrowserChrome';
-import MessagesView from './components/messages/MessagesView';
-import StudioView from './components/studio/StudioView';
-import { HomePage, ProfileView, SearchResultsView, NotFoundView, LoadingView } from './components/views/BrowserViews';
-import { SignInModal, MessageModal } from './components/modals/AppModals';
-import QRLoginModal from './components/modals/QRLoginModal';
+// Context & Hooks
+import { ThemeProvider, useTheme } from './context/ThemeContext';
+import { useStudioState } from './hooks/useStudioState';
 
-export default function App() {
+// Components
+import { BrowserChrome, HomePage, ProfileView, SearchResultsView, NotFoundView, LoadingView } from './components/views';
+import { MessagesView } from './components/messages';
+import { StudioView } from './components/studio';
+import { SignInModal, MessageModal, QRLoginModal } from './components/modals';
+
+// Helper component to bind ThemeContext to Chrome and Views
+// (Since App itself is the provider, it can't consume the context immediately in the same component
+// unless we split AppContent from AppProvider. Let's do that for cleanliness.)
+
+const AppContent = () => {
+  const { theme, darkMode } = useTheme(); // Now we can use this if needed, though BrowserChrome handles itself
+
   // View state
   const [currentView, setCurrentView] = useState('home');
   const [addressBar, setAddressBar] = useState('');
   const [currentProfile, setCurrentProfile] = useState(null);
   const [searchResults, setSearchResults] = useState([]);
-  const [darkMode, setDarkMode] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [copiedKey, setCopiedKey] = useState(false);
@@ -28,15 +35,11 @@ export default function App() {
   // Auth state
   const [showSignIn, setShowSignIn] = useState(false);
   const [authUser, setAuthUser] = useState(null);
-  const [signInHandle, setSignInHandle] = useState('');
-  const [signInLoading, setSignInLoading] = useState(false);
-  const [signInError, setSignInError] = useState('');
 
   // Message state
   const [showMessageModal, setShowMessageModal] = useState(false);
   const [messageRecipient, setMessageRecipient] = useState(null);
   const [sendingMessage, setSendingMessage] = useState(false);
-  const [messageSent, setMessageSent] = useState(false); // Unused but kept for compatibility
   const [incomingMessage, setIncomingMessage] = useState(null);
 
   // Inbox state
@@ -52,39 +55,8 @@ export default function App() {
   // WebSocket state
   const [wsConnected, setWsConnected] = useState(false);
 
-  // Studio state
-  const [studioTool, setStudioTool] = useState(null);
-  const [gsiteData, setGsiteData] = useState({
-    blocks: [],
-    style: { mood: 'cool', accent: 'blue', density: 'balanced' },
-    title: '',
-    published: false,
-  });
-  const [profileData, setProfileData] = useState({
-    displayName: '',
-    bio: '',
-    avatar: null,
-    location: '',
-    website: '',
-  });
-  const [facets, setFacets] = useState([]);
-  const [settingsData, setSettingsData] = useState({
-    notifications: true,
-    privateMode: false,
-    theme: 'system',
-  });
-
-  // Theme
-  const theme = {
-    bg: darkMode ? 'bg-gray-900' : 'bg-gray-50',
-    bgSecondary: darkMode ? 'bg-gray-800' : 'bg-white',
-    bgTertiary: darkMode ? 'bg-gray-700' : 'bg-gray-100',
-    text: darkMode ? 'text-white' : 'text-gray-900',
-    textSecondary: darkMode ? 'text-gray-400' : 'text-gray-600',
-    textMuted: darkMode ? 'text-gray-500' : 'text-gray-400',
-    border: darkMode ? 'border-gray-700' : 'border-gray-200',
-    hover: darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100',
-  };
+  // Custom Studio Hook
+  const studioState = useStudioState();
 
   const shortcuts = [
     { icon: Globe, label: 'gcrumbs', color: '#0EA5E9' },
@@ -164,10 +136,10 @@ export default function App() {
 
     setInboxLoading(true);
     try {
-      // Import messaging dynamically to avoid circular dependency if any
       const { fetchInbox } = await import('./messaging');
       const result = await fetchInbox({ limit: 50 });
       if (result.success) {
+        // Grouping logic (simplified for hook integration, kept inline for now as it uses local state)
         const grouped = groupMessagesBySender(result.messages);
         setInboxMessages(prev => {
           const manualConversations = prev.filter(c =>
@@ -189,9 +161,7 @@ export default function App() {
     const myPublicKey = session.publicKey?.toLowerCase();
 
     messages.forEach(msg => {
-      if (typeof msg === 'string') {
-        try { msg = JSON.parse(msg); } catch (e) { return; }
-      }
+      if (typeof msg === 'string') { try { msg = JSON.parse(msg); } catch (e) { return; } }
       if (!msg) return;
 
       const fromPk = (msg.from_pk || msg.fromPublicKey || '').toLowerCase();
@@ -204,9 +174,7 @@ export default function App() {
       if (!conversations[otherParty]) {
         conversations[otherParty] = {
           publicKey: otherParty,
-          handle: isOutgoing
-            ? (msg.to_handle || otherParty.substring(0, 8) + '...')
-            : (msg.from_handle || msg.fromHandle || otherParty.substring(0, 8) + '...'),
+          handle: isOutgoing ? (msg.to_handle || otherParty.substring(0, 8) + '...') : (msg.from_handle || msg.fromHandle || otherParty.substring(0, 8) + '...'),
           messages: [],
           lastMessage: null,
           unreadCount: 0,
@@ -217,9 +185,7 @@ export default function App() {
       conversations[otherParty].messages.push(msg);
 
       const msgTime = new Date(msg.created_at || msg.timestamp || 0);
-      const lastTime = conversations[otherParty].lastMessage
-        ? new Date(conversations[otherParty].lastMessage.created_at || conversations[otherParty].lastMessage.timestamp || 0)
-        : new Date(0);
+      const lastTime = conversations[otherParty].lastMessage ? new Date(conversations[otherParty].lastMessage.created_at || conversations[otherParty].lastMessage.timestamp || 0) : new Date(0);
 
       if (msgTime > lastTime) {
         conversations[otherParty].lastMessage = msg;
@@ -269,7 +235,6 @@ export default function App() {
                 return { ...msg, isOutgoing, decryptedText: localMatch.decryptedText };
               }
             }
-
             return { ...msg, isOutgoing };
           });
 
@@ -288,25 +253,17 @@ export default function App() {
     }
   };
 
-  // Decrypt messages
   useEffect(() => {
     const decryptMessages = async () => {
       if (!conversationMessages.length) return;
       const session = JSON.parse(localStorage.getItem('gns_browser_session') || '{}');
       if (!session.encryptionPrivateKey) return;
 
-      let updated = false;
+      // In a real app we'd useRef to track processed IDs to avoid re-runs
+      // For now this simplified check is ok
       const decrypted = await Promise.all(
         conversationMessages.map(async (msg) => {
           if (msg.decryptedText || (msg.isOutgoing === false)) return msg;
-
-          // Helper to try decrypt (could extract to utils if tryDecryptMessage logic was moved)
-          // Since tryDecryptMessage was inside App and relied on crypto, I'll inline a simple check or
-          // assume crypto handles it. Wait, `tryDecryptMessage` was NOT extracted.
-          // It's a missing function if I removed it too early.
-          // I need to confirm access to crypto.
-          // Since I haven't extracted `tryDecryptMessage` to utils, I will define it inside useEffect or as component function.
-          // I will define it here.
           const hasEncryption = (msg.senderEncryptedPayload && msg.senderEphemeralPublicKey && msg.senderNonce);
           if (hasEncryption) {
             try {
@@ -322,15 +279,12 @@ export default function App() {
           return msg;
         })
       );
-
-      // Simple diff check (not perfect but enough)
       if (JSON.stringify(decrypted) !== JSON.stringify(conversationMessages)) {
         setConversationMessages(decrypted);
       }
     };
     decryptMessages();
   }, [conversationMessages]);
-
 
   const openMessages = () => {
     if (!authUser) {
@@ -347,7 +301,6 @@ export default function App() {
     const cleanHandle = handle.replace(/^@/, '').toLowerCase();
     setIsLoading(true);
     setError(null);
-
     try {
       const result = await getProfileByHandle(cleanHandle);
       if (result.success && result.data) {
@@ -407,12 +360,6 @@ export default function App() {
     setTimeout(() => setCopiedKey(false), 2000);
   };
 
-  // Sign in handler - generates real cryptographic identity
-  const handleSignIn = async () => {
-    // Kept for manual sign in via modal (if implemented there)
-    // Since modal uses QR now, this might be unused or for guest?
-  };
-
   const handleSignOut = () => {
     signOut();
     wsService.disconnect();
@@ -428,18 +375,15 @@ export default function App() {
       return;
     }
     setMessageRecipient(profile);
-    setMessageSent(false);
     setShowMessageModal(true);
   };
 
   const handleSendMessage = async (text) => {
     if (!text.trim() || !messageRecipient) return;
     setSendingMessage(true);
-
     try {
       const { sendMessage } = await import('./messaging');
       const result = await sendMessage(messageRecipient.publicKey, text, messageRecipient.encryptionKey);
-
       if (result.success) {
         setShowMessageModal(false);
         setCurrentView('messages');
@@ -447,7 +391,6 @@ export default function App() {
           publicKey: messageRecipient.publicKey,
           handle: messageRecipient.handle,
         });
-
         const newMessage = {
           id: Date.now(),
           from_pk: authUser.publicKey,
@@ -457,7 +400,6 @@ export default function App() {
           isOutgoing: true,
           decryptedText: text,
         };
-
         setInboxMessages(prev => {
           const existing = prev.find(c => c.publicKey.toLowerCase() === messageRecipient.publicKey.toLowerCase());
           if (existing) return prev;
@@ -469,19 +411,15 @@ export default function App() {
             unreadCount: 0,
           }, ...prev];
         });
-
         setConversationMessages(prev => [...prev, newMessage]);
-
         wsService.notifyMessageSent(
           result.messageId || `msg_${Date.now()}`,
           messageRecipient.publicKey,
           text
         );
-
         setTimeout(() => {
           loadConversation(messageRecipient.publicKey, messageRecipient.handle);
         }, 2000);
-
       } else {
         alert(`Failed to send: ${result.error}`);
       }
@@ -545,7 +483,6 @@ export default function App() {
   return (
     <div className={`h-screen flex flex-col ${theme.bg} ${theme.text}`}>
       <BrowserChrome
-        theme={theme}
         currentView={currentView}
         addressBar={addressBar}
         currentProfile={currentProfile}
@@ -556,19 +493,16 @@ export default function App() {
         goHome={goHome}
         fetchProfile={fetchProfile}
         handleSearch={handleSearch}
-        setDarkMode={setDarkMode}
-        darkMode={darkMode}
         openMessages={openMessages}
         setShowSignIn={setShowSignIn}
         handleSignOut={handleSignOut}
       />
 
       <div className="flex-1 overflow-auto">
-        {isLoading && currentView !== 'home' && currentView !== 'messages' && currentView !== 'studio' && <LoadingView theme={theme} />}
+        {isLoading && currentView !== 'home' && currentView !== 'messages' && currentView !== 'studio' && <LoadingView />}
 
         {!isLoading && currentView === 'home' && (
           <HomePage
-            theme={theme}
             handleSearch={handleSearch}
             isLoading={isLoading}
             shortcuts={shortcuts}
@@ -580,8 +514,6 @@ export default function App() {
         {!isLoading && currentView === 'profile' && currentProfile && (
           <ProfileView
             profile={currentProfile}
-            theme={theme}
-            darkMode={darkMode}
             openMessageModal={openMessageModal}
             copyToClipboard={copyToClipboard}
             copiedKey={copiedKey}
@@ -592,7 +524,6 @@ export default function App() {
         {!isLoading && currentView === 'search-results' && (
           <SearchResultsView
             searchResults={searchResults}
-            theme={theme}
             addressBar={addressBar}
             fetchProfile={fetchProfile}
             goHome={goHome}
@@ -600,12 +531,11 @@ export default function App() {
         )}
 
         {!isLoading && currentView === 'not-found' && (
-          <NotFoundView theme={theme} addressBar={addressBar} error={error} goHome={goHome} />
+          <NotFoundView addressBar={addressBar} error={error} goHome={goHome} />
         )}
 
         {currentView === 'messages' && (
           <MessagesView
-            theme={theme}
             inboxMessages={inboxMessages}
             selectedConversation={selectedConversation}
             loadConversation={loadConversation}
@@ -620,20 +550,8 @@ export default function App() {
 
         {currentView === 'studio' && (
           <StudioView
-            studioTool={studioTool}
-            setStudioTool={setStudioTool}
+            {...studioState}
             authUser={authUser}
-            theme={theme}
-            darkMode={darkMode}
-            setDarkMode={setDarkMode}
-            gsiteData={gsiteData}
-            setGsiteData={setGsiteData}
-            profileData={profileData}
-            setProfileData={setProfileData}
-            facets={facets}
-            setFacets={setFacets}
-            settingsData={settingsData}
-            setSettingsData={setSettingsData}
           />
         )}
       </div>
@@ -642,7 +560,6 @@ export default function App() {
         <SignInModal
           setShowSignIn={setShowSignIn}
           setShowQRLogin={setShowQRLogin}
-          theme={theme}
         />
       )}
 
@@ -652,7 +569,6 @@ export default function App() {
           recipientName={messageRecipient?.handle}
           onSend={handleSendMessage}
           sendingMessage={sendingMessage}
-          theme={theme}
         />
       )}
 
@@ -668,14 +584,22 @@ export default function App() {
             });
             setShowQRLogin(false);
             wsService.connect(session.publicKey, session.sessionToken);
-
             if (syncedMessages) {
-              console.log('   Received synced messages in onSuccess');
+              console.log('Received synced messages in onSuccess');
             }
           }}
-          darkMode={darkMode}
+          darkMode={theme.isDark}
         />
       )}
     </div>
+  );
+};
+
+// Main App Component wrapped in Provider
+export default function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
   );
 }

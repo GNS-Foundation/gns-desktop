@@ -4,15 +4,18 @@ import GSiteEditorView from './GSiteEditorView';
 import ProfileEditorView from './ProfileEditorView';
 import FacetsManagerView from './FacetsManagerView';
 import SettingsView from './SettingsView';
+import { useTheme } from '../../context/ThemeContext';
 
 // ==========================================
 // STUDIO COMPONENTS (Refactored)
 // ==========================================
 
 const StudioView = ({
-    studioTool, setStudioTool, authUser, theme, darkMode, setDarkMode,
+    studioTool, setStudioTool, authUser,
     gsiteData, setGsiteData, profileData, setProfileData, facets, setFacets, settingsData, setSettingsData
 }) => {
+    const { theme, darkMode, setDarkMode } = useTheme();
+
     // If a tool is selected, show that tool's view
     if (studioTool === 'gsite') return <GSiteEditorView gsiteData={gsiteData} setGsiteData={setGsiteData} theme={theme} authUser={authUser} darkMode={darkMode} setStudioTool={setStudioTool} />;
     if (studioTool === 'profile') return <ProfileEditorView profileData={profileData} setProfileData={setProfileData} theme={theme} authUser={authUser} setStudioTool={setStudioTool} />;

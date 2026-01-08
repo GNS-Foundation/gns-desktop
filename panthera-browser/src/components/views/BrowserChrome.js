@@ -1,9 +1,9 @@
 import React from 'react';
 import { X, ArrowLeft, ArrowRight, RotateCw, Home, Search, Loader2, Star, Sun, Moon, Inbox, Wifi, WifiOff, User, LogOut, Menu } from 'lucide-react';
 import PantherLogo from '../common/PantherLogo';
+import { useTheme } from '../../context/ThemeContext';
 
 const BrowserChrome = ({
-    theme,
     currentView,
     addressBar,
     currentProfile,
@@ -14,12 +14,12 @@ const BrowserChrome = ({
     goHome,
     fetchProfile,
     handleSearch,
-    setDarkMode,
-    darkMode,
     openMessages,
     setShowSignIn,
     handleSignOut
 }) => {
+    const { theme, darkMode, setDarkMode } = useTheme();
+
     return (
         <div className={`${theme.bgSecondary} border-b ${theme.border} px-3 py-2`}>
             <div className="flex items-center mb-2">
@@ -54,7 +54,7 @@ const BrowserChrome = ({
                     {darkMode ? <Sun size={18} /> : <Moon size={18} />}
                 </button>
 
-                {/* ✅ NEW: Messages button */}
+                {/* Messages button */}
                 <button
                     onClick={openMessages}
                     className={`p-2 ${theme.hover} rounded relative ${currentView === 'messages' ? 'text-cyan-500' : theme.textSecondary}`}

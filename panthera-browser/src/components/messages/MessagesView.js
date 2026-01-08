@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { Loader2, Inbox, ChevronLeft, User, Send, MessageCircle } from 'lucide-react';
 import { formatTime, parseMessageContent } from '../../utils/messageUtils';
+import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 
 const MessagesView = ({
@@ -8,13 +9,13 @@ const MessagesView = ({
     selectedConversation,
     loadConversation,
     loadInbox,
-    authUser,
     inboxLoading,
     onSendReply, // Renamed from handleSendReply to onSendReply (expects text)
     setSelectedConversation,
     fetchProfile
 }) => {
     const { theme } = useTheme();
+    const { authUser } = useAuth();
     const replyRef = useRef(null);
 
     const handleSend = () => {

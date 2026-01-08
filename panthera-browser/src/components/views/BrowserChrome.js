@@ -3,6 +3,8 @@ import { X, ArrowLeft, ArrowRight, RotateCw, Home, Search, Loader2, Star, Sun, M
 import PantherLogo from '../common/PantherLogo';
 import { useTheme } from '../../context/ThemeContext';
 
+import { useAuth } from '../../context/AuthContext';
+
 const BrowserChrome = ({
     currentView,
     addressBar,
@@ -10,18 +12,18 @@ const BrowserChrome = ({
     isLoading,
     unreadCount,
     wsConnected,
-    authUser,
     goHome,
     fetchProfile,
     handleSearch,
     openMessages,
-    setShowSignIn,
-    handleSignOut
+    setShowSignIn
 }) => {
     const { theme, darkMode, setDarkMode } = useTheme();
+    const { authUser, signOut } = useAuth();
 
     return (
         <div className={`${theme.bgSecondary} border-b ${theme.border} px-3 py-2`}>
+            {/* Header / Tabs */}
             <div className="flex items-center mb-2">
                 <div className={`flex items-center ${theme.bgTertiary} rounded-t-lg px-4 py-2 text-sm ${theme.text}`}>
                     <PantherLogo size={18} className="mr-2" />
@@ -33,6 +35,7 @@ const BrowserChrome = ({
                 <button className={`ml-2 ${theme.textMuted} p-1 text-lg`}>+</button>
             </div>
 
+            {/* Controls */}
             <div className="flex items-center gap-2">
                 <button onClick={() => currentView !== 'home' && goHome()} className={`p-2 ${theme.hover} rounded ${theme.textSecondary}`}><ArrowLeft size={18} /></button>
                 <button className={`p-2 ${theme.hover} rounded ${theme.textSecondary}`}><ArrowRight size={18} /></button>
@@ -82,7 +85,7 @@ const BrowserChrome = ({
                             </span>
                             <span>@{authUser.handle}</span>
                         </button>
-                        <button onClick={handleSignOut} className={`p-2 ${theme.hover} rounded ${theme.textSecondary}`} title="Sign out">
+                        <button onClick={signOut} className={`p-2 ${theme.hover} rounded ${theme.textSecondary}`} title="Sign out">
                             <LogOut size={18} />
                         </button>
                     </div>

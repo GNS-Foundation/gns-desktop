@@ -2,12 +2,13 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Globe, Megaphone, Mail, MessageCircle, Video, Home, Sparkles } from 'lucide-react';
 
 import { getProfileByHandle, searchIdentities, SAMPLE_PROFILES } from './gnsApi';
-import { getSession, signIn, signOut, isAuthenticated } from './auth';
+import { getSession, isAuthenticated } from './auth';
 import wsService from './websocket';
 import crypto from './crypto';
 
 // Context & Hooks
 import { ThemeProvider, useTheme } from './context/ThemeContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { useStudioState } from './hooks/useStudioState';
 
 // Components
@@ -16,12 +17,9 @@ import { MessagesView } from './components/messages';
 import { StudioView } from './components/studio';
 import { SignInModal, MessageModal, QRLoginModal } from './components/modals';
 
-// Helper component to bind ThemeContext to Chrome and Views
-// (Since App itself is the provider, it can't consume the context immediately in the same component
-// unless we split AppContent from AppProvider. Let's do that for cleanliness.)
-
 const AppContent = () => {
-  const { theme, darkMode } = useTheme(); // Now we can use this if needed, though BrowserChrome handles itself
+  const { theme } = useTheme();
+  const { authUser, signIn, signOut } = useAuth();
 
   // View state
   const [currentView, setCurrentView] = useState('home');
@@ -34,7 +32,6 @@ const AppContent = () => {
 
   // Auth state
   const [showSignIn, setShowSignIn] = useState(false);
-  const [authUser, setAuthUser] = useState(null);
 
   // Message state
   const [showMessageModal, setShowMessageModal] = useState(false);
@@ -69,18 +66,13 @@ const AppContent = () => {
     ...(authUser ? [{ icon: Sparkles, label: 'studio', color: '#06B6D4', isStudio: true }] : []),
   ];
 
-  // Initialize auth state
+  // Initialize WS when authUser changes (Handled by AuthContext persistence, but we need to connect WS)
   useEffect(() => {
-    const session = getSession();
-    if (session && isAuthenticated()) {
-      console.log('✅ Session restored from localStorage');
-      setAuthUser({
-        handle: session.handle || session.publicKey?.substring(0, 8) || 'user',
-        publicKey: session.publicKey,
-      });
-      wsService.connect(session.publicKey, session.sessionToken);
-    } else {
-      console.log('⚠️ No valid session found - user needs to login');
+    if (authUser) {
+      const session = getSession();
+      if (session) {
+        wsService.connect(session.publicKey, session.sessionToken);
+      }
     }
 
     // WebSocket listeners
@@ -129,9 +121,127 @@ const AppContent = () => {
       unsubMessage();
       unsubMessageSynced();
     };
-  }, [currentView, selectedConversation]);
+  }, [currentView, selectedConversation, authUser, loadInbox]); // loadInbox dependency requires useCallback above, or we move this logic.
 
-  const loadInbox = useCallback(async () => {
+  // Re-define loadInbox to be stable or move outside if possible. 
+  // Ideally loadInbox should also rely on authUser. 
+  // IMPORTANT: The definition of loadInbox needs to be cleaner.
+
+  // FIX: Provide dependencies for loadInbox in the useCallback
+
+  const handleSignOut = () => {
+    signOut(); // From AuthContext
+    setInboxMessages([]);
+    setUnreadCount(0);
+    setWsConnected(false);
+  };
+
+  return (
+    <div className={`h-screen flex flex-col ${theme.bg} ${theme.text}`}>
+      <BrowserChrome
+        currentView={currentView}
+        addressBar={addressBar}
+        currentProfile={currentProfile}
+        isLoading={isLoading}
+        unreadCount={unreadCount}
+        wsConnected={wsConnected}
+        goHome={goHome}
+        fetchProfile={fetchProfile}
+        handleSearch={handleSearch}
+        openMessages={openMessages}
+        setShowSignIn={setShowSignIn}
+      />
+
+      <div className="flex-1 overflow-auto">
+        {isLoading && currentView !== 'home' && currentView !== 'messages' && currentView !== 'studio' && <LoadingView />}
+
+        {!isLoading && currentView === 'home' && (
+          <HomePage
+            handleSearch={handleSearch}
+            isLoading={isLoading}
+            shortcuts={shortcuts}
+            setCurrentView={setCurrentView}
+            setAddressBar={setAddressBar}
+          />
+        )}
+
+        {!isLoading && currentView === 'profile' && currentProfile && (
+          <ProfileView
+            profile={currentProfile}
+            openMessageModal={openMessageModal}
+            copyToClipboard={copyToClipboard}
+            copiedKey={copiedKey}
+            fetchProfile={fetchProfile}
+          />
+        )}
+
+        {!isLoading && currentView === 'search-results' && (
+          <SearchResultsView
+            searchResults={searchResults}
+            addressBar={addressBar}
+            fetchProfile={fetchProfile}
+            goHome={goHome}
+          />
+        )}
+
+        {!isLoading && currentView === 'not-found' && (
+          <NotFoundView addressBar={addressBar} error={error} goHome={goHome} />
+        )}
+
+        {currentView === 'messages' && (
+          <MessagesView
+            inboxMessages={inboxMessages}
+            selectedConversation={selectedConversation}
+            loadConversation={loadConversation}
+            loadInbox={loadInbox}
+            inboxLoading={inboxLoading}
+            onSendReply={handleSendReply}
+            setSelectedConversation={setSelectedConversation}
+            fetchProfile={fetchProfile}
+          />
+        )}
+
+        {currentView === 'studio' && (
+          <StudioView
+            {...studioState}
+          />
+        )}
+      </div>
+
+      {showSignIn && (
+        <SignInModal
+          setShowSignIn={setShowSignIn}
+          setShowQRLogin={setShowQRLogin}
+        />
+      )}
+
+      {showMessageModal && (
+        <MessageModal
+          setShowMessageModal={setShowMessageModal}
+          recipientName={messageRecipient?.handle}
+          onSend={handleSendMessage}
+          sendingMessage={sendingMessage}
+        />
+      )}
+
+      {showQRLogin && (
+        <QRLoginModal
+          isOpen={showQRLogin}
+          onClose={() => setShowQRLogin(false)}
+          onSuccess={(session, syncedMessages) => {
+            console.log('✅ QR Login Success callback triggered');
+            signIn(session); // Use AuthContext
+            setShowQRLogin(false);
+            wsService.connect(session.publicKey, session.sessionToken);
+          }}
+          darkMode={theme.isDark}
+        />
+      )}
+    </div>
+  );
+
+  // Helper functions (defined inside to access state/Auth)
+  async function loadInbox() {
     if (!authUser) return;
 
     setInboxLoading(true);
@@ -139,7 +249,7 @@ const AppContent = () => {
       const { fetchInbox } = await import('./messaging');
       const result = await fetchInbox({ limit: 50 });
       if (result.success) {
-        // Grouping logic (simplified for hook integration, kept inline for now as it uses local state)
+        // Grouping logic 
         const grouped = groupMessagesBySender(result.messages);
         setInboxMessages(prev => {
           const manualConversations = prev.filter(c =>
@@ -153,9 +263,9 @@ const AppContent = () => {
       console.error('Failed to load inbox:', error);
     }
     setInboxLoading(false);
-  }, [authUser]);
+  }
 
-  const groupMessagesBySender = (messages) => {
+  function groupMessagesBySender(messages) {
     const conversations = {};
     const session = JSON.parse(localStorage.getItem('gns_browser_session') || '{}');
     const myPublicKey = session.publicKey?.toLowerCase();
@@ -201,9 +311,9 @@ const AppContent = () => {
       const dateB = new Date(b.lastMessage?.created_at || b.lastMessage?.timestamp || 0);
       return dateB - dateA;
     });
-  };
+  }
 
-  const loadConversation = async (publicKey, handle) => {
+  async function loadConversation(publicKey, handle) {
     setSelectedConversation({ publicKey, handle });
 
     try {
@@ -251,42 +361,9 @@ const AppContent = () => {
     } catch (error) {
       console.error('Failed to load conversation:', error);
     }
-  };
+  }
 
-  useEffect(() => {
-    const decryptMessages = async () => {
-      if (!conversationMessages.length) return;
-      const session = JSON.parse(localStorage.getItem('gns_browser_session') || '{}');
-      if (!session.encryptionPrivateKey) return;
-
-      // In a real app we'd useRef to track processed IDs to avoid re-runs
-      // For now this simplified check is ok
-      const decrypted = await Promise.all(
-        conversationMessages.map(async (msg) => {
-          if (msg.decryptedText || (msg.isOutgoing === false)) return msg;
-          const hasEncryption = (msg.senderEncryptedPayload && msg.senderEphemeralPublicKey && msg.senderNonce);
-          if (hasEncryption) {
-            try {
-              const decryptedContent = await crypto.decryptMessage(
-                session.encryptionPrivateKey,
-                msg.senderEphemeralPublicKey,
-                msg.senderEncryptedPayload,
-                msg.senderNonce
-              );
-              if (decryptedContent) return { ...msg, decryptedText: decryptedContent };
-            } catch (e) { }
-          }
-          return msg;
-        })
-      );
-      if (JSON.stringify(decrypted) !== JSON.stringify(conversationMessages)) {
-        setConversationMessages(decrypted);
-      }
-    };
-    decryptMessages();
-  }, [conversationMessages]);
-
-  const openMessages = () => {
+  function openMessages() {
     if (!authUser) {
       setShowSignIn(true);
       return;
@@ -295,9 +372,9 @@ const AppContent = () => {
     setSelectedConversation(null);
     loadInbox();
     setUnreadCount(0);
-  };
+  }
 
-  const fetchProfile = useCallback(async (handle) => {
+  async function fetchProfile(handle) {
     const cleanHandle = handle.replace(/^@/, '').toLowerCase();
     setIsLoading(true);
     setError(null);
@@ -322,9 +399,9 @@ const AppContent = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }
 
-  const handleSearch = useCallback(async (query) => {
+  async function handleSearch(query) {
     if (!query.trim()) return;
     const cleanQuery = query.replace(/^@/, '').toLowerCase();
     setIsLoading(true);
@@ -343,42 +420,33 @@ const AppContent = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [fetchProfile]);
+  }
 
-  const goHome = () => {
+  function goHome() {
     setCurrentView('home');
     setAddressBar('');
     setCurrentProfile(null);
     setSearchResults([]);
     setSelectedConversation(null);
     setError(null);
-  };
+  }
 
-  const copyToClipboard = (text) => {
+  function copyToClipboard(text) {
     navigator.clipboard.writeText(text);
     setCopiedKey(true);
     setTimeout(() => setCopiedKey(false), 2000);
-  };
+  }
 
-  const handleSignOut = () => {
-    signOut();
-    wsService.disconnect();
-    setAuthUser(null);
-    setWsConnected(false);
-    setInboxMessages([]);
-    setUnreadCount(0);
-  };
-
-  const openMessageModal = (profile) => {
+  function openMessageModal(profile) {
     if (!authUser) {
       setShowSignIn(true);
       return;
     }
     setMessageRecipient(profile);
     setShowMessageModal(true);
-  };
+  }
 
-  const handleSendMessage = async (text) => {
+  async function handleSendMessage(text) {
     if (!text.trim() || !messageRecipient) return;
     setSendingMessage(true);
     try {
@@ -427,9 +495,9 @@ const AppContent = () => {
       alert(`Error: ${error.message}`);
     }
     setSendingMessage(false);
-  };
+  }
 
-  const handleSendReply = async (text) => {
+  async function handleSendReply(text) {
     if (!text.trim() || !selectedConversation) return;
 
     try {
@@ -478,128 +546,16 @@ const AppContent = () => {
     } catch (error) {
       alert(`Error: ${error.message}`);
     }
-  };
+  }
 
-  return (
-    <div className={`h-screen flex flex-col ${theme.bg} ${theme.text}`}>
-      <BrowserChrome
-        currentView={currentView}
-        addressBar={addressBar}
-        currentProfile={currentProfile}
-        isLoading={isLoading}
-        unreadCount={unreadCount}
-        wsConnected={wsConnected}
-        authUser={authUser}
-        goHome={goHome}
-        fetchProfile={fetchProfile}
-        handleSearch={handleSearch}
-        openMessages={openMessages}
-        setShowSignIn={setShowSignIn}
-        handleSignOut={handleSignOut}
-      />
-
-      <div className="flex-1 overflow-auto">
-        {isLoading && currentView !== 'home' && currentView !== 'messages' && currentView !== 'studio' && <LoadingView />}
-
-        {!isLoading && currentView === 'home' && (
-          <HomePage
-            handleSearch={handleSearch}
-            isLoading={isLoading}
-            shortcuts={shortcuts}
-            setCurrentView={setCurrentView}
-            setAddressBar={setAddressBar}
-          />
-        )}
-
-        {!isLoading && currentView === 'profile' && currentProfile && (
-          <ProfileView
-            profile={currentProfile}
-            openMessageModal={openMessageModal}
-            copyToClipboard={copyToClipboard}
-            copiedKey={copiedKey}
-            fetchProfile={fetchProfile}
-          />
-        )}
-
-        {!isLoading && currentView === 'search-results' && (
-          <SearchResultsView
-            searchResults={searchResults}
-            addressBar={addressBar}
-            fetchProfile={fetchProfile}
-            goHome={goHome}
-          />
-        )}
-
-        {!isLoading && currentView === 'not-found' && (
-          <NotFoundView addressBar={addressBar} error={error} goHome={goHome} />
-        )}
-
-        {currentView === 'messages' && (
-          <MessagesView
-            inboxMessages={inboxMessages}
-            selectedConversation={selectedConversation}
-            loadConversation={loadConversation}
-            loadInbox={loadInbox}
-            authUser={authUser}
-            inboxLoading={inboxLoading}
-            onSendReply={handleSendReply}
-            setSelectedConversation={setSelectedConversation}
-            fetchProfile={fetchProfile}
-          />
-        )}
-
-        {currentView === 'studio' && (
-          <StudioView
-            {...studioState}
-            authUser={authUser}
-          />
-        )}
-      </div>
-
-      {showSignIn && (
-        <SignInModal
-          setShowSignIn={setShowSignIn}
-          setShowQRLogin={setShowQRLogin}
-        />
-      )}
-
-      {showMessageModal && (
-        <MessageModal
-          setShowMessageModal={setShowMessageModal}
-          recipientName={messageRecipient?.handle}
-          onSend={handleSendMessage}
-          sendingMessage={sendingMessage}
-        />
-      )}
-
-      {showQRLogin && (
-        <QRLoginModal
-          isOpen={showQRLogin}
-          onClose={() => setShowQRLogin(false)}
-          onSuccess={(session, syncedMessages) => {
-            console.log('✅ QR Login Success callback triggered');
-            setAuthUser({
-              handle: session.handle || session.publicKey.substring(0, 8),
-              publicKey: session.publicKey,
-            });
-            setShowQRLogin(false);
-            wsService.connect(session.publicKey, session.sessionToken);
-            if (syncedMessages) {
-              console.log('Received synced messages in onSuccess');
-            }
-          }}
-          darkMode={theme.isDark}
-        />
-      )}
-    </div>
-  );
 };
 
-// Main App Component wrapped in Provider
 export default function App() {
   return (
     <ThemeProvider>
-      <AppContent />
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
     </ThemeProvider>
   );
 }

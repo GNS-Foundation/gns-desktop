@@ -1,10 +1,14 @@
 import React, { useState, useRef } from 'react';
 import { Type, Image, Link2, List, X, ChevronUp, ChevronDown, Trash2, ArrowLeft, Save, Eye, Globe, Plus } from 'lucide-react';
+import { useTheme } from '../../context/ThemeContext';
+import { useAuth } from '../../context/AuthContext';
 
 // ==========================================
 // 1. GSITE EDITOR VIEW
 // ==========================================
-const GSiteEditorView = ({ gsiteData, setGsiteData, theme, authUser, darkMode, setStudioTool }) => {
+const GSiteEditorView = ({ gsiteData, setGsiteData, setStudioTool }) => {
+    const { theme, darkMode } = useTheme();
+    const { authUser } = useAuth();
     const [selectedBlock, setSelectedBlock] = useState(null);
     const [showBlockPicker, setShowBlockPicker] = useState(false);
     const [previewMode, setPreviewMode] = useState('desktop');

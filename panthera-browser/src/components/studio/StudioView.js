@@ -4,6 +4,7 @@ import GSiteEditorView from './GSiteEditorView';
 import ProfileEditorView from './ProfileEditorView';
 import FacetsManagerView from './FacetsManagerView';
 import SettingsView from './SettingsView';
+import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 
 // ==========================================
@@ -11,16 +12,17 @@ import { useTheme } from '../../context/ThemeContext';
 // ==========================================
 
 const StudioView = ({
-    studioTool, setStudioTool, authUser,
+    studioTool, setStudioTool,
     gsiteData, setGsiteData, profileData, setProfileData, facets, setFacets, settingsData, setSettingsData
 }) => {
     const { theme, darkMode, setDarkMode } = useTheme();
+    const { authUser } = useAuth();
 
     // If a tool is selected, show that tool's view
-    if (studioTool === 'gsite') return <GSiteEditorView gsiteData={gsiteData} setGsiteData={setGsiteData} theme={theme} authUser={authUser} darkMode={darkMode} setStudioTool={setStudioTool} />;
-    if (studioTool === 'profile') return <ProfileEditorView profileData={profileData} setProfileData={setProfileData} theme={theme} authUser={authUser} setStudioTool={setStudioTool} />;
-    if (studioTool === 'facets') return <FacetsManagerView facets={facets} setFacets={setFacets} theme={theme} authUser={authUser} setStudioTool={setStudioTool} />;
-    if (studioTool === 'settings') return <SettingsView settingsData={settingsData} setSettingsData={setSettingsData} theme={theme} darkMode={darkMode} setDarkMode={setDarkMode} setStudioTool={setStudioTool} />;
+    if (studioTool === 'gsite') return <GSiteEditorView gsiteData={gsiteData} setGsiteData={setGsiteData} setStudioTool={setStudioTool} />;
+    if (studioTool === 'profile') return <ProfileEditorView profileData={profileData} setProfileData={setProfileData} setStudioTool={setStudioTool} />;
+    if (studioTool === 'facets') return <FacetsManagerView facets={facets} setFacets={setFacets} setStudioTool={setStudioTool} />;
+    if (studioTool === 'settings') return <SettingsView settingsData={settingsData} setSettingsData={setSettingsData} setStudioTool={setStudioTool} />;
 
     // Otherwise show the dashboard
     return (

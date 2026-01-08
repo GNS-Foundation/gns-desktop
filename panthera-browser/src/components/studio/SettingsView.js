@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
 import { ArrowLeft, Palette, Bell, Lock, Shield, AlertTriangle } from 'lucide-react';
+import { useTheme } from '../../context/ThemeContext';
+import { useAuth } from '../../context/AuthContext';
 
 // ==========================================
 // 4. SETTINGS VIEW
 // ==========================================
-const SettingsView = ({ settingsData, setSettingsData, theme, darkMode, setDarkMode, setStudioTool }) => {
+const SettingsView = ({ settingsData, setSettingsData, setStudioTool }) => {
+    const { theme, darkMode, setDarkMode } = useTheme();
+    const { signOut } = useAuth();
     const [localSettings, setLocalSettings] = useState(settingsData || {
         notifications: true,
         privateMode: false,
@@ -150,7 +154,7 @@ const SettingsView = ({ settingsData, setSettingsData, theme, darkMode, setDarkM
                             <h4 className={`font-medium ${theme.text}`}>Sign Out Everywhere</h4>
                             <p className={`text-sm ${theme.textSecondary}`}>End all active sessions on all devices</p>
                         </div>
-                        <button className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg">
+                        <button onClick={signOut} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg">
                             Sign Out All
                         </button>
                     </div>

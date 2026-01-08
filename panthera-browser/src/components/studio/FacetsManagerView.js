@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Plus, Edit2, Trash2, Package } from 'lucide-react';
+import { useTheme } from '../../context/ThemeContext';
+import { useAuth } from '../../context/AuthContext';
 
 // ==========================================
 // 3. FACETS MANAGER VIEW
 // ==========================================
-const FacetsManagerView = ({ facets, setFacets, theme, authUser, setStudioTool }) => {
+const FacetsManagerView = ({ facets, setFacets, setStudioTool }) => {
+    const { theme } = useTheme();
+    const { authUser } = useAuth();
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [newFacetName, setNewFacetName] = useState('');
     // Initialize with props or default

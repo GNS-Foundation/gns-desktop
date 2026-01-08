@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
 import { ArrowLeft, Camera, User, MapPin, Globe, AtSign } from 'lucide-react';
+import { useTheme } from '../../context/ThemeContext';
+import { useAuth } from '../../context/AuthContext';
 
 // ==========================================
 // 2. PROFILE EDITOR VIEW
 // ==========================================
-const ProfileEditorView = ({ profileData, setProfileData, theme, authUser, setStudioTool }) => {
+const ProfileEditorView = ({ profileData, setProfileData, setStudioTool }) => {
+    const { theme } = useTheme();
+    const { authUser } = useAuth();
     const [localProfile, setLocalProfile] = useState(profileData || {
         displayName: authUser?.handle || '',
         bio: '',

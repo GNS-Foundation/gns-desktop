@@ -3,7 +3,7 @@
  */
 
 import { NavLink, Outlet } from 'react-router-dom';
-import { Home, MessageCircle, MapPin, Settings, Globe } from 'lucide-react';
+import { Home, MessageCircle, MapPin, Settings, Globe, Mail } from 'lucide-react';
 import { useConnectionStatus } from '../lib/tauri';
 import clsx from 'clsx';
 
@@ -39,6 +39,11 @@ export function MainLayout({ onViewProfile }: MainLayoutProps) {
             to="/messages"
             icon={<MessageCircle className="w-6 h-6" />}
             label="Messages"
+          />
+          <TabLink
+            to="/email"
+            icon={<Mail className="w-6 h-6" />}
+            label="Email@"
           />
           <TabLink
             to="/dix"

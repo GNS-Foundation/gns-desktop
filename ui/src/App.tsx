@@ -23,6 +23,7 @@ import { MainLayout } from './components/MainLayout';
 // Tab Components
 import { HomeTab } from './components/HomeTab';
 import { MessagesTab } from './components/MessagesTab';
+import { EmailTab } from './components/email/EmailTab';
 import { BreadcrumbsTab } from './components/BreadcrumbsTab';
 import { SettingsTab } from './components/settings';
 import { ConversationScreen } from './components/ConversationScreen';
@@ -177,6 +178,7 @@ function AppContent() {
           <Route path="/messages" element={<MessagesTab />} />
           <Route path="/messages/new" element={<NewConversation />} />
           <Route path="/messages/:threadId" element={<ConversationScreen />} />
+          <Route path="/email" element={<EmailTab />} />
           <Route path="/breadcrumbs" element={<BreadcrumbsTab />} />
           <Route path="/breadcrumbs/claim" element={<HandleClaimScreen />} />
           <Route path="/settings" element={<SettingsTab onIdentityDeleted={handleIdentityDeleted} />} />

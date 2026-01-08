@@ -736,6 +736,26 @@ impl RelayConnection {
             Err(NetworkError::NotConnected)
         }
     }
+
+    pub async fn send_decryption_request(&self, message_ids: Vec<String>, conversation_with: &str) -> Result<(), NetworkError> {
+        let payload = json!({
+            "type": "request_decryption",
+            "messageIds": message_ids,
+            "conversationWith": conversation_with
+        });
+        
+        self.send_raw(&payload.to_string()).await
+    }
+
+    pub async fn send_sync_request(&self, conversation_with: &str, limit: u32) -> Result<(), NetworkError> {
+        let payload = json!({
+            "type": "request_sync",
+            "conversationWith": conversation_with,
+            "limit": limit
+        });
+        
+        self.send_raw(&payload.to_string()).await
+    }
 }
 
 /// Parse incoming WebSocket message into typed enum

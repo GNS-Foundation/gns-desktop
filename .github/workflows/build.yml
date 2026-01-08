@@ -7,7 +7,7 @@ name: Build & Release
 on:
   push:
     branches: [main, develop]
-    tags: ['v*']
+    tags: ["v*"]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -25,23 +25,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
-      
+
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: './crates/gns-crypto-core'
-      
+          workspaces: "./crates/gns-crypto-core"
+
       - name: Check formatting
         run: cargo fmt -p gns-crypto-core -- --check
-      
+
       - name: Clippy
         run: cargo clippy -p gns-crypto-core -- -D warnings
-      
+
       - name: Run tests
         run: cargo test -p gns-crypto-core --verbose
 
@@ -72,7 +72,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -96,6 +96,10 @@ jobs:
       - name: Install UI dependencies
         working-directory: ./ui
         run: npm ci
+
+      - name: Build UI
+        working-directory: ./ui
+        run: npm run build
 
       - name: Install Tauri CLI
         run: cargo install tauri-cli --version "^2.0.0" --locked
@@ -152,7 +156,7 @@ jobs:
     name: Build WASM
     needs: test-crypto
     runs-on: ubuntu-latest
-    
+
     steps:
       - uses: actions/checkout@v4
 
@@ -167,7 +171,7 @@ jobs:
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: './crates/gns-crypto-wasm'
+          workspaces: "./crates/gns-crypto-wasm"
 
       - name: Build WASM
         working-directory: ./crates/gns-crypto-wasm
@@ -189,7 +193,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    
+
     steps:
       - uses: actions/checkout@v4
 

@@ -185,7 +185,7 @@ pub fn create_signed_breadcrumb(
     let identity = GnsIdentity::from_hex(private_key_hex)
         .map_err(|e| JsError::new(&format!("Invalid private key: {}", e)))?;
 
-    let breadcrumb = create_breadcrumb(&identity, latitude, longitude, None)
+    let breadcrumb = create_breadcrumb(&identity, latitude, longitude, None, None)
         .map_err(|e| JsError::new(&format!("Breadcrumb creation failed: {}", e)))?;
 
     breadcrumb

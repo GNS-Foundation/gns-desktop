@@ -6,27 +6,77 @@
 // UPDATE THIS TO YOUR ACTUAL RAILWAY BACKEND URL!
 export const GNS_API_BASE = process.env.REACT_APP_GNS_API_URL || 'https://gns-browser-production.up.railway.app';
 
+// Sample Profiles for Demo/Fallback
+export const SAMPLE_PROFILES = {
+  'panthera': {
+    handle: 'panthera',
+    name: 'Panthera Browser',
+    type: 'organization',
+    avatar: '🦁',
+    bio: 'The official browser for the GNS Protocol. Browse the identity web securely and privately.',
+    color: '#0EA5E9',
+    stats: { trustScore: 1.0, breadcrumbs: 15420, verified: true },
+    links: ['gns.io', 'github.com/gns-protocol'],
+    publicKey: 'GNS7x...92kL',
+  },
+  'camilo': {
+    handle: 'camilo',
+    name: 'Camilo Ayerbe',
+    type: 'person',
+    avatar: '👨‍💻',
+    bio: 'Building the future of identity. Founder @GNS.',
+    color: '#8B5CF6',
+    stats: { trustScore: 0.98, breadcrumbs: 8500, verified: true },
+    links: ['twitter.com/camilo', 'camilo.eth'],
+  },
+  'echo': {
+    handle: 'echo',
+    name: 'Echo Bot',
+    type: 'bot',
+    avatar: '🤖',
+    bio: 'I echo back everything you say! Useful for testing connectivity.',
+    color: '#10B981',
+    stats: { trustScore: 0.95, breadcrumbs: 42000, verified: true },
+  },
+  'sf': {
+    handle: 'sf',
+    name: 'San Francisco',
+    type: 'landmark',
+    avatar: '🌉',
+    bio: 'The Golden City. Foggy mornings and tech dreams.',
+    color: '#F59E0B',
+    stats: { trustScore: 0.92, breadcrumbs: 120000, verified: true },
+    links: ['sf.gov'],
+  },
+};
+
 /**
  * Fetch profile by @handle
  * GET /web/profile/:handle
  */
 export async function getProfileByHandle(handle) {
   const cleanHandle = handle.replace(/^@/, '').toLowerCase();
-  
+
   try {
     const response = await fetch(`${GNS_API_BASE}/web/profile/${cleanHandle}`);
     const data = await response.json();
-    
+
     if (!data.success) {
+      if (SAMPLE_PROFILES[cleanHandle]) {
+        return { success: true, data: SAMPLE_PROFILES[cleanHandle] };
+      }
       return { success: false, error: data.error || 'Profile not found' };
     }
-    
+
     // Transform API response to Panthera profile format
     return {
       success: true,
       data: transformApiProfile(data.data),
     };
   } catch (error) {
+    if (SAMPLE_PROFILES[cleanHandle]) {
+      return { success: true, data: SAMPLE_PROFILES[cleanHandle] };
+    }
     console.error('GNS API error:', error);
     return { success: false, error: 'Network error' };
   }
@@ -38,15 +88,15 @@ export async function getProfileByHandle(handle) {
  */
 export async function resolveHandle(handle) {
   const cleanHandle = handle.replace(/^@/, '').toLowerCase();
-  
+
   try {
     const response = await fetch(`${GNS_API_BASE}/aliases/${cleanHandle}`);
     const data = await response.json();
-    
+
     if (!data.success) {
       return { success: false, error: data.error || 'Handle not found' };
     }
-    
+
     return {
       success: true,
       data: {
@@ -68,21 +118,21 @@ export async function resolveHandle(handle) {
 export async function searchIdentities(query, options = {}) {
   const { type = 'all', limit = 20 } = options;
   const cleanQuery = query.replace(/^@/, '').toLowerCase();
-  
+
   try {
     const params = new URLSearchParams({
       q: cleanQuery,
       type,
       limit: limit.toString(),
     });
-    
+
     const response = await fetch(`${GNS_API_BASE}/web/search?${params}`);
     const data = await response.json();
-    
+
     if (!data.success) {
       return { success: false, error: data.error || 'Search failed', data: [] };
     }
-    
+
     return {
       success: true,
       data: (data.data || []).map(transformApiProfile),
@@ -98,7 +148,7 @@ export async function searchIdentities(query, options = {}) {
  */
 function transformApiProfile(apiProfile) {
   if (!apiProfile) return null;
-  
+
   // Determine profile type based on handle or modules
   let type = 'person';
   if (apiProfile.handle === 'echo') {
@@ -108,12 +158,12 @@ function transformApiProfile(apiProfile) {
   } else if (apiProfile.modules?.some(m => m.schema?.includes('landmark'))) {
     type = 'landmark';
   }
-  
+
   // Extract theme from modules if present
-  const themeModule = apiProfile.modules?.find(m => 
+  const themeModule = apiProfile.modules?.find(m =>
     m.schema?.includes('theme') || m.id === 'theme'
   );
-  
+
   return {
     handle: apiProfile.handle,
     name: apiProfile.displayName || apiProfile.display_name || `@${apiProfile.handle}`,
@@ -185,23 +235,23 @@ function formatBreadcrumbs(count) {
  */
 function extractLinks(profile) {
   const links = [];
-  
+
   if (profile.website) {
     links.push(profile.website);
   }
-  
+
   // Extract from modules
-  const profileModule = profile.modules?.find(m => 
+  const profileModule = profile.modules?.find(m =>
     m.schema?.includes('profile') || m.id === 'profile'
   );
-  
+
   if (profileModule?.config?.links) {
     profileModule.config.links.forEach(link => {
       if (link.url) links.push(link.url);
       else if (typeof link === 'string') links.push(link);
     });
   }
-  
+
   return links;
 }
 
@@ -209,4 +259,5 @@ export default {
   getProfileByHandle,
   resolveHandle,
   searchIdentities,
+  SAMPLE_PROFILES
 };

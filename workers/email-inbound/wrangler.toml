@@ -1,0 +1,18 @@
+# GNS Email Inbound Worker
+name = "gns-email-inbound"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+[vars]
+GNS_GATEWAY_URL = "https://gns-browser-production.up.railway.app"
+
+# Set secret via: wrangler secret put GNS_API_KEY
+
+[[d1_databases]]
+binding = "DB"
+database_name = "gns-email-routing"
+database_id = "your-d1-database-id"
+
+[env.production]
+name = "gns-email-inbound-prod"
+vars = { GNS_GATEWAY_URL = "https://gns-browser-production.up.railway.app" }

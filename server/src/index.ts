@@ -26,6 +26,7 @@ import dixRouter from './api/dix';
 import emailRouter, { initializeEmailGateway } from './api/email';
 import gsiteRouter from './api/gsite';
 import orgRouter from './api/org';
+import orgMembersRouter from './api/org-members';
 import cmsRouter from './api/cms';
 import breadcrumbsRouter from './api/breadcrumbs';
 
@@ -161,6 +162,7 @@ app.use('/web/dix', dixRouter);
 app.use('/email', emailRouter);
 app.use('/gsite', gsiteRouter);
 app.use('/org', orgRouter);
+app.use('/org', orgMembersRouter);
 app.use('/cms', cmsRouter);
 app.use('/breadcrumbs', breadcrumbsRouter);
 

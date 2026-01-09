@@ -1,14 +1,13 @@
+providers = ["node"]
+
 [phases.setup]
 nixPkgs = ["nodejs_18", "pnpm"]
 
 [phases.install]
-cmds = ["pnpm install --filter gns-node..."]
+cmds = ["pnpm install --filter @gns/web..."]
 
 [phases.build]
-cmds = ["pnpm --filter gns-node build"]
+cmds = ["pnpm --filter @gns/web build"]
 
 [start]
-cmd = "pnpm --filter gns-node start"
-
-# Disable Rust detection
-providers = ["node"]
+cmd = "cd apps/web && pnpm run start:prod"

@@ -1,6 +1,6 @@
 [build]
 builder = "nixpacks"
-buildCommand = "pnpm install && pnpm --filter @gns/web build"
+buildCommand = "pnpm install --no-frozen-lockfile && pnpm --filter @gns/web build"
 
 [deploy]
 startCommand = "cd apps/web && pnpm run start:prod"

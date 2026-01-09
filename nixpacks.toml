@@ -1,8 +1,11 @@
 [phases.setup]
-nixPkgs = ["...", "pnpm"]
+nixPkgs = ["nodejs_18", "pnpm"]
 
 [phases.install]
-cmds = ["pnpm i --frozen-lockfile"]
+cmds = ["pnpm install --frozen-lockfile"]
 
 [phases.build]
-cmds = ["pnpm run build"]
+cmds = ["pnpm --filter gns-node build"]
+
+[start]
+cmd = "pnpm --filter gns-node start"

@@ -22,7 +22,7 @@ export function ThreadListScreen() {
     const [filter] = useState<'all' | 'unread' | 'archived'>('all');
 
     // Filter out email threads
-    const directThreads = threads.filter(thread => {
+    const directThreads = threads.filter((thread: any) => {
         // Check if any participant is the email gateway
         // In actual implementation, we'd check participant keys against gateway key
         // For now, assuming thread.participant_public_key is the "other" person
@@ -30,7 +30,7 @@ export function ThreadListScreen() {
     });
 
     // Apply UI filters if needed
-    const displayThreads = directThreads.filter(t => {
+    const displayThreads = directThreads.filter((t: any) => {
         if (filter === 'unread') return t.unread_count > 0;
         // if (filter === 'archived') return t.is_archived; // If we had archived status
         return true;
@@ -99,7 +99,7 @@ export function ThreadListScreen() {
                     </div>
                 ) : (
                     <div className="divide-y divide-white/5">
-                        {displayThreads.map((thread) => (
+                        {displayThreads.map((thread: any) => (
                             <div
                                 key={thread.id}
                                 onClick={() => handleOpenThread(thread.id)}

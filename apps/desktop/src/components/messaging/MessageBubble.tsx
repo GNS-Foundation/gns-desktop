@@ -143,14 +143,14 @@ export function MessageBubble({
                         "absolute -bottom-3 flex flex-wrap gap-1 z-10",
                         isMe ? "right-0" : "left-0"
                     )}>
-                        {Array.from(new Set(message.reactions.map(r => r.emoji))).map((emoji) => {
-                            const count = message.reactions.filter(r => r.emoji === emoji).length;
+                        {Array.from(new Set(message.reactions.map((r: any) => r.emoji))).map((emoji) => {
+                            const count = message.reactions.filter((r: any) => r.emoji === emoji).length;
                             return (
-                                <div key={emoji} className={clsx(
+                                <div key={emoji as React.Key} className={clsx(
                                     "flex items-center gap-1 rounded-full px-2 py-1 text-xs shadow-md border-2 border-slate-950",
                                     "bg-slate-800 text-slate-200"
                                 )}>
-                                    <span>{emoji}</span>
+                                    <span>{emoji as React.ReactNode}</span>
                                     {count > 1 && <span className="text-[10px] font-bold">{count}</span>}
                                 </div>
                             );

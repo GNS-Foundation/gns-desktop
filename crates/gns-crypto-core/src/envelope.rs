@@ -31,7 +31,9 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::encryption::{decrypt_from_sender, encrypt_for_recipient, EncryptedPayload, PayloadWrapper};
+use crate::encryption::{
+    decrypt_from_sender, encrypt_for_recipient, EncryptedPayload, PayloadWrapper,
+};
 use crate::errors::CryptoError;
 use crate::identity::GnsIdentity;
 use crate::signing::{canonicalize_for_signing, verify_signature_hex};
@@ -253,11 +255,14 @@ pub fn open_envelope(
             // Decode Hex strings to Vec<u8> since EncryptedPayload expects raw bytes (via hex_bytes module)
             // Wait, EncryptedPayload struct uses #[serde(with="hex_bytes")] so it stores Vec<u8>.
             // So we need to decode the hex strings here.
-            
+
             EncryptedPayload {
-                ciphertext: hex::decode(ciphertext_hex).map_err(|e| CryptoError::DecryptionFailed(e.to_string()))?,
-                ephemeral_public_key: hex::decode(ephemeral_key_hex).map_err(|e| CryptoError::DecryptionFailed(e.to_string()))?,
-                nonce: hex::decode(nonce_hex).map_err(|e| CryptoError::DecryptionFailed(e.to_string()))?,
+                ciphertext: hex::decode(ciphertext_hex)
+                    .map_err(|e| CryptoError::DecryptionFailed(e.to_string()))?,
+                ephemeral_public_key: hex::decode(ephemeral_key_hex)
+                    .map_err(|e| CryptoError::DecryptionFailed(e.to_string()))?,
+                nonce: hex::decode(nonce_hex)
+                    .map_err(|e| CryptoError::DecryptionFailed(e.to_string()))?,
             }
         }
     };

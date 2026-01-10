@@ -695,7 +695,7 @@ async function processIncomingMessages(): Promise<void> {
         // ✅ NEW: Notify mobile via WebSocket
         try {
           broadcastToUser(msg.from_pk, {
-            type: 'message',
+            type: 'new_message',
             data: envelopeWithSignature
           });
           console.log(`   📱 Notified mobile of echo response via WebSocket`);

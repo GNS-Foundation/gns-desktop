@@ -699,7 +699,9 @@ async function processIncomingMessages(): Promise<void> {
         }
 
         if (!decrypted) {
-          console.warn(`   ⚠️ Failed to decrypt message ${msg.id}, skipping`);
+          console.warn(`   ⚠️ Failed to decrypt message ${msg.id}, skipping (marking read to clear queue)`);
+          // ✅ FIX: Mark as delivered/read so we don't retry forever
+          await db.markMessageDelivered(msg.id);
           continue;
         }
 

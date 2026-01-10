@@ -517,13 +517,12 @@ async function createEchoResponse(
   envelope: EnvelopeData;
   signature: string;
 }> {
-  // Create response content
+  // Create response content (Match TextPayload structure exactly)
   const responseContent = {
-    type: 'text',
     text: originalContent
       ? `📣 Echo: "${originalContent.substring(0, 100)}${originalContent.length > 100 ? '...' : ''}"`
       : '📣 Echo received your message!',
-    format: 'plain',
+    // No extra fields like 'type' or 'format' to avoid confusion
   };
 
   const payload = Buffer.from(JSON.stringify(responseContent), 'utf8');
@@ -557,9 +556,9 @@ async function createEchoResponse(
   const envelope: EnvelopeData = {
     id: envelopeId,
     version: 1,
-    fromPublicKey: echoEd25519PublicKeyHex,  // Ed25519 for identity
+    fromPublicKey: echoEd25519PublicKeyHex.toLowerCase(),  // ✅ Force lowercase
     fromHandle: ECHO_CONFIG.handle,
-    toPublicKeys: [originalFromPk],
+    toPublicKeys: [originalFromPk.toLowerCase()],           // ✅ Force lowercase
     ccPublicKeys: null,
     payloadType: 'gns/text.plain',
     // ✅ FIXED: Nested encryptedPayload for Tauri/Rust compatibility (HEX encoding)
@@ -574,7 +573,7 @@ async function createEchoResponse(
     forwardOfId: null,
     timestamp: timestamp,
     expiresAt: null,
-    // Keep top-level fields for legacy compatibility (optional)
+    // Keep top-level fields for legacy compatibility (optional, but keep consistent)
     ephemeralPublicKey: encrypted.ephemeralPublicKey,
     recipientKeys: null,
     nonce: encrypted.nonce,

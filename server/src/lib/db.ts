@@ -956,7 +956,7 @@ export async function getAllUserMessages(
   let query = getSupabase()
     .from('messages')
     .select('*')
-    .or(`from_pk.eq.${userPkLower},to_pk.eq.${userPkLower}`)
+    .eq('to_pk', userPkLower)  // ✅ CRITICAL: Only return messages TO this user (inbox = incoming only!)
     .neq('status', 'delivered')  // ✅ FIX: Exclude delivered messages to prevent polling loop
     .order('created_at', { ascending: false })
     .limit(limit);

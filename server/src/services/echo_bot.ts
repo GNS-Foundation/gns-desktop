@@ -517,7 +517,8 @@ function encryptForRecipient(
  */
 async function createEchoResponse(
   originalFromPk: string,
-  originalContent: string | null
+  originalContent: string | null,
+  originalMessageId: string  // ✅ NEW: Original message ID for threading
 ): Promise<{
   envelope: EnvelopeData;
   signature: string;
@@ -569,7 +570,7 @@ async function createEchoResponse(
     encryptedPayload: encrypted.encryptedPayload,
     payloadSize: payload.length,
     threadId: null,
-    replyToId: null,
+    replyToId: originalMessageId,  // ✅ FIX: Set replyToId for proper threading!
     forwardOfId: null,
     timestamp: timestamp,
     expiresAt: null,
@@ -744,7 +745,8 @@ async function processIncomingMessages(): Promise<void> {
         // Create and send echo response
         const response = await createEchoResponse(
           msg.from_pk,
-          content.text || null
+          content.text || null,
+          msg.id  // ✅ Pass original message ID for threading
         );
 
         // Add signature to envelope

@@ -51,7 +51,7 @@ function getSmtpTransporter(): Transporter | null {
   if (!SMTP_CONFIG.user || !SMTP_CONFIG.pass) {
     return null;
   }
-  
+
   if (!smtpTransporter) {
     smtpTransporter = createTransport({
       host: SMTP_CONFIG.host,
@@ -62,7 +62,7 @@ function getSmtpTransporter(): Transporter | null {
         pass: SMTP_CONFIG.pass,
       },
     });
-    
+
     // Verify connection
     smtpTransporter.verify((error) => {
       if (error) {
@@ -73,7 +73,7 @@ function getSmtpTransporter(): Transporter | null {
       }
     });
   }
-  
+
   return smtpTransporter;
 }
 
@@ -148,8 +148,22 @@ function encryptForRecipient(
   console.log(`   🔑 Ephemeral public: ${toHex(ephemeralKeypair.publicKey).substring(0, 16)}...`);
   console.log(`   🔑 Shared secret: ${toHex(sharedSecret).substring(0, 16)}...`);
 
+  // ✅ CRITICAL: HKDF info MUST include ephemeral + recipient public keys!
+  // Format: "gns-envelope-v1:" + ephemeralPub (32 bytes) + recipientPub (32 bytes)
+  const hkdfInfo = Buffer.concat([
+    Buffer.from('gns-envelope-v1:', 'utf8'),
+    Buffer.from(ephemeralKeypair.publicKey),
+    Buffer.from(recipientX25519PublicKey)
+  ]);
+
   // Derive encryption key via HKDF
-  const derivedKey = hkdfDerive(sharedSecret, HKDF_INFO_ENVELOPE);
+  const derivedKey = crypto.hkdfSync(
+    'sha256',
+    Buffer.from(sharedSecret),
+    Buffer.alloc(0),
+    hkdfInfo,
+    KEY_LENGTH
+  );
 
   // Generate nonce
   const nonce = crypto.randomBytes(NONCE_LENGTH);
@@ -316,7 +330,7 @@ export async function initializeEmailGateway(): Promise<{ publicKey: string; enc
   console.log(`   Ed25519 (identity): ${gatewayEd25519PublicKeyHex.substring(0, 16)}...`);
   console.log(`   X25519 (encryption): ${gatewayX25519PublicKeyHex.substring(0, 16)}...`);
   console.log(`   Domain: ${EMAIL_CONFIG.domain}`);
-  
+
   // Check SMTP config
   if (SMTP_CONFIG.user && SMTP_CONFIG.pass) {
     console.log(`   SMTP: ${SMTP_CONFIG.host}:${SMTP_CONFIG.port} ✅`);
@@ -362,8 +376,8 @@ function verifyWebhookSecret(req: Request, res: Response, next: Function) {
 }
 
 const verifyGnsAuth = async (
-  req: AuthenticatedRequest, 
-  res: Response, 
+  req: AuthenticatedRequest,
+  res: Response,
   next: Function
 ) => {
   try {
@@ -621,7 +635,7 @@ router.post('/inbound', verifyWebhookSecret, async (req: Request, res: Response)
 router.post('/send', verifyGnsAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { to, subject, body, bodyFormat, inReplyTo, references } = req.body;
-    
+
     // Validate required fields
     if (!to || !body) {
       return res.status(400).json({
@@ -629,7 +643,7 @@ router.post('/send', verifyGnsAuth, async (req: AuthenticatedRequest, res: Respo
         error: 'Missing required fields: to, body',
       } as ApiResponse);
     }
-    
+
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(to)) {
@@ -638,14 +652,14 @@ router.post('/send', verifyGnsAuth, async (req: AuthenticatedRequest, res: Respo
         error: 'Invalid recipient email address',
       } as ApiResponse);
     }
-    
+
     // Check if recipient is a GNS handle (internal routing)
     const toMatch = to.match(/^([^@]+)@gcrumbs\.com$/i);
     if (toMatch) {
       // Internal GNS-to-GNS email
       return await sendInternalEmail(req, res, toMatch[1], subject, body, bodyFormat);
     }
-    
+
     // External email - use SMTP
     const smtp = getSmtpTransporter();
     if (!smtp) {
@@ -654,25 +668,25 @@ router.post('/send', verifyGnsAuth, async (req: AuthenticatedRequest, res: Respo
         error: 'Outbound email service not configured. SMTP credentials required.',
       } as ApiResponse);
     }
-    
+
     // Build from address
     const fromEmail = `${req.gnsHandle}@${EMAIL_CONFIG.domain}`;
     const fromAddress = `${req.gnsHandle} <${fromEmail}>`;
-    
+
     // Build email headers
     const headers: Record<string, string> = {
       'X-GNS-PublicKey': req.gnsPublicKey!,
       'X-GNS-Handle': `@${req.gnsHandle}`,
       'X-Mailer': 'GNS Email Gateway',
     };
-    
+
     if (inReplyTo) {
       headers['In-Reply-To'] = inReplyTo;
     }
     if (references && Array.isArray(references)) {
       headers['References'] = references.join(' ');
     }
-    
+
     // Send email
     const mailOptions = {
       from: fromAddress,
@@ -683,16 +697,16 @@ router.post('/send', verifyGnsAuth, async (req: AuthenticatedRequest, res: Respo
       headers: headers,
       replyTo: fromEmail,
     };
-    
+
     console.log(`📤 Sending outbound email:`);
     console.log(`   From: ${fromEmail}`);
     console.log(`   To: ${to}`);
     console.log(`   Subject: ${subject}`);
-    
+
     const result = await smtp.sendMail(mailOptions);
-    
+
     console.log(`✅ Email sent: ${result.messageId}`);
-    
+
     return res.json({
       success: true,
       data: {
@@ -704,24 +718,24 @@ router.post('/send', verifyGnsAuth, async (req: AuthenticatedRequest, res: Respo
       },
       message: 'Email sent successfully',
     } as ApiResponse);
-    
+
   } catch (error: any) {
     console.error('❌ POST /email/send error:', error);
-    
+
     if (error.code === 'ECONNREFUSED') {
       return res.status(503).json({
         success: false,
         error: 'Email server unavailable',
       } as ApiResponse);
     }
-    
+
     if (error.responseCode === 550) {
       return res.status(400).json({
         success: false,
         error: 'Recipient address rejected by mail server',
       } as ApiResponse);
     }
-    
+
     return res.status(500).json({
       success: false,
       error: 'Failed to send email',
@@ -743,7 +757,7 @@ async function sendInternalEmail(
 ): Promise<Response> {
   try {
     const handle = recipientHandle.toLowerCase().replace(/^@/, '');
-    
+
     // Look up recipient
     const alias = await db.getAliasByHandle(handle);
     if (!alias) {
@@ -752,7 +766,7 @@ async function sendInternalEmail(
         error: `Recipient @${handle} not found`,
       } as ApiResponse);
     }
-    
+
     // Get recipient's encryption key
     const record = await db.getRecord(alias.pk_root);
     if (!record || !record.encryption_key) {
@@ -761,9 +775,9 @@ async function sendInternalEmail(
         error: 'Recipient has no encryption key configured',
       } as ApiResponse);
     }
-    
+
     console.log(`📧 Internal GNS email: @${req.gnsHandle} → @${handle}`);
-    
+
     // Create email payload
     const emailPayload: EmailPayload = {
       type: 'email',
@@ -774,24 +788,24 @@ async function sendInternalEmail(
       to: `${handle}@${EMAIL_CONFIG.domain}`,
       receivedAt: new Date().toISOString(),
     };
-    
+
     const payloadBuffer = Buffer.from(JSON.stringify(emailPayload), 'utf8');
-    
+
     // Encrypt for recipient
     const recipientX25519 = toBytes(record.encryption_key);
     const encrypted = encryptForRecipient(payloadBuffer, recipientX25519);
-    
+
     // Create envelope
     const envelopeId = generateUUID();
     const timestamp = Date.now();
-    
+
     // Thread ID for GNS-to-GNS emails (different from external)
     const threadId = crypto
       .createHash('sha256')
       .update(`gns-email:${req.gnsPublicKey}:${alias.pk_root}`)
       .digest('hex')
       .substring(0, 32);
-    
+
     const envelope: EnvelopeData = {
       id: envelopeId,
       version: 1,
@@ -811,13 +825,13 @@ async function sendInternalEmail(
       nonce: encrypted.nonce,
       priority: 1,
     };
-    
+
     // Sign with gateway key for now (TODO: client-side signing)
     const dataToSign = createCanonicalEnvelopeString(envelope);
     const hash = crypto.createHash('sha256').update(dataToSign, 'utf8').digest();
     const signatureBytes = nacl.sign.detached(hash, gatewayKeypair!.secretKey);
     envelope.signature = toHex(signatureBytes);
-    
+
     // Store message
     await db.createEnvelopeMessage(
       req.gnsPublicKey!,
@@ -825,15 +839,15 @@ async function sendInternalEmail(
       envelope,
       threadId
     );
-    
+
     // Notify via WebSocket
     notifyRecipients([alias.pk_root], {
       type: 'message',
       envelope: envelope,
     });
-    
+
     console.log(`✅ Internal email delivered: ${envelopeId.substring(0, 8)}...`);
-    
+
     return res.json({
       success: true,
       data: {
@@ -846,7 +860,7 @@ async function sendInternalEmail(
       },
       message: 'Email delivered internally via GNS',
     } as ApiResponse);
-    
+
   } catch (error) {
     console.error('❌ Internal email error:', error);
     return res.status(500).json({
@@ -939,7 +953,7 @@ router.get('/address', verifyGnsAuth, async (req: AuthenticatedRequest, res: Res
   try {
     const emailAddress = `${req.gnsHandle}@${EMAIL_CONFIG.domain}`;
     const smtp = getSmtpTransporter();
-    
+
     return res.json({
       success: true,
       data: {
@@ -951,7 +965,7 @@ router.get('/address', verifyGnsAuth, async (req: AuthenticatedRequest, res: Res
         canReceive: true,
       },
     } as ApiResponse);
-    
+
   } catch (error) {
     console.error('GET /email/address error:', error);
     return res.status(500).json({
@@ -963,7 +977,7 @@ router.get('/address', verifyGnsAuth, async (req: AuthenticatedRequest, res: Res
 
 router.get('/gateway/status', (req: Request, res: Response) => {
   const smtp = getSmtpTransporter();
-  
+
   return res.json({
     success: true,
     data: {

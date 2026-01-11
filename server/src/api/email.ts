@@ -157,13 +157,13 @@ function encryptForRecipient(
   ]);
 
   // Derive encryption key via HKDF
-  const derivedKey = crypto.hkdfSync(
+  const derivedKey = Buffer.from(crypto.hkdfSync(
     'sha256',
     Buffer.from(sharedSecret),
     Buffer.alloc(0),
     hkdfInfo,
     KEY_LENGTH
-  );
+  ));
 
   // Generate nonce
   const nonce = crypto.randomBytes(NONCE_LENGTH);

@@ -554,9 +554,10 @@ router.post('/inbound', verifyWebhookSecret, async (req: Request, res: Response)
     const envelopeId = generateUUID();
     const timestamp = Date.now();
 
+    // ✅ Thread ID includes subject for proper email threading
     const threadId = crypto
       .createHash('sha256')
-      .update(`${webhook.from}:${alias.pk_root}`)
+      .update(`${webhook.from}:${alias.pk_root}:${webhook.subject}`)
       .digest('hex')
       .substring(0, 32);
 
@@ -799,10 +800,10 @@ async function sendInternalEmail(
     const envelopeId = generateUUID();
     const timestamp = Date.now();
 
-    // Thread ID for GNS-to-GNS emails (different from external)
+    // ✅ Thread ID includes subject for proper email threading
     const threadId = crypto
       .createHash('sha256')
-      .update(`gns-email:${req.gnsPublicKey}:${alias.pk_root}`)
+      .update(`gns-email:${req.gnsPublicKey}:${alias.pk_root}:${subject}`)
       .digest('hex')
       .substring(0, 32);
 

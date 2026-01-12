@@ -117,6 +117,17 @@ function generateUUID(): string {
 }
 
 /**
+ * Normalize email subject for threading
+ * Strips Re:, Fwd:, etc. prefixes so replies thread correctly
+ */
+function normalizeEmailSubject(subject: string): string {
+  return subject
+    .replace(/^(re|fw|fwd):\s*/gi, '')  // Remove Re:, Fw:, Fwd: (case-insensitive)
+    .trim()
+    .toLowerCase();  // Lowercase for consistent hashing
+}
+
+/**
  * HKDF key derivation
  */
 function hkdfDerive(sharedSecret: Uint8Array, info: string): Uint8Array {
@@ -554,10 +565,12 @@ router.post('/inbound', verifyWebhookSecret, async (req: Request, res: Response)
     const envelopeId = generateUUID();
     const timestamp = Date.now();
 
-    // ✅ Thread ID includes subject for proper email threading
+    // ✅ Thread ID includes normalized subject for proper email threading
+    // Normalize subject to strip Re:, Fwd:, etc. so replies thread correctly
+    const normalizedSubject = normalizeEmailSubject(webhook.subject);
     const threadId = crypto
       .createHash('sha256')
-      .update(`${webhook.from}:${alias.pk_root}:${webhook.subject}`)
+      .update(`${webhook.from}:${alias.pk_root}:${normalizedSubject}`)
       .digest('hex')
       .substring(0, 32);
 
@@ -800,10 +813,12 @@ async function sendInternalEmail(
     const envelopeId = generateUUID();
     const timestamp = Date.now();
 
-    // ✅ Thread ID includes subject for proper email threading
+    // ✅ Thread ID includes normalized subject for proper email threading
+    // Normalize subject to strip Re:, Fwd:, etc. so replies thread correctly
+    const normalizedSubject = normalizeEmailSubject(subject);
     const threadId = crypto
       .createHash('sha256')
-      .update(`gns-email:${req.gnsPublicKey}:${alias.pk_root}:${subject}`)
+      .update(`gns-email:${req.gnsPublicKey}:${alias.pk_root}:${normalizedSubject}`)
       .digest('hex')
       .substring(0, 32);
 

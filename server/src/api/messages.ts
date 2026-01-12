@@ -583,7 +583,7 @@ router.post('/read', verifyGnsAuth, async (req: AuthenticatedRequest, res: Respo
     // Mark each message as read
     for (const msgId of messageIds) {
       try {
-        await db.markMessagesRead([msgId], pk);
+        await db.markMessagesRead(pk, [msgId]);
       } catch (error) {
         console.error(`Failed to mark message ${msgId} as read:`, error);
       }

@@ -565,7 +565,45 @@ router.post('/ack', verifyGnsAuth, async (req: AuthenticatedRequest, res: Respon
   }
 });
 
-// POST /messages/:to_pk - Send message (original format)
+// POST /messages/read - Mark messages as read (MUST be before /:to_pk!)
+router.post('/read', verifyGnsAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const pk = req.gnsPublicKey!;
+    const { messageIds } = req.body;
+
+    if (!messageIds || !Array.isArray(messageIds)) {
+      return res.status(400).json({
+        success: false,
+        error: 'messageIds array required',
+      } as ApiResponse);
+    }
+
+    console.log(`📖 READ ${messageIds.length} messages for ${pk.substring(0, 16)}...`);
+
+    // Mark each message as read
+    for (const msgId of messageIds) {
+      try {
+        await db.markMessagesRead(msgId, pk);
+      } catch (error) {
+        console.error(`Failed to mark message ${msgId} as read:`, error);
+      }
+    }
+
+    return res.json({
+      success: true,
+      markedRead: messageIds.length,
+    } as ApiResponse);
+
+  } catch (error) {
+    console.error('POST /read error:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to mark messages as read',
+    } as ApiResponse);
+  }
+});
+
+
 router.post('/:to_pk', async (req: Request, res: Response) => {
   try {
     const toPk = req.params.to_pk?.toLowerCase();

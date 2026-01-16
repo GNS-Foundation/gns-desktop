@@ -1011,4 +1011,3 @@ export default router;
 // EXPORTS
 // ===========================================
 
-export { authenticateBearer, verifyAccessToken };

@@ -1,0 +1,86 @@
+.gns-token-card {
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.15) 0%, rgba(33, 150, 243, 0.1) 100%);
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    margin-bottom: 16px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.gns-token-card:active {
+    transform: scale(0.98);
+}
+
+.card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.gns-icon-container {
+    width: 36px;
+    height: 36px;
+}
+
+.gns-icon {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #4caf50 0%, #2196f3 100%);
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.card-title {
+    flex: 1;
+    font-weight: bold;
+    font-size: 14px;
+    letter-spacing: 1px;
+    color: #333;
+}
+
+.claimable-badge {
+    padding: 4px 8px;
+    background-color: #ffc107;
+    color: #000;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: bold;
+}
+
+.chevron {
+    font-size: 24px;
+    color: #999;
+}
+
+.balance-display {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.balance-amount {
+    font-size: 32px;
+    font-weight: bold;
+    color: #333;
+}
+
+.balance-currency {
+    font-size: 16px;
+    font-weight: 500;
+    color: #666;
+    padding-bottom: 4px;
+}
+
+.tap-hint {
+    margin: 0;
+    font-size: 12px;
+    color: #999;
+}

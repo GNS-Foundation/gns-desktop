@@ -29,6 +29,7 @@
 		1BBD428E3EBD9050E3B6CC05 /* breadcrumbs.rs */ = {isa = PBXFileReference; lastKnownFileType = text; path = breadcrumbs.rs; sourceTree = "<group>"; };
 		1C561938F4B6192406FC4D0F /* mod.rs */ = {isa = PBXFileReference; lastKnownFileType = text; path = mod.rs; sourceTree = "<group>"; };
 		2CB849192F33E55F75573C4C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		2FD95C9EEE284984BF9851C5 /* dix.rs */ = {isa = PBXFileReference; lastKnownFileType = text; path = dix.rs; sourceTree = "<group>"; };
 		346B4F307B49FCEE833A744D /* commands_handle.rs */ = {isa = PBXFileReference; lastKnownFileType = text; path = commands_handle.rs; sourceTree = "<group>"; };
 		35FD78BC85A93256D87B3852 /* mod.rs */ = {isa = PBXFileReference; lastKnownFileType = text; path = mod.rs; sourceTree = "<group>"; };
 		43D3F771EF9388878E6E6E33 /* identity.rs */ = {isa = PBXFileReference; lastKnownFileType = text; path = identity.rs; sourceTree = "<group>"; };
@@ -44,6 +45,7 @@
 		9C4C511EB24AA96EF92A06F0 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
 		9EFD37FA0E048488A2166850 /* gns-browser_iOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "gns-browser_iOS.entitlements"; sourceTree = "<group>"; };
 		A122460C3E4EF5196EFADD80 /* message_handler.rs */ = {isa = PBXFileReference; lastKnownFileType = text; path = message_handler.rs; sourceTree = "<group>"; };
+		A2C9AC25A9F065F4C84E924C /* mod.rs */ = {isa = PBXFileReference; lastKnownFileType = text; path = mod.rs; sourceTree = "<group>"; };
 		A54F1F02E8E01E406D1E499B /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
 		AA298D6CDF037E8397D221C6 /* backend.rs */ = {isa = PBXFileReference; lastKnownFileType = text; path = backend.rs; sourceTree = "<group>"; };
 		AE28D741EB9D7EFF7779A08C /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
@@ -111,6 +113,7 @@
 				A122460C3E4EF5196EFADD80 /* message_handler.rs */,
 				54E12AB4294BF2C2FBBC0D6E /* commands */,
 				D002A93C23A277ABE64F1DFA /* crypto */,
+				C2154B48BE747B8E8C3D15BA /* dix */,
 				39680D1DB3F12351AA7FFDD0 /* location */,
 				D5C5D55C40663A28C89F4843 /* network */,
 				467B02AE6EE3E7BDFD1DE2FD /* stellar */,
@@ -134,6 +137,7 @@
 			children = (
 				1BBD428E3EBD9050E3B6CC05 /* breadcrumbs.rs */,
 				346B4F307B49FCEE833A744D /* commands_handle.rs */,
+				2FD95C9EEE284984BF9851C5 /* dix.rs */,
 				845249E4E65F7A4B1F11636F /* handles.rs */,
 				43D3F771EF9388878E6E6E33 /* identity.rs */,
 				0AB7B7505AA940E2CD35D6EA /* messaging.rs */,
@@ -174,6 +178,14 @@
 				F122E04701A341FBA8A39E28 /* Frameworks */,
 				050D0E302D630610C3A2178B /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		C2154B48BE747B8E8C3D15BA /* dix */ = {
+			isa = PBXGroup;
+			children = (
+				A2C9AC25A9F065F4C84E924C /* mod.rs */,
+			);
+			path = dix;
 			sourceTree = "<group>";
 		};
 		D002A93C23A277ABE64F1DFA /* crypto */ = {
@@ -315,7 +327,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "export PATH=\"/opt/homebrew/bin:/usr/local/bin:$HOME/.cargo/bin:$PATH\"\ncargo tauri ios xcode-script -v --platform ${PLATFORM_DISPLAY_NAME:?} --sdk-root ${SDKROOT:?} --framework-search-paths \"${FRAMEWORK_SEARCH_PATHS:?}\" --header-search-paths \"${HEADER_SEARCH_PATHS:?}\" --gcc-preprocessor-definitions \"${GCC_PREPROCESSOR_DEFINITIONS:-}\" --configuration ${CONFIGURATION:?} ${FORCE_COLOR} ${ARCHS:?}\n";
+			shellScript = "pnpm tauri ios xcode-script -v --platform ${PLATFORM_DISPLAY_NAME:?} --sdk-root ${SDKROOT:?} --framework-search-paths \"${FRAMEWORK_SEARCH_PATHS:?}\" --header-search-paths \"${HEADER_SEARCH_PATHS:?}\" --gcc-preprocessor-definitions \"${GCC_PREPROCESSOR_DEFINITIONS:-}\" --configuration ${CONFIGURATION:?} ${FORCE_COLOR} ${ARCHS:?}\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -339,7 +351,6 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = "gns-browser_iOS/gns-browser_iOS.entitlements";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 1.0.0;
 				DEVELOPMENT_TEAM = 25LN8S56Y8;
 				ENABLE_BITCODE = NO;
 				"EXCLUDED_ARCHS[sdk=iphoneos*]" = x86_64;
@@ -348,8 +359,6 @@
 					"\".\"",
 				);
 				INFOPLIST_FILE = "gns-browser_iOS/Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "Globe Crumbs";
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -368,7 +377,6 @@
 					"$(TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)",
 					"$(TOOLCHAIN_DIR)/usr/lib/swift-5.0/$(PLATFORM_NAME)",
 				);
-				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.gcrumbs.browser;
 				PRODUCT_NAME = "GNS Browser";
 				SDKROOT = iphoneos;
@@ -385,7 +393,6 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = "gns-browser_iOS/gns-browser_iOS.entitlements";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 1.0.0;
 				DEVELOPMENT_TEAM = 25LN8S56Y8;
 				ENABLE_BITCODE = NO;
 				"EXCLUDED_ARCHS[sdk=iphoneos*]" = x86_64;
@@ -394,8 +401,6 @@
 					"\".\"",
 				);
 				INFOPLIST_FILE = "gns-browser_iOS/Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "Globe Crumbs";
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -414,7 +419,6 @@
 					"$(TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)",
 					"$(TOOLCHAIN_DIR)/usr/lib/swift-5.0/$(PLATFORM_NAME)",
 				);
-				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.gcrumbs.browser;
 				PRODUCT_NAME = "GNS Browser";
 				SDKROOT = iphoneos;

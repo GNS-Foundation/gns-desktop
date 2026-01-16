@@ -5,6 +5,10 @@ import { webAdapter } from './lib/adapter';
 import { EmailView } from './components/EmailView';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
+// Mobile UI import
+import MobileApp from '../../mobile/src/MobileApp';
+import { isMobilePlatform } from './lib/platformDetection';
+
 import { getProfileByHandle, searchIdentities, SAMPLE_PROFILES, getSession, isAuthenticated, wsService, crypto } from '@gns/api-web';
 
 // Context & Hooks
@@ -19,6 +23,26 @@ import { StudioView } from './components/studio';
 import { SignInModal, MessageModal, QRLoginModal } from './components/modals';
 
 const queryClient = new QueryClient();
+
+// Platform detection wrapper
+const PlatformRouter = () => {
+  const [isMobile, setIsMobile] = useState(isMobilePlatform());
+
+  useEffect(() => {
+    // Re-check on window resize
+    const handleResize = () => setIsMobile(isMobilePlatform());
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Render mobile UI if on mobile platform
+  if (isMobile) {
+    return <MobileApp />;
+  }
+
+  // Otherwise render desktop UI
+  return <AppContent />;
+};
 
 const AppContent = () => {
   const { theme } = useTheme();
@@ -618,16 +642,51 @@ const AppContent = () => {
 
 };
 
-export default function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <ApiProvider adapter={webAdapter}>
-        <ThemeProvider>
-          <AuthProvider>
-            <AppContent />
-          </AuthProvider>
-        </ThemeProvider>
-      </ApiProvider>
-    </QueryClientProvider>
-  );
+// Error Boundary Component
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null, errorInfo: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("Uncaught error:", error, errorInfo);
+    this.setState({ error, errorInfo });
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: 20, color: 'red', wordBreak: 'break-word', paddingTop: 100, backgroundColor: 'white', overflow: 'scroll', height: '100vh', zIndex: 9999, position: 'relative' }}>
+          <h1>Something went wrong.</h1>
+          <h3>{this.state.error && this.state.error.toString()}</h3>
+          <pre style={{ fontSize: 10, whiteSpace: 'pre-wrap' }}>
+            {this.state.errorInfo && this.state.errorInfo.componentStack}
+          </pre>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
 }
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <ThemeProvider>
+      <AuthProvider>
+        <ApiProvider adapter={webAdapter}>
+          <ErrorBoundary>
+            <PlatformRouter />
+          </ErrorBoundary>
+        </ApiProvider>
+      </AuthProvider>
+    </ThemeProvider>
+  </QueryClientProvider>
+);
+
+export default App;

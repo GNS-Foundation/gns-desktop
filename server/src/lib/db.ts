@@ -10,6 +10,11 @@ import {
   DbPaymentIntent, DbPaymentAck, DbGeoAuthSession,
   DbBreadcrumb
 } from '../types';
+import {
+  OAuthClient,
+  WebhookSubscription,
+  DbPaymentRequest,
+} from '../types/api.types';
 
 // ===========================================
 // Supabase Client Singleton
@@ -2135,4 +2140,483 @@ export async function getAliasByIdentity(publicKey: string): Promise<{ handle: s
   }
 
   return data;
+}
+
+// ===========================================
+// OAUTH CLIENTS
+// ===========================================
+
+export async function getOAuthClient(clientId: string): Promise<OAuthClient | null> {
+  const { data, error } = await getSupabase()
+    .from('oauth_clients')
+    .select('*')
+    .eq('client_id', clientId)
+    .single();
+
+  if (error && error.code !== 'PGRST116') {
+    console.error('Error fetching OAuth client:', error);
+    throw error;
+  }
+
+  if (!data) return null;
+
+  return {
+    client_id: data.client_id,
+    client_secret: data.client_secret,
+    name: data.name,
+    redirect_uris: data.redirect_uris,
+    logo_uri: data.logo_uri,
+    tos_uri: data.tos_uri,
+    policy_uri: data.policy_uri,
+    confidential: data.confidential,
+    owner_pk: data.owner_pk,
+    created_at: data.created_at,
+  };
+}
+
+export async function createOAuthClient(client: OAuthClient): Promise<OAuthClient> {
+  const { data, error } = await getSupabase()
+    .from('oauth_clients')
+    .insert({
+      client_id: client.client_id,
+      client_secret: client.client_secret,
+      name: client.name,
+      redirect_uris: client.redirect_uris,
+      logo_uri: client.logo_uri,
+      tos_uri: client.tos_uri,
+      policy_uri: client.policy_uri,
+      confidential: client.confidential,
+      owner_pk: client.owner_pk.toLowerCase(),
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error creating OAuth client:', error);
+    throw error;
+  }
+
+  return data as OAuthClient;
+}
+
+export async function getOAuthClientsByOwner(ownerPk: string): Promise<OAuthClient[]> {
+  const { data, error } = await getSupabase()
+    .from('oauth_clients')
+    .select('*')
+    .eq('owner_pk', ownerPk.toLowerCase())
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching OAuth clients:', error);
+    throw error;
+  }
+
+  return data || [];
+}
+
+// ===========================================
+// WEBHOOK SUBSCRIPTIONS
+// ===========================================
+
+export async function getWebhookSubscriptions(
+  ownerPk: string,
+  eventType?: string
+): Promise<WebhookSubscription[]> {
+  let query = getSupabase()
+    .from('webhook_subscriptions')
+    .select('*')
+    .eq('owner_pk', ownerPk.toLowerCase())
+    .eq('active', true);
+
+  if (eventType) {
+    query = query.contains('events', [eventType]);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error('Error fetching webhooks:', error);
+    throw error;
+  }
+
+  return (data || []).map(row => ({
+    id: row.id,
+    owner_pk: row.owner_pk,
+    target_url: row.target_url,
+    events: row.events,
+    for_handle: row.for_handle,
+    secret_hash: row.secret_hash,
+    active: row.active,
+    created_at: row.created_at,
+    last_triggered_at: row.last_triggered_at,
+    failure_count: row.failure_count,
+  }));
+}
+
+export async function createWebhookSubscription(
+  webhook: WebhookSubscription
+): Promise<WebhookSubscription> {
+  const { data, error } = await getSupabase()
+    .from('webhook_subscriptions')
+    .insert({
+      id: webhook.id,
+      owner_pk: webhook.owner_pk.toLowerCase(),
+      target_url: webhook.target_url,
+      events: webhook.events,
+      for_handle: webhook.for_handle,
+      secret_hash: webhook.secret_hash,
+      active: webhook.active,
+      failure_count: 0,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error creating webhook:', error);
+    throw error;
+  }
+
+  return data as WebhookSubscription;
+}
+
+export async function updateWebhookSubscription(
+  webhookId: string,
+  updates: Partial<WebhookSubscription>
+): Promise<void> {
+  const { error } = await getSupabase()
+    .from('webhook_subscriptions')
+    .update({
+      target_url: updates.target_url,
+      events: updates.events,
+      active: updates.active,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', webhookId);
+
+  if (error) {
+    console.error('Error updating webhook:', error);
+    throw error;
+  }
+}
+
+export async function deleteWebhookSubscription(webhookId: string): Promise<void> {
+  const { error } = await getSupabase()
+    .from('webhook_subscriptions')
+    .delete()
+    .eq('id', webhookId);
+
+  if (error) {
+    console.error('Error deleting webhook:', error);
+    throw error;
+  }
+}
+
+export async function incrementWebhookFailure(webhookId: string): Promise<number> {
+  const { data, error } = await getSupabase()
+    .rpc('increment_webhook_failure', { p_webhook_id: webhookId });
+
+  if (error) {
+    console.error('Error incrementing webhook failure:', error);
+    return 0;
+  }
+
+  return data || 0;
+}
+
+export async function logWebhookDelivery(delivery: {
+  subscription_id: string;
+  event_id: string;
+  event_type?: string;
+  status: 'pending' | 'delivered' | 'failed';
+  response_code?: number;
+  response_time_ms?: number;
+  error?: string;
+  attempt: number;
+}): Promise<void> {
+  const { error } = await getSupabase()
+    .from('webhook_deliveries')
+    .insert({
+      subscription_id: delivery.subscription_id,
+      event_id: delivery.event_id,
+      event_type: delivery.event_type || 'unknown',
+      status: delivery.status,
+      response_code: delivery.response_code,
+      response_time_ms: delivery.response_time_ms,
+      error: delivery.error,
+      attempt: delivery.attempt,
+    });
+
+  if (error) {
+    console.error('Error logging webhook delivery:', error);
+    // Don't throw - this is non-critical logging
+  }
+}
+
+// ===========================================
+// PAYMENT REQUESTS
+// ===========================================
+
+export async function createPaymentRequest(
+  request: DbPaymentRequest
+): Promise<DbPaymentRequest> {
+  const { data, error } = await getSupabase()
+    .from('payment_requests')
+    .insert({
+      id: request.id,
+      payment_id: request.payment_id,
+      creator_pk: request.creator_pk.toLowerCase(),
+      to_pk: request.to_pk.toLowerCase(),
+      to_handle: request.to_handle,
+      amount: request.amount,
+      currency: request.currency,
+      memo: request.memo,
+      reference_id: request.reference_id,
+      callback_url: request.callback_url,
+      status: 'pending',
+      expires_at: request.expires_at,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error creating payment request:', error);
+    throw error;
+  }
+
+  return data as DbPaymentRequest;
+}
+
+export async function getPaymentRequest(
+  paymentId: string
+): Promise<DbPaymentRequest | null> {
+  const { data, error } = await getSupabase()
+    .from('payment_requests')
+    .select('*')
+    .eq('payment_id', paymentId)
+    .single();
+
+  if (error && error.code !== 'PGRST116') {
+    console.error('Error fetching payment request:', error);
+    throw error;
+  }
+
+  return data as DbPaymentRequest | null;
+}
+
+export async function updatePaymentRequest(
+  paymentId: string,
+  updates: Partial<DbPaymentRequest>
+): Promise<void> {
+  const { error } = await getSupabase()
+    .from('payment_requests')
+    .update({
+      status: updates.status,
+      from_pk: updates.from_pk?.toLowerCase(),
+      stellar_tx_hash: updates.stellar_tx_hash,
+      completed_at: updates.completed_at,
+    })
+    .eq('payment_id', paymentId);
+
+  if (error) {
+    console.error('Error updating payment request:', error);
+    throw error;
+  }
+}
+
+export async function getPaymentRequestsByRecipient(
+  toPk: string,
+  status?: string,
+  limit: number = 50
+): Promise<DbPaymentRequest[]> {
+  let query = getSupabase()
+    .from('payment_requests')
+    .select('*')
+    .eq('to_pk', toPk.toLowerCase())
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (status) {
+    query = query.eq('status', status);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error('Error fetching payment requests:', error);
+    throw error;
+  }
+
+  return data || [];
+}
+
+export async function getPaymentRequestsByCreator(
+  creatorPk: string,
+  status?: string,
+  limit: number = 50
+): Promise<DbPaymentRequest[]> {
+  let query = getSupabase()
+    .from('payment_requests')
+    .select('*')
+    .eq('creator_pk', creatorPk.toLowerCase())
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (status) {
+    query = query.eq('status', status);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error('Error fetching payment requests:', error);
+    throw error;
+  }
+
+  return data || [];
+}
+
+// ===========================================
+// GSITES
+// ===========================================
+
+export async function getGSite(pkRoot: string): Promise<any | null> {
+  const { data, error } = await getSupabase()
+    .from('gsites')
+    .select('gsite_json')
+    .eq('pk_root', pkRoot.toLowerCase())
+    .single();
+
+  if (error && error.code !== 'PGRST116') {
+    console.error('Error fetching gSite:', error);
+    throw error;
+  }
+
+  return data?.gsite_json || null;
+}
+
+export async function upsertGSite(
+  pkRoot: string,
+  handle: string | null,
+  gsiteJson: any,
+  signature: string
+): Promise<void> {
+  const { error } = await getSupabase()
+    .from('gsites')
+    .upsert({
+      pk_root: pkRoot.toLowerCase(),
+      handle: handle?.toLowerCase(),
+      gsite_json: gsiteJson,
+      version: gsiteJson.version || 1,
+      signature,
+      updated_at: new Date().toISOString(),
+    }, {
+      onConflict: 'pk_root',
+    });
+
+  if (error) {
+    console.error('Error upserting gSite:', error);
+    throw error;
+  }
+}
+
+// ===========================================
+// VERIFICATION CHALLENGES
+// ===========================================
+
+export async function createVerificationChallenge(challenge: {
+  challenge_id: string;
+  public_key: string;
+  challenge: string;
+  require_fresh_breadcrumb: boolean;
+  allowed_h3_cells?: string[];
+  expires_at: string;
+}): Promise<void> {
+  const { error } = await getSupabase()
+    .from('verification_challenges')
+    .insert({
+      challenge_id: challenge.challenge_id,
+      public_key: challenge.public_key.toLowerCase(),
+      challenge: challenge.challenge,
+      require_fresh_breadcrumb: challenge.require_fresh_breadcrumb,
+      allowed_h3_cells: challenge.allowed_h3_cells,
+      status: 'pending',
+      expires_at: challenge.expires_at,
+    });
+
+  if (error) {
+    console.error('Error creating verification challenge:', error);
+    throw error;
+  }
+}
+
+export async function getVerificationChallenge(challengeId: string): Promise<{
+  challenge_id: string;
+  public_key: string;
+  challenge: string;
+  require_fresh_breadcrumb: boolean;
+  allowed_h3_cells?: string[];
+  status: string;
+  expires_at: string;
+} | null> {
+  const { data, error } = await getSupabase()
+    .from('verification_challenges')
+    .select('*')
+    .eq('challenge_id', challengeId)
+    .single();
+
+  if (error && error.code !== 'PGRST116') {
+    console.error('Error fetching challenge:', error);
+    throw error;
+  }
+
+  return data;
+}
+
+export async function markChallengeVerified(challengeId: string): Promise<void> {
+  const { error } = await getSupabase()
+    .from('verification_challenges')
+    .update({ status: 'verified' })
+    .eq('challenge_id', challengeId);
+
+  if (error) {
+    console.error('Error marking challenge verified:', error);
+    throw error;
+  }
+}
+
+// ===========================================
+// STATISTICS
+// ===========================================
+
+export async function getApiStats(): Promise<{
+  total_identities: number;
+  total_handles: number;
+  total_breadcrumbs: number;
+  active_webhooks: number;
+  pending_payments: number;
+}> {
+  // Get counts from various tables
+  const [records, aliases, webhooks, payments] = await Promise.all([
+    getSupabase().from('records').select('*', { count: 'exact', head: true }),
+    getSupabase().from('aliases').select('*', { count: 'exact', head: true }),
+    getSupabase().from('webhook_subscriptions').select('*', { count: 'exact', head: true }).eq('active', true),
+    getSupabase().from('payment_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+  ]);
+
+  // Sum breadcrumbs
+  const { data: breadcrumbSum } = await getSupabase()
+    .from('records')
+    .select('breadcrumb_count')
+    .then(result => {
+      const sum = (result.data || []).reduce((acc, r) => acc + (r.breadcrumb_count || 0), 0);
+      return { data: sum };
+    });
+
+  return {
+    total_identities: records.count || 0,
+    total_handles: aliases.count || 0,
+    total_breadcrumbs: breadcrumbSum || 0,
+    active_webhooks: webhooks.count || 0,
+    pending_payments: payments.count || 0,
+  };
 }

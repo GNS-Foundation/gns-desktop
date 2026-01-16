@@ -18,8 +18,21 @@ export default defineConfig({
     },
     build: {
         outDir: 'build',
+        target: 'esnext',
+        commonjsOptions: {
+            transformMixedEsModules: true,
+        },
+    },
+    esbuild: {
+        target: 'esnext',
+        supported: {
+            'top-level-await': true
+        },
     },
     server: {
         port: 5173,
+        fs: {
+            allow: ['..', '../../../tauri-plugin-gns']
+        }
     }
 });

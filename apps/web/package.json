@@ -5,7 +5,7 @@
   "private": true,
   "homepage": "https://panthera.gcrumbs.com",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host",
     "build": "vite build",
     "preview": "vite preview",
     "start:prod": "serve build -s -l $PORT",

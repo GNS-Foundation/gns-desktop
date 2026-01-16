@@ -1,0 +1,137 @@
+.payments-card {
+    background: linear-gradient(135deg, rgba(25, 118, 210, 0.15) 0%, rgba(103, 58, 183, 0.1) 100%);
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    margin-bottom: 16px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.payments-card:active {
+    transform: scale(0.98);
+}
+
+.card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.icon-container {
+    width: 36px;
+    height: 36px;
+    background: rgba(25, 118, 210, 0.2);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.wallet-icon {
+    font-size: 20px;
+}
+
+.card-title {
+    flex: 1;
+    font-weight: bold;
+    font-size: 14px;
+    letter-spacing: 1px;
+    color: #333;
+}
+
+.pending-badge {
+    padding: 4px 8px;
+    background-color: #ff9800;
+    color: white;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: bold;
+}
+
+.chevron {
+    font-size: 24px;
+    color: #999;
+}
+
+.stats-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.stat {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.stat-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    color: white;
+}
+
+.stat-icon.sent {
+    background-color: #f44336;
+}
+
+.stat-icon.received {
+    background-color: #4caf50;
+}
+
+.stat-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.stat-label {
+    font-size: 11px;
+    color: #999;
+}
+
+.stat-value {
+    font-size: 16px;
+    font-weight: bold;
+    color: #333;
+}
+
+.stat-divider {
+    width: 1px;
+    height: 40px;
+    background-color: #e0e0e0;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 12px;
+}
+
+.action-btn {
+    flex: 1;
+    padding: 10px;
+    background: white;
+    border: 1px solid rgba(25, 118, 210, 0.5);
+    border-radius: 8px;
+    color: #1976d2;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: background-color 0.2s ease;
+}
+
+.action-btn:active {
+    background-color: #e3f2fd;
+}

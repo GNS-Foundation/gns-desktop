@@ -7,8 +7,9 @@
         "dev:web": "pnpm --filter @gns/web dev"
     },
     "devDependencies": {
-        "typescript": "^5.0.0",
-        "turbo": "^1.13.0"
+        "@tauri-apps/cli": "^2.9.6",
+        "turbo": "^1.13.0",
+        "typescript": "^5.0.0"
     },
     "packageManager": "pnpm@9.1.0"
 }

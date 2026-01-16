@@ -1,0 +1,17 @@
+{
+    "name": "@gns/api-mobile",
+    "version": "1.0.0",
+    "private": true,
+    "type": "module",
+    "main": "./src/index.js",
+    "exports": {
+        ".": "./src/index.js"
+    },
+    "dependencies": {
+        "@tauri-apps/api": "^2.0.0",
+        "tauri-plugin-gns-api": "file:../../../tauri-plugin-gns/guest-js"
+    },
+    "peerDependencies": {
+        "react": "^18.0.0"
+    }
+}

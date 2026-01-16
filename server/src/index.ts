@@ -30,6 +30,12 @@ import orgMembersRouter from './api/org-members';
 import cmsRouter from './api/cms';
 import breadcrumbsRouter from './api/breadcrumbs';
 
+// 🆕 API v1 Routes (New Protocol APIs)
+import verifyRouter from './api/verify';
+import oauthRouter from './api/oauth';
+import webhooksRouter from './api/webhooks';
+import paymentsV2Router from './api/payments-v2
+
 // Services
 import echoBot from './services/echo_bot';
 
@@ -91,7 +97,7 @@ app.get('/', async (req: Request, res: Response) => {
 
   res.json({
     name: 'GNS Node',
-    version: '1.3.0',  // 📧 Version bump
+    version: '1.4.0',  // 🆕 Version bump for v1 API
     node_id: NODE_ID,
     status: dbHealthy ? 'healthy' : 'degraded',
     timestamp: new Date().toISOString(),
@@ -100,6 +106,10 @@ app.get('/', async (req: Request, res: Response) => {
       envelope_messaging: true,
       email_gateway: true,  // 📧 NEW
       gsite_validation: true,  // 🐆 NEW
+      proof_of_humanity: true,  // 🆕 NEW
+      oauth_oidc: true,         // 🆕 NEW
+      webhooks: true,           // 🆕 NEW
+      payment_requests: true,   // 🆕 NEW
       echo_bot: echoBot.getEchoBotStatus().running,
     },
     endpoints: {
@@ -113,6 +123,10 @@ app.get('/', async (req: Request, res: Response) => {
       sync: '/sync',
       email: '/email/inbound',  // 📧 NEW
       gsite: '/gsite/:identifier',  // 🐆 NEW
+      verify: '/v1/verify/:identifier',     // 🆕 NEW
+      oauth: '/v1/oauth/authorize',         // 🆕 NEW
+      webhooks: '/v1/webhooks',             // 🆕 NEW
+      payment_requests: '/v1/payments',     // 🆕 NEW
     },
     system_handles: {
       echo: `@echo (${echoBot.getEchoPublicKey().substring(0, 16)}...)`,
@@ -165,6 +179,30 @@ app.use('/org', orgRouter);
 app.use('/org', orgMembersRouter);
 app.use('/cms', cmsRouter);
 app.use('/breadcrumbs', breadcrumbsRouter);
+
+// ===========================================
+// 🆕 API v1 - New Protocol APIs
+// ===========================================
+app.use('/v1/verify', verifyRouter);      // Proof of Humanity
+app.use('/v1/oauth', oauthRouter);        // OAuth 2.0 / OIDC
+app.use('/v1/webhooks', webhooksRouter);  // Event subscriptions
+app.use('/v1/payments', paymentsV2Router); // Payment requests (Stripe-like)
+
+// OIDC Discovery (must be at root level)
+app.get('/.well-known/openid-configuration', (req, res) => {
+  const baseUrl = process.env.API_BASE_URL || `https://${req.headers.host}`;
+  res.json({
+    issuer: baseUrl,
+    authorization_endpoint: `${baseUrl}/v1/oauth/authorize`,
+    token_endpoint: `${baseUrl}/v1/oauth/token`,
+    userinfo_endpoint: `${baseUrl}/v1/oauth/userinfo`,
+    jwks_uri: `${baseUrl}/v1/oauth/jwks`,
+    scopes_supported: ['openid', 'identity:read', 'identity:verify', 'messages:read', 'messages:write', 'payments:read', 'payments:write'],
+    response_types_supported: ['code', 'token'],
+    grant_types_supported: ['authorization_code', 'refresh_token'],
+    code_challenge_methods_supported: ['S256'],
+  });
+});
 
 // ===========================================
 // Auth Challenge Endpoint

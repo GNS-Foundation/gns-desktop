@@ -20,6 +20,7 @@
         "http:default",
         "notification:default",
         "dialog:default",
-        "core:default"
+        "core:default",
+        "gns:default"
     ]
 }

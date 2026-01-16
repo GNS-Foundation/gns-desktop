@@ -98,6 +98,8 @@ fn main() {
     tracing::info!("Starting GNS Browser...");
 
     tauri::Builder::default()
+        // GNS Protocol Plugin - MUST be first
+        .plugin(tauri_plugin_gns::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_os::init())

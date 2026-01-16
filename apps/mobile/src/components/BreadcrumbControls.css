@@ -1,0 +1,96 @@
+.breadcrumb-controls {
+    background: white;
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    margin-bottom: 16px;
+}
+
+.status-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.status-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: #999;
+    transition: background-color 0.3s ease;
+}
+
+.status-indicator.active {
+    background-color: #4caf50;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.status-text {
+    font-weight: bold;
+    font-size: 14px;
+    color: #333;
+    letter-spacing: 0.5px;
+}
+
+.breadcrumb-count {
+    margin-left: auto;
+    font-size: 12px;
+    color: #666;
+}
+
+.control-buttons {
+    display: flex;
+    gap: 12px;
+}
+
+.control-btn {
+    flex: 1;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.control-btn.start {
+    background-color: #4caf50;
+    color: white;
+}
+
+.control-btn.start:active {
+    background-color: #45a049;
+}
+
+.control-btn.stop {
+    background-color: #f44336;
+    color: white;
+}
+
+.control-btn.stop:active {
+    background-color: #da190b;
+}
+
+.control-btn.drop {
+    background-color: white;
+    color: #1976d2;
+    border: 2px solid #1976d2;
+}
+
+.control-btn.drop:active {
+    background-color: #e3f2fd;
+}

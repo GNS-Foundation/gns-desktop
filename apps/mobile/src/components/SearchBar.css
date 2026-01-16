@@ -1,0 +1,46 @@
+.search-bar {
+    margin-bottom: 16px;
+}
+
+.search-input-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    background: white;
+    border-radius: 12px;
+    padding: 12px 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.search-icon {
+    font-size: 20px;
+    margin-right: 12px;
+}
+
+.search-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: 16px;
+    color: #333;
+    background: transparent;
+}
+
+.search-input::placeholder {
+    color: #999;
+}
+
+.loading-spinner {
+    font-size: 16px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}

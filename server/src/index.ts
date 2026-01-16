@@ -34,7 +34,7 @@ import breadcrumbsRouter from './api/breadcrumbs';
 import verifyRouter from './api/verify';
 import oauthRouter from './api/oauth';
 import webhooksRouter from './api/webhooks';
-import paymentsV2Router from './api/payments-v2
+import paymentsV2Router from './api/payments-v2';
 
 // Services
 import echoBot from './services/echo_bot';

@@ -274,10 +274,10 @@ router.post('/register', async (req: Request, res: Response) => {
     // Generate verification code
     const verificationCode = generateVerificationCode();
 
-    // Upsert registration
+    // Insert registration (safe because we checked uniqueness above)
     const { data, error } = await supabase
       .from('org_registrations')
-      .upsert({
+      .insert({
         namespace: cleanNamespace,
         organization_name,
         website: website || `https://${cleanDomain}`,
@@ -288,7 +288,7 @@ router.post('/register', async (req: Request, res: Response) => {
         verification_code: verificationCode,
         status: 'pending',
         updated_at: new Date().toISOString(),
-      }, { onConflict: 'namespace' })
+      })
       .select()
       .single();
 

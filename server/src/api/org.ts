@@ -292,6 +292,7 @@ router.post('/register', async (req: Request, res: Response) => {
     const { data, error } = await supabase
       .from('org_registrations')
       .insert({
+        id: `org_${Date.now()}_${randomBytes(4).toString('hex')}`,
         namespace: cleanNamespace,
         organization_name,
         website: website || `https://${cleanDomain}`,

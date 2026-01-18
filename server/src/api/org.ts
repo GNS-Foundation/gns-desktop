@@ -324,7 +324,7 @@ router.post('/register', async (req: Request, res: Response) => {
         txt_record: `gns-verify=${verificationCode}`,
         instructions: {
           type: 'TXT',
-          host: `_gns.${cleanDomain}`,
+          host: `@ (or _gns.${cleanDomain})`,
           value: `gns-verify=${verificationCode}`,
           ttl: 3600,
         },

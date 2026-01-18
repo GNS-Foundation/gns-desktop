@@ -1,8 +1,12 @@
 // ===========================================
-// GNS ORGANIZATION REGISTRATION API (FIXED)
+// GNS ORGANIZATION REGISTRATION API (FIXED v2)
 // ===========================================
 // Location: src/api/org.ts
-// Uses raw Supabase queries (no extra db functions needed)
+// 
+// FIXES:
+// 1. Error handling on verify update
+// 2. Logging for debugging
+// 3. Better response structure
 // ===========================================
 
 import { Router, Request, Response } from 'express';
@@ -227,7 +231,36 @@ router.post('/register', async (req: Request, res: Response) => {
 
     const supabase = db.getSupabase();
 
-    // Check if already taken
+    // Check if domain is already used by another namespace (Pending/Verified)
+    const { data: existingDomain } = await supabase
+      .from('org_registrations')
+      .select('namespace, domain')
+      .eq('domain', cleanDomain)
+      .neq('status', 'suspended')
+      .single();
+
+    if (existingDomain) {
+      return res.status(400).json({
+        success: false,
+        error: `Domain already registered to ${existingDomain.namespace}@`
+      });
+    }
+
+    // Check if domain is active in namespaces table
+    const { data: activeDomain } = await supabase
+      .from('namespaces')
+      .select('namespace, domain')
+      .eq('domain', cleanDomain)
+      .single();
+
+    if (activeDomain) {
+      return res.status(400).json({
+        success: false,
+        error: `Domain already verified for ${activeDomain.namespace}@`
+      });
+    }
+
+    // Check if namespace already taken
     const { data: existing } = await supabase
       .from('namespaces')
       .select('namespace')
@@ -291,7 +324,7 @@ router.post('/register', async (req: Request, res: Response) => {
 });
 
 // ===========================================
-// POST /org/verify
+// POST /org/verify (FIXED with error handling)
 // ===========================================
 
 router.post('/verify', async (req: Request, res: Response) => {
@@ -315,11 +348,18 @@ router.post('/verify', async (req: Request, res: Response) => {
       query = query.eq('domain', domain);
     }
 
-    const { data: reg, error } = await query.single();
+    const { data: reg, error: fetchError } = await query.single();
 
-    if (error || !reg) {
+    if (fetchError) {
+      console.error('❌ Fetch error:', fetchError);
+      return res.status(404).json({ success: false, error: 'Registration not found', details: fetchError.message });
+    }
+
+    if (!reg) {
       return res.status(404).json({ success: false, error: 'Registration not found' });
     }
+
+    console.log(`📋 Found registration: ${reg.namespace} (status: ${reg.status})`);
 
     if (reg.status === 'verified' || reg.status === 'active') {
       return res.json({
@@ -346,17 +386,27 @@ router.post('/verify', async (req: Request, res: Response) => {
       });
     }
 
-    // Mark verified
-    await supabase
+    // ✅ FIXED: Mark verified with error handling
+    const newStatus = reg.tier === 'starter' ? 'active' : 'verified';
+    const { error: updateError } = await supabase
       .from('org_registrations')
       .update({
         verified: true,
         verified_at: new Date().toISOString(),
-        status: reg.tier === 'starter' ? 'active' : 'verified',
+        status: newStatus,
       })
       .eq('id', reg.id);
 
-    console.log(`✅ DNS verified: ${reg.namespace}@`);
+    if (updateError) {
+      console.error('❌ Failed to update registration:', updateError);
+      return res.status(500).json({
+        success: false,
+        error: 'DNS verified but failed to update status',
+        details: updateError.message,
+      });
+    }
+
+    console.log(`✅ DNS verified: ${reg.namespace}@ → status: ${newStatus}`);
 
     res.json({
       success: true,
@@ -364,6 +414,7 @@ router.post('/verify', async (req: Request, res: Response) => {
         verified: true,
         namespace: `${reg.namespace}@`,
         domain: reg.domain,
+        status: newStatus,
         message: reg.tier === 'starter'
           ? 'Namespace verified! Download the app to complete setup.'
           : 'DNS verified! Complete payment to activate.',
@@ -442,7 +493,7 @@ router.get('/:namespace', async (req: Request, res: Response) => {
 });
 
 // ===========================================
-// POST /org/:namespace/activate
+// POST /org/:namespace/activate (FIXED with better logging)
 // ===========================================
 
 router.post('/:namespace/activate', async (req: Request, res: Response) => {
@@ -450,14 +501,18 @@ router.post('/:namespace/activate', async (req: Request, res: Response) => {
     const namespace = req.params.namespace.toLowerCase();
     const { admin_pk, email } = req.body;
 
+    console.log(`🚀 Activating: ${namespace}@ (email: ${email})`);
+
     if (!admin_pk || !email) {
       return res.status(400).json({ success: false, error: 'Missing admin_pk or email' });
     }
 
     const supabase = db.getSupabase();
 
-    // Get registration
-    const { data: reg } = await supabase
+    // Get registration with detailed logging
+    console.log(`📋 Looking for registration: namespace=${namespace}, email=${email}`);
+
+    const { data: reg, error: fetchError } = await supabase
       .from('org_registrations')
       .select('*')
       .eq('namespace', namespace)
@@ -465,9 +520,21 @@ router.post('/:namespace/activate', async (req: Request, res: Response) => {
       .in('status', ['verified', 'active'])
       .single();
 
+    if (fetchError) {
+      console.error('❌ Fetch error:', fetchError);
+      return res.status(404).json({
+        success: false,
+        error: 'Registration not found or not verified',
+        details: fetchError.message,
+      });
+    }
+
     if (!reg) {
+      console.log('❌ No matching registration found');
       return res.status(404).json({ success: false, error: 'Registration not found or not verified' });
     }
+
+    console.log(`📋 Found registration: id=${reg.id}, status=${reg.status}`);
 
     // Check if already activated
     const { data: existing } = await supabase
@@ -493,13 +560,13 @@ router.post('/:namespace/activate', async (req: Request, res: Response) => {
         tier: reg.tier,
         member_limit: tierLimits[reg.tier] || 10,
         verified: true,
-        verified_domain: reg.domain,
       })
       .select()
       .single();
 
     if (error) {
-      return res.status(500).json({ success: false, error: 'Activation failed' });
+      console.error('❌ Failed to create namespace:', error);
+      return res.status(500).json({ success: false, error: 'Activation failed', details: error.message });
     }
 
     // Update registration
@@ -521,6 +588,7 @@ router.post('/:namespace/activate', async (req: Request, res: Response) => {
     });
 
   } catch (err) {
+    console.error('❌ /org/:namespace/activate error:', err);
     res.status(500).json({ success: false, error: 'Activation failed' });
   }
 });

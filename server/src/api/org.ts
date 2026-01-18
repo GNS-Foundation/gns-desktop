@@ -260,7 +260,7 @@ router.post('/register', async (req: Request, res: Response) => {
       });
     }
 
-    // Check if namespace already taken
+    // Check if namespace already taken (Active/Verified)
     const { data: existing } = await supabase
       .from('namespaces')
       .select('namespace')
@@ -269,6 +269,20 @@ router.post('/register', async (req: Request, res: Response) => {
 
     if (existing) {
       return res.status(400).json({ success: false, error: 'Namespace already taken' });
+    }
+
+    // Check if namespace is already in pending registrations
+    const { data: pendingReg } = await supabase
+      .from('org_registrations')
+      .select('namespace, status')
+      .eq('namespace', cleanNamespace)
+      .single();
+
+    if (pendingReg) {
+      return res.status(400).json({
+        success: false,
+        error: `Namespace '${cleanNamespace}' is already registered (Status: ${pendingReg.status})`
+      });
     }
 
     // Generate verification code
@@ -294,7 +308,7 @@ router.post('/register', async (req: Request, res: Response) => {
 
     if (error) {
       console.error('❌ Supabase error:', error);
-      return res.status(500).json({ success: false, error: 'Registration failed' });
+      return res.status(500).json({ success: false, error: 'Registration failed', details: error.message });
     }
 
     console.log(`✅ Registration created: ${cleanNamespace}@`);
@@ -317,9 +331,9 @@ router.post('/register', async (req: Request, res: Response) => {
       message: 'Add the DNS TXT record to verify domain ownership.',
     });
 
-  } catch (err) {
+  } catch (err: any) {
     console.error('❌ /org/register error:', err);
-    res.status(500).json({ success: false, error: 'Registration failed' });
+    res.status(500).json({ success: false, error: 'Registration failed', details: err.message || JSON.stringify(err) });
   }
 });
 

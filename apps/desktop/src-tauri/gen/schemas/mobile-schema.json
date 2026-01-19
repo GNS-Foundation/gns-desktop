@@ -2619,6 +2619,522 @@
           "markdownDescription": "Denies the watch_position command without any pre-configured scope."
         },
         {
+          "description": "All GNS permissions including dangerous operations\n#### This permission set includes:\n\n- `default`\n- `allow-delete-identity`\n- `trajectory`",
+          "type": "string",
+          "const": "gns:all",
+          "markdownDescription": "All GNS permissions including dangerous operations\n#### This permission set includes:\n\n- `default`\n- `allow-delete-identity`\n- `trajectory`"
+        },
+        {
+          "description": "Default permissions for GNS Protocol plugin - enables identity, messaging, resolution, and trust operations\n#### This permission set includes:\n\n- `allow-create-identity`\n- `allow-load-identity`\n- `allow-get-identity`\n- `allow-list-identities`\n- `allow-export-identity`\n- `allow-import-identity`\n- `allow-get-public-key`\n- `allow-sign-message`\n- `allow-verify-signature`\n- `allow-set-default-identity`\n- `allow-send-message`\n- `allow-get-messages`\n- `allow-get-message`\n- `allow-decrypt-message`\n- `allow-mark-as-read`\n- `allow-delete-message`\n- `allow-get-conversations`\n- `allow-resolve-handle`\n- `allow-resolve-identity`\n- `allow-is-handle-available`\n- `allow-claim-handle`\n- `allow-release-handle`\n- `allow-get-record`\n- `allow-update-record`\n- `allow-get-trust-score`\n- `allow-get-trust-details`\n- `allow-verify-identity`",
+          "type": "string",
+          "const": "gns:default",
+          "markdownDescription": "Default permissions for GNS Protocol plugin - enables identity, messaging, resolution, and trust operations\n#### This permission set includes:\n\n- `allow-create-identity`\n- `allow-load-identity`\n- `allow-get-identity`\n- `allow-list-identities`\n- `allow-export-identity`\n- `allow-import-identity`\n- `allow-get-public-key`\n- `allow-sign-message`\n- `allow-verify-signature`\n- `allow-set-default-identity`\n- `allow-send-message`\n- `allow-get-messages`\n- `allow-get-message`\n- `allow-decrypt-message`\n- `allow-mark-as-read`\n- `allow-delete-message`\n- `allow-get-conversations`\n- `allow-resolve-handle`\n- `allow-resolve-identity`\n- `allow-is-handle-available`\n- `allow-claim-handle`\n- `allow-release-handle`\n- `allow-get-record`\n- `allow-update-record`\n- `allow-get-trust-score`\n- `allow-get-trust-details`\n- `allow-verify-identity`"
+        },
+        {
+          "description": "Full identity management\n#### This permission set includes:\n\n- `allow-create-identity`\n- `allow-load-identity`\n- `allow-get-identity`\n- `allow-list-identities`\n- `allow-delete-identity`\n- `allow-export-identity`\n- `allow-import-identity`\n- `allow-set-default-identity`",
+          "type": "string",
+          "const": "gns:identity-management",
+          "markdownDescription": "Full identity management\n#### This permission set includes:\n\n- `allow-create-identity`\n- `allow-load-identity`\n- `allow-get-identity`\n- `allow-list-identities`\n- `allow-delete-identity`\n- `allow-export-identity`\n- `allow-import-identity`\n- `allow-set-default-identity`"
+        },
+        {
+          "description": "Full messaging capabilities\n#### This permission set includes:\n\n- `allow-send-message`\n- `allow-get-messages`\n- `allow-get-message`\n- `allow-decrypt-message`\n- `allow-mark-as-read`\n- `allow-delete-message`\n- `allow-get-conversations`\n- `allow-resolve-handle`",
+          "type": "string",
+          "const": "gns:messaging",
+          "markdownDescription": "Full messaging capabilities\n#### This permission set includes:\n\n- `allow-send-message`\n- `allow-get-messages`\n- `allow-get-message`\n- `allow-decrypt-message`\n- `allow-mark-as-read`\n- `allow-delete-message`\n- `allow-get-conversations`\n- `allow-resolve-handle`"
+        },
+        {
+          "description": "Read-only access to GNS data\n#### This permission set includes:\n\n- `allow-get-identity`\n- `allow-list-identities`\n- `allow-get-public-key`\n- `allow-verify-signature`\n- `allow-get-messages`\n- `allow-get-message`\n- `allow-get-conversations`\n- `allow-resolve-handle`\n- `allow-resolve-identity`\n- `allow-is-handle-available`\n- `allow-get-record`\n- `allow-get-trust-score`\n- `allow-get-trust-details`\n- `allow-verify-identity`",
+          "type": "string",
+          "const": "gns:read-only",
+          "markdownDescription": "Read-only access to GNS data\n#### This permission set includes:\n\n- `allow-get-identity`\n- `allow-list-identities`\n- `allow-get-public-key`\n- `allow-verify-signature`\n- `allow-get-messages`\n- `allow-get-message`\n- `allow-get-conversations`\n- `allow-resolve-handle`\n- `allow-resolve-identity`\n- `allow-is-handle-available`\n- `allow-get-record`\n- `allow-get-trust-score`\n- `allow-get-trust-details`\n- `allow-verify-identity`"
+        },
+        {
+          "description": "Breadcrumb collection and epoch publishing\n#### This permission set includes:\n\n- `allow-start-collection`\n- `allow-stop-collection`\n- `allow-get-breadcrumbs`\n- `allow-publish-epoch`",
+          "type": "string",
+          "const": "gns:trajectory",
+          "markdownDescription": "Breadcrumb collection and epoch publishing\n#### This permission set includes:\n\n- `allow-start-collection`\n- `allow-stop-collection`\n- `allow-get-breadcrumbs`\n- `allow-publish-epoch`"
+        },
+        {
+          "description": "Enables the add_breadcrumb command without any pre-configured scope.",
+          "type": "string",
+          "const": "gns:allow-add-breadcrumb",
+          "markdownDescription": "Enables the add_breadcrumb command without any pre-configured scope."
+        },
+        {
+          "description": "Allows claiming @handles",
+          "type": "string",
+          "const": "gns:allow-claim-handle",
+          "markdownDescription": "Allows claiming @handles"
+        },
+        {
+          "description": "Allows creating new GNS identities",
+          "type": "string",
+          "const": "gns:allow-create-identity",
+          "markdownDescription": "Allows creating new GNS identities"
+        },
+        {
+          "description": "Allows decrypting messages",
+          "type": "string",
+          "const": "gns:allow-decrypt-message",
+          "markdownDescription": "Allows decrypting messages"
+        },
+        {
+          "description": "Allows deleting identities - DANGEROUS",
+          "type": "string",
+          "const": "gns:allow-delete-identity",
+          "markdownDescription": "Allows deleting identities - DANGEROUS"
+        },
+        {
+          "description": "Allows deleting messages",
+          "type": "string",
+          "const": "gns:allow-delete-message",
+          "markdownDescription": "Allows deleting messages"
+        },
+        {
+          "description": "Allows exporting identity for backup",
+          "type": "string",
+          "const": "gns:allow-export-identity",
+          "markdownDescription": "Allows exporting identity for backup"
+        },
+        {
+          "description": "Enables the export_trajectory command without any pre-configured scope.",
+          "type": "string",
+          "const": "gns:allow-export-trajectory",
+          "markdownDescription": "Enables the export_trajectory command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the get_breadcrumb_count command without any pre-configured scope.",
+          "type": "string",
+          "const": "gns:allow-get-breadcrumb-count",
+          "markdownDescription": "Enables the get_breadcrumb_count command without any pre-configured scope."
+        },
+        {
+          "description": "Allows retrieving breadcrumbs",
+          "type": "string",
+          "const": "gns:allow-get-breadcrumbs",
+          "markdownDescription": "Allows retrieving breadcrumbs"
+        },
+        {
+          "description": "Enables the get_collection_status command without any pre-configured scope.",
+          "type": "string",
+          "const": "gns:allow-get-collection-status",
+          "markdownDescription": "Enables the get_collection_status command without any pre-configured scope."
+        },
+        {
+          "description": "Allows listing conversations",
+          "type": "string",
+          "const": "gns:allow-get-conversations",
+          "markdownDescription": "Allows listing conversations"
+        },
+        {
+          "description": "Enables the get_epochs command without any pre-configured scope.",
+          "type": "string",
+          "const": "gns:allow-get-epochs",
+          "markdownDescription": "Enables the get_epochs command without any pre-configured scope."
+        },
+        {
+          "description": "Allows getting identity information",
+          "type": "string",
+          "const": "gns:allow-get-identity",
+          "markdownDescription": "Allows getting identity information"
+        },
+        {
+          "description": "Allows getting a single message",
+          "type": "string",
+          "const": "gns:allow-get-message",
+          "markdownDescription": "Allows getting a single message"
+        },
+        {
+          "description": "Allows retrieving messages",
+          "type": "string",
+          "const": "gns:allow-get-messages",
+          "markdownDescription": "Allows retrieving messages"
+        },
+        {
+          "description": "Allows getting active public key",
+          "type": "string",
+          "const": "gns:allow-get-public-key",
+          "markdownDescription": "Allows getting active public key"
+        },
+        {
+          "description": "Allows getting GNS records",
+          "type": "string",
+          "const": "gns:allow-get-record",
+          "markdownDescription": "Allows getting GNS records"
+        },
+        {
+          "description": "Enables the get_trajectory_stats command without any pre-configured scope.",
+          "type": "string",
+          "const": "gns:allow-get-trajectory-stats",
+          "markdownDescription": "Enables the get_trajectory_stats command without any pre-configured scope."
+        },
+        {
+          "description": "Allows getting detailed trust breakdown",
+          "type": "string",
+          "const": "gns:allow-get-trust-details",
+          "markdownDescription": "Allows getting detailed trust breakdown"
+        },
+        {
+          "description": "Allows getting trust scores",
+          "type": "string",
+          "const": "gns:allow-get-trust-score",
+          "markdownDescription": "Allows getting trust scores"
+        },
+        {
+          "description": "Allows importing identity from backup",
+          "type": "string",
+          "const": "gns:allow-import-identity",
+          "markdownDescription": "Allows importing identity from backup"
+        },
+        {
+          "description": "Enables the import_trajectory command without any pre-configured scope.",
+          "type": "string",
+          "const": "gns:allow-import-trajectory",
+          "markdownDescription": "Enables the import_trajectory command without any pre-configured scope."
+        },
+        {
+          "description": "Allows checking handle availability",
+          "type": "string",
+          "const": "gns:allow-is-handle-available",
+          "markdownDescription": "Allows checking handle availability"
+        },
+        {
+          "description": "Allows listing all identities",
+          "type": "string",
+          "const": "gns:allow-list-identities",
+          "markdownDescription": "Allows listing all identities"
+        },
+        {
+          "description": "Allows loading existing identities",
+          "type": "string",
+          "const": "gns:allow-load-identity",
+          "markdownDescription": "Allows loading existing identities"
+        },
+        {
+          "description": "Allows marking messages as read",
+          "type": "string",
+          "const": "gns:allow-mark-as-read",
+          "markdownDescription": "Allows marking messages as read"
+        },
+        {
+          "description": "Allows publishing epochs",
+          "type": "string",
+          "const": "gns:allow-publish-epoch",
+          "markdownDescription": "Allows publishing epochs"
+        },
+        {
+          "description": "Allows releasing @handles",
+          "type": "string",
+          "const": "gns:allow-release-handle",
+          "markdownDescription": "Allows releasing @handles"
+        },
+        {
+          "description": "Allows resolving @handles to public keys",
+          "type": "string",
+          "const": "gns:allow-resolve-handle",
+          "markdownDescription": "Allows resolving @handles to public keys"
+        },
+        {
+          "description": "Allows resolving identities to GNS records",
+          "type": "string",
+          "const": "gns:allow-resolve-identity",
+          "markdownDescription": "Allows resolving identities to GNS records"
+        },
+        {
+          "description": "Allows sending encrypted messages",
+          "type": "string",
+          "const": "gns:allow-send-message",
+          "markdownDescription": "Allows sending encrypted messages"
+        },
+        {
+          "description": "Allows setting default identity",
+          "type": "string",
+          "const": "gns:allow-set-default-identity",
+          "markdownDescription": "Allows setting default identity"
+        },
+        {
+          "description": "Allows signing messages with identity key",
+          "type": "string",
+          "const": "gns:allow-sign-message",
+          "markdownDescription": "Allows signing messages with identity key"
+        },
+        {
+          "description": "Allows starting breadcrumb collection",
+          "type": "string",
+          "const": "gns:allow-start-collection",
+          "markdownDescription": "Allows starting breadcrumb collection"
+        },
+        {
+          "description": "Allows stopping breadcrumb collection",
+          "type": "string",
+          "const": "gns:allow-stop-collection",
+          "markdownDescription": "Allows stopping breadcrumb collection"
+        },
+        {
+          "description": "Allows updating GNS records",
+          "type": "string",
+          "const": "gns:allow-update-record",
+          "markdownDescription": "Allows updating GNS records"
+        },
+        {
+          "description": "Enables the verify_chain command without any pre-configured scope.",
+          "type": "string",
+          "const": "gns:allow-verify-chain",
+          "markdownDescription": "Enables the verify_chain command without any pre-configured scope."
+        },
+        {
+          "description": "Allows verifying identity trust",
+          "type": "string",
+          "const": "gns:allow-verify-identity",
+          "markdownDescription": "Allows verifying identity trust"
+        },
+        {
+          "description": "Allows verifying signatures",
+          "type": "string",
+          "const": "gns:allow-verify-signature",
+          "markdownDescription": "Allows verifying signatures"
+        },
+        {
+          "description": "Denies the add_breadcrumb command without any pre-configured scope.",
+          "type": "string",
+          "const": "gns:deny-add-breadcrumb",
+          "markdownDescription": "Denies the add_breadcrumb command without any pre-configured scope."
+        },
+        {
+          "description": "Denies claiming handles",
+          "type": "string",
+          "const": "gns:deny-claim-handle",
+          "markdownDescription": "Denies claiming handles"
+        },
+        {
+          "description": "Denies creating new GNS identities",
+          "type": "string",
+          "const": "gns:deny-create-identity",
+          "markdownDescription": "Denies creating new GNS identities"
+        },
+        {
+          "description": "Denies decrypting messages",
+          "type": "string",
+          "const": "gns:deny-decrypt-message",
+          "markdownDescription": "Denies decrypting messages"
+        },
+        {
+          "description": "Denies deleting identities",
+          "type": "string",
+          "const": "gns:deny-delete-identity",
+          "markdownDescription": "Denies deleting identities"
+        },
+        {
+          "description": "Denies deleting messages",
+          "type": "string",
+          "const": "gns:deny-delete-message",
+          "markdownDescription": "Denies deleting messages"
+        },
+        {
+          "description": "Denies exporting identity",
+          "type": "string",
+          "const": "gns:deny-export-identity",
+          "markdownDescription": "Denies exporting identity"
+        },
+        {
+          "description": "Denies the export_trajectory command without any pre-configured scope.",
+          "type": "string",
+          "const": "gns:deny-export-trajectory",
+          "markdownDescription": "Denies the export_trajectory command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the get_breadcrumb_count command without any pre-configured scope.",
+          "type": "string",
+          "const": "gns:deny-get-breadcrumb-count",
+          "markdownDescription": "Denies the get_breadcrumb_count command without any pre-configured scope."
+        },
+        {
+          "description": "Denies retrieving breadcrumbs",
+          "type": "string",
+          "const": "gns:deny-get-breadcrumbs",
+          "markdownDescription": "Denies retrieving breadcrumbs"
+        },
+        {
+          "description": "Denies the get_collection_status command without any pre-configured scope.",
+          "type": "string",
+          "const": "gns:deny-get-collection-status",
+          "markdownDescription": "Denies the get_collection_status command without any pre-configured scope."
+        },
+        {
+          "description": "Denies listing conversations",
+          "type": "string",
+          "const": "gns:deny-get-conversations",
+          "markdownDescription": "Denies listing conversations"
+        },
+        {
+          "description": "Denies the get_epochs command without any pre-configured scope.",
+          "type": "string",
+          "const": "gns:deny-get-epochs",
+          "markdownDescription": "Denies the get_epochs command without any pre-configured scope."
+        },
+        {
+          "description": "Denies getting identity information",
+          "type": "string",
+          "const": "gns:deny-get-identity",
+          "markdownDescription": "Denies getting identity information"
+        },
+        {
+          "description": "Denies getting a single message",
+          "type": "string",
+          "const": "gns:deny-get-message",
+          "markdownDescription": "Denies getting a single message"
+        },
+        {
+          "description": "Denies retrieving messages",
+          "type": "string",
+          "const": "gns:deny-get-messages",
+          "markdownDescription": "Denies retrieving messages"
+        },
+        {
+          "description": "Denies getting active public key",
+          "type": "string",
+          "const": "gns:deny-get-public-key",
+          "markdownDescription": "Denies getting active public key"
+        },
+        {
+          "description": "Denies getting GNS records",
+          "type": "string",
+          "const": "gns:deny-get-record",
+          "markdownDescription": "Denies getting GNS records"
+        },
+        {
+          "description": "Denies the get_trajectory_stats command without any pre-configured scope.",
+          "type": "string",
+          "const": "gns:deny-get-trajectory-stats",
+          "markdownDescription": "Denies the get_trajectory_stats command without any pre-configured scope."
+        },
+        {
+          "description": "Denies getting trust details",
+          "type": "string",
+          "const": "gns:deny-get-trust-details",
+          "markdownDescription": "Denies getting trust details"
+        },
+        {
+          "description": "Denies getting trust scores",
+          "type": "string",
+          "const": "gns:deny-get-trust-score",
+          "markdownDescription": "Denies getting trust scores"
+        },
+        {
+          "description": "Denies importing identity",
+          "type": "string",
+          "const": "gns:deny-import-identity",
+          "markdownDescription": "Denies importing identity"
+        },
+        {
+          "description": "Denies the import_trajectory command without any pre-configured scope.",
+          "type": "string",
+          "const": "gns:deny-import-trajectory",
+          "markdownDescription": "Denies the import_trajectory command without any pre-configured scope."
+        },
+        {
+          "description": "Denies checking handle availability",
+          "type": "string",
+          "const": "gns:deny-is-handle-available",
+          "markdownDescription": "Denies checking handle availability"
+        },
+        {
+          "description": "Denies listing all identities",
+          "type": "string",
+          "const": "gns:deny-list-identities",
+          "markdownDescription": "Denies listing all identities"
+        },
+        {
+          "description": "Denies loading existing identities",
+          "type": "string",
+          "const": "gns:deny-load-identity",
+          "markdownDescription": "Denies loading existing identities"
+        },
+        {
+          "description": "Denies marking messages as read",
+          "type": "string",
+          "const": "gns:deny-mark-as-read",
+          "markdownDescription": "Denies marking messages as read"
+        },
+        {
+          "description": "Denies publishing epochs",
+          "type": "string",
+          "const": "gns:deny-publish-epoch",
+          "markdownDescription": "Denies publishing epochs"
+        },
+        {
+          "description": "Denies releasing handles",
+          "type": "string",
+          "const": "gns:deny-release-handle",
+          "markdownDescription": "Denies releasing handles"
+        },
+        {
+          "description": "Denies resolving handles",
+          "type": "string",
+          "const": "gns:deny-resolve-handle",
+          "markdownDescription": "Denies resolving handles"
+        },
+        {
+          "description": "Denies resolving identities",
+          "type": "string",
+          "const": "gns:deny-resolve-identity",
+          "markdownDescription": "Denies resolving identities"
+        },
+        {
+          "description": "Denies sending messages",
+          "type": "string",
+          "const": "gns:deny-send-message",
+          "markdownDescription": "Denies sending messages"
+        },
+        {
+          "description": "Denies setting default identity",
+          "type": "string",
+          "const": "gns:deny-set-default-identity",
+          "markdownDescription": "Denies setting default identity"
+        },
+        {
+          "description": "Denies signing messages",
+          "type": "string",
+          "const": "gns:deny-sign-message",
+          "markdownDescription": "Denies signing messages"
+        },
+        {
+          "description": "Denies starting collection",
+          "type": "string",
+          "const": "gns:deny-start-collection",
+          "markdownDescription": "Denies starting collection"
+        },
+        {
+          "description": "Denies stopping collection",
+          "type": "string",
+          "const": "gns:deny-stop-collection",
+          "markdownDescription": "Denies stopping collection"
+        },
+        {
+          "description": "Denies updating GNS records",
+          "type": "string",
+          "const": "gns:deny-update-record",
+          "markdownDescription": "Denies updating GNS records"
+        },
+        {
+          "description": "Denies the verify_chain command without any pre-configured scope.",
+          "type": "string",
+          "const": "gns:deny-verify-chain",
+          "markdownDescription": "Denies the verify_chain command without any pre-configured scope."
+        },
+        {
+          "description": "Denies verifying identity trust",
+          "type": "string",
+          "const": "gns:deny-verify-identity",
+          "markdownDescription": "Denies verifying identity trust"
+        },
+        {
+          "description": "Denies verifying signatures",
+          "type": "string",
+          "const": "gns:deny-verify-signature",
+          "markdownDescription": "Denies verifying signatures"
+        },
+        {
           "description": "This permission set configures what kind of\nfetch operations are available from the http plugin.\n\nThis enables all fetch operations but does not\nallow explicitly any origins to be fetched. This needs to\nbe manually configured before usage.\n\n#### Granted Permissions\n\nAll fetch operations are enabled.\n\n\n#### This default permission set includes:\n\n- `allow-fetch`\n- `allow-fetch-cancel`\n- `allow-fetch-read-body`\n- `allow-fetch-send`",
           "type": "string",
           "const": "http:default",

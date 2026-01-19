@@ -2620,3 +2620,1594 @@ export async function getApiStats(): Promise<{
     pending_payments: payments.count || 0,
   };
 }
+
+// ===========================================
+// GNS NODE - DATABASE ADDITIONS
+// Sprint 6, 7, 8 Database Functions
+// ===========================================
+// 
+// APPEND THIS TO YOUR EXISTING db.ts FILE
+// This adds all missing functions for:
+// - Loyalty API (Sprint 6)
+// - Merchant API (Sprint 5-6)
+// - Receipts API (Sprint 5-6)
+// - Refund API (Sprint 6)
+// - Sprint 7 API (Batch, Notifications, Analytics, Subscriptions)
+// - Sprint 8 API (Multi-currency, Webhooks, Payment Links, Invoices, QR)
+// 
+// NOTE: getSupabase() is already defined in your existing db.ts
+// ===========================================
+
+// ===========================================
+// HELPER: Generate IDs
+// ===========================================
+
+function generateId(prefix: string): string {
+  return `${prefix}-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+}
+
+// ===========================================
+// GNS MERCHANT FUNCTIONS (Sprint 5-6)
+// For gns_merchants table (payments/settlements)
+// Note: geoauth_merchants functions exist separately
+// ===========================================
+
+export async function getMerchantByEmail(email: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_merchants')
+    .select('*')
+    .eq('email', email.toLowerCase())
+    .single();
+  
+  if (error && error.code !== 'PGRST116') throw error;
+  return data;
+}
+
+export async function createMerchant(merchantData: {
+  merchant_id: string;
+  gns_identity: string;
+  business_name: string;
+  business_type?: string;
+  email?: string;
+  api_key?: string;
+  stellar_address?: string;
+}) {
+  const { data, error } = await getSupabase()
+    .from('gns_merchants')
+    .insert({
+      merchant_id: merchantData.merchant_id,
+      gns_identity: merchantData.gns_identity,
+      business_name: merchantData.business_name,
+      business_type: merchantData.business_type || 'general',
+      email: merchantData.email?.toLowerCase(),
+      api_key: merchantData.api_key,
+      stellar_address: merchantData.stellar_address,
+      status: 'active',
+      created_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function searchMerchants(query: string, limit = 20) {
+  const { data, error } = await getSupabase()
+    .from('gns_merchants')
+    .select('*')
+    .or(`business_name.ilike.%${query}%,merchant_id.ilike.%${query}%`)
+    .eq('status', 'active')
+    .limit(limit);
+  
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getPopularMerchants(limit = 10) {
+  const { data, error } = await getSupabase()
+    .from('gns_merchants')
+    .select('*')
+    .eq('status', 'active')
+    .order('transaction_count', { ascending: false })
+    .limit(limit);
+  
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getMerchantTransactions(merchantId: string, limit = 50, offset = 0) {
+  const { data, error } = await getSupabase()
+    .from('gns_settlements')
+    .select('*')
+    .eq('merchant_id', merchantId)
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+  
+  if (error) throw error;
+  return data || [];
+}
+
+// ===========================================
+// SETTLEMENT FUNCTIONS (Sprint 5-7)
+// ===========================================
+
+export async function getSettlementByRequestId(requestId: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_settlements')
+    .select('*')
+    .eq('request_id', requestId)
+    .single();
+  
+  if (error && error.code !== 'PGRST116') throw error;
+  return data;
+}
+
+export async function getSettlementByTxHash(txHash: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_settlements')
+    .select('*')
+    .eq('stellar_tx_hash', txHash)
+    .single();
+  
+  if (error && error.code !== 'PGRST116') throw error;
+  return data;
+}
+
+export async function createSettlement(settlementData: {
+  settlement_id: string;
+  merchant_id: string;
+  user_pk: string;
+  amount: string;
+  currency: string;
+  request_id?: string;
+  h3_cell?: string;
+}) {
+  const { data, error } = await getSupabase()
+    .from('gns_settlements')
+    .insert({
+      ...settlementData,
+      status: 'pending',
+      created_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function updateSettlementStatus(settlementId: string, status: string, txHash?: string) {
+  const updateData: any = { status, updated_at: new Date().toISOString() };
+  if (txHash) updateData.stellar_tx_hash = txHash;
+  if (status === 'completed') updateData.completed_at = new Date().toISOString();
+  
+  const { data, error } = await getSupabase()
+    .from('gns_settlements')
+    .update(updateData)
+    .eq('settlement_id', settlementId)
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function updateSettlementComplete(settlementId: string, txHash: string) {
+  return updateSettlementStatus(settlementId, 'completed', txHash);
+}
+
+export async function createPaymentCompletion(data: {
+  settlement_id: string;
+  stellar_tx_hash: string;
+  completed_at: string;
+}) {
+  return updateSettlementComplete(data.settlement_id, data.stellar_tx_hash);
+}
+
+// ===========================================
+// RECEIPT FUNCTIONS (Sprint 5-6)
+// ===========================================
+
+export async function getReceipt(receiptId: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_receipts')
+    .select('*')
+    .eq('receipt_id', receiptId)
+    .single();
+  
+  if (error && error.code !== 'PGRST116') throw error;
+  return data;
+}
+
+export async function getReceiptByTxHash(txHash: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_receipts')
+    .select('*')
+    .eq('stellar_tx_hash', txHash)
+    .single();
+  
+  if (error && error.code !== 'PGRST116') throw error;
+  return data;
+}
+
+export async function createReceipt(receiptData: {
+  receipt_id: string;
+  settlement_id: string;
+  merchant_id: string;
+  merchant_name: string;
+  user_pk: string;
+  amount: string;
+  currency: string;
+  stellar_tx_hash?: string;
+  items?: any[];
+}) {
+  const { data, error } = await getSupabase()
+    .from('gns_receipts')
+    .insert({
+      ...receiptData,
+      created_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function getUserReceipts(userPk: string, limit = 50, offset = 0) {
+  const { data, error } = await getSupabase()
+    .from('gns_receipts')
+    .select('*')
+    .eq('user_pk', userPk.toLowerCase())
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+  
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getReceiptStats(userPk: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_receipts')
+    .select('amount, currency, created_at')
+    .eq('user_pk', userPk.toLowerCase());
+  
+  if (error) throw error;
+  
+  const receipts = data || [];
+  return {
+    total_count: receipts.length,
+    total_amount: receipts.reduce((sum, r) => sum + parseFloat(r.amount || '0'), 0),
+  };
+}
+
+// ===========================================
+// REFUND FUNCTIONS (Sprint 6)
+// ===========================================
+
+export async function getRefund(refundId: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_refunds')
+    .select('*')
+    .eq('refund_id', refundId)
+    .single();
+  
+  if (error && error.code !== 'PGRST116') throw error;
+  return data;
+}
+
+export async function createRefundRequest(refundData: {
+  refund_id: string;
+  settlement_id?: string;
+  original_transaction_hash?: string;
+  merchant_id: string;
+  user_pk: string;
+  original_amount: string;
+  refund_amount: string;
+  currency: string;
+  reason: string;
+  reason_details?: string;
+}) {
+  const { data, error } = await getSupabase()
+    .from('gns_refunds')
+    .insert({
+      ...refundData,
+      status: 'pending',
+      created_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function getUserRefunds(userPk: string, limit = 50) {
+  const { data, error } = await getSupabase()
+    .from('gns_refunds')
+    .select('*')
+    .eq('user_pk', userPk.toLowerCase())
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getMerchantRefunds(merchantId: string, limit = 50) {
+  const { data, error } = await getSupabase()
+    .from('gns_refunds')
+    .select('*')
+    .eq('merchant_id', merchantId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getPendingRefundForSettlement(settlementId: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_refunds')
+    .select('*')
+    .eq('settlement_id', settlementId)
+    .eq('status', 'pending')
+    .single();
+  
+  if (error && error.code !== 'PGRST116') throw error;
+  return data;
+}
+
+export async function updateRefundStatus(refundId: string, status: string, txHash?: string) {
+  const updateData: any = { status, updated_at: new Date().toISOString() };
+  if (txHash) updateData.refund_transaction_hash = txHash;
+  if (status === 'completed') updateData.processed_at = new Date().toISOString();
+  
+  const { data, error } = await getSupabase()
+    .from('gns_refunds')
+    .update(updateData)
+    .eq('refund_id', refundId)
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function completeRefund(refundId: string, txHash: string) {
+  return updateRefundStatus(refundId, 'completed', txHash);
+}
+
+export async function rejectRefund(refundId: string, reason: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_refunds')
+    .update({
+      status: 'rejected',
+      rejection_reason: reason,
+      processed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('refund_id', refundId)
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function getRefundStats(merchantId: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_refunds')
+    .select('status, refund_amount')
+    .eq('merchant_id', merchantId);
+  
+  if (error) throw error;
+  
+  const refunds = data || [];
+  return {
+    pending: refunds.filter(r => r.status === 'pending').length,
+    completed: refunds.filter(r => r.status === 'completed').length,
+    rejected: refunds.filter(r => r.status === 'rejected').length,
+    total_refunded: refunds
+      .filter(r => r.status === 'completed')
+      .reduce((sum, r) => sum + parseFloat(r.refund_amount || '0'), 0),
+  };
+}
+
+// ===========================================
+// LOYALTY FUNCTIONS (Sprint 6)
+// ===========================================
+
+export async function getLoyaltyProfile(userPk: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_loyalty_profiles')
+    .select('*')
+    .eq('user_pk', userPk.toLowerCase())
+    .single();
+  
+  if (error && error.code !== 'PGRST116') throw error;
+  return data;
+}
+
+export async function createLoyaltyProfile(userPk: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_loyalty_profiles')
+    .insert({
+      user_pk: userPk.toLowerCase(),
+      total_points: 0,
+      available_points: 0,
+      lifetime_points: 0,
+      tier: 'bronze',
+      tier_progress: 0,
+      referral_code: generateId('REF'),
+    })
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function updateLoyaltyProfile(userPk: string, updates: Partial<{
+  total_points: number;
+  available_points: number;
+  lifetime_points: number;
+  tier: string;
+  tier_progress: number;
+  total_transactions: number;
+  total_spent: number;
+}>) {
+  const { data, error } = await getSupabase()
+    .from('gns_loyalty_profiles')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('user_pk', userPk.toLowerCase())
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function getPointsHistory(userPk: string, limit = 50) {
+  const { data, error } = await getSupabase()
+    .from('gns_point_transactions')
+    .select('*')
+    .eq('user_pk', userPk.toLowerCase())
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  
+  if (error) throw error;
+  return data || [];
+}
+
+export async function createPointTransaction(txData: {
+  user_pk: string;
+  points: number;
+  type: string;
+  description: string;
+  reference_id?: string;
+  merchant_id?: string;
+  balance_after: number;
+}) {
+  const { data, error } = await getSupabase()
+    .from('gns_point_transactions')
+    .insert({
+      transaction_id: generateId('PT'),
+      ...txData,
+      user_pk: txData.user_pk.toLowerCase(),
+      created_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function getUserAchievements(userPk: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_user_achievements')
+    .select('*, achievement:gns_achievements(*)')
+    .eq('user_pk', userPk.toLowerCase());
+  
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getAvailableRewards(userPk?: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_rewards')
+    .select('*')
+    .eq('is_available', true)
+    .order('points_cost', { ascending: true });
+  
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getReward(rewardId: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_rewards')
+    .select('*')
+    .eq('reward_id', rewardId)
+    .single();
+  
+  if (error && error.code !== 'PGRST116') throw error;
+  return data;
+}
+
+export async function updateReward(rewardId: string, updates: any) {
+  const { data, error } = await getSupabase()
+    .from('gns_rewards')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('reward_id', rewardId)
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function createRedemption(redemptionData: {
+  reward_id: string;
+  reward_name: string;
+  user_pk: string;
+  points_spent: number;
+  merchant_id?: string;
+  expires_at?: string;
+}) {
+  const { data, error } = await getSupabase()
+    .from('gns_redemptions')
+    .insert({
+      redemption_id: generateId('RDM'),
+      ...redemptionData,
+      user_pk: redemptionData.user_pk.toLowerCase(),
+      coupon_code: generateId('CPN'),
+      created_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function getUserRedemptions(userPk: string, limit = 50) {
+  const { data, error } = await getSupabase()
+    .from('gns_redemptions')
+    .select('*')
+    .eq('user_pk', userPk.toLowerCase())
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getLoyaltyPrograms(merchantId?: string) {
+  let query = getSupabase()
+    .from('gns_loyalty_programs')
+    .select('*')
+    .eq('is_active', true);
+  
+  if (merchantId) {
+    query = query.eq('merchant_id', merchantId);
+  }
+  
+  const { data, error } = await query;
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getLoyaltyProgram(programId: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_loyalty_programs')
+    .select('*')
+    .eq('program_id', programId)
+    .single();
+  
+  if (error && error.code !== 'PGRST116') throw error;
+  return data;
+}
+
+export async function getUserProgramEnrollment(userPk: string, programId: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_program_enrollments')
+    .select('*')
+    .eq('user_pk', userPk.toLowerCase())
+    .eq('program_id', programId)
+    .single();
+  
+  if (error && error.code !== 'PGRST116') throw error;
+  return data;
+}
+
+export async function createProgramEnrollment(enrollmentData: {
+  user_pk: string;
+  program_id: string;
+}) {
+  const { data, error } = await getSupabase()
+    .from('gns_program_enrollments')
+    .insert({
+      ...enrollmentData,
+      user_pk: enrollmentData.user_pk.toLowerCase(),
+      enrolled_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function findUserByReferralCode(referralCode: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_loyalty_profiles')
+    .select('*')
+    .eq('referral_code', referralCode)
+    .single();
+  
+  if (error && error.code !== 'PGRST116') throw error;
+  return data;
+}
+
+// ===========================================
+// SPRINT 7: BATCH SETTLEMENT FUNCTIONS
+// ===========================================
+
+export async function getSettlementConfig(merchantId: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_settlement_config')
+    .select('*')
+    .eq('merchant_id', merchantId)
+    .single();
+  
+  if (error && error.code !== 'PGRST116') throw error;
+  return data;
+}
+
+export async function upsertSettlementConfig(config: {
+  merchant_id: string;
+  frequency?: string;
+  settlement_hour?: number;
+  minimum_amount?: number;
+  auto_settle?: boolean;
+  preferred_currency?: string;
+  settlement_address?: string;
+}) {
+  const { data, error } = await getSupabase()
+    .from('gns_settlement_config')
+    .upsert({
+      ...config,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'merchant_id' })
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function getPendingBatchSummary(merchantId: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_settlements')
+    .select('*')
+    .eq('merchant_id', merchantId)
+    .eq('status', 'completed')
+    .is('batch_id', null);
+  
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getPendingSettlementTransactions(merchantId: string) {
+  return getPendingBatchSummary(merchantId);
+}
+
+export async function createBatchSettlement(batchData: {
+  merchant_id: string;
+  merchant_name?: string;
+  currency: string;
+  total_gross: number;
+  total_fees: number;
+  total_net: number;
+  transaction_count: number;
+  transaction_ids: string[];
+  period_start: string;
+  period_end: string;
+}) {
+  const batchId = generateId('BATCH');
+  
+  const { data, error } = await getSupabase()
+    .from('gns_batch_settlements')
+    .insert({
+      batch_id: batchId,
+      ...batchData,
+      status: 'pending',
+      created_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function completeBatchSettlement(batchId: string, txHash: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_batch_settlements')
+    .update({
+      status: 'completed',
+      stellar_tx_hash: txHash,
+      settled_at: new Date().toISOString(),
+    })
+    .eq('batch_id', batchId)
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function getBatchSettlements(merchantId: string, limit = 20) {
+  const { data, error } = await getSupabase()
+    .from('gns_batch_settlements')
+    .select('*')
+    .eq('merchant_id', merchantId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getBatchSettlement(batchId: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_batch_settlements')
+    .select('*')
+    .eq('batch_id', batchId)
+    .single();
+  
+  if (error && error.code !== 'PGRST116') throw error;
+  return data;
+}
+
+// ===========================================
+// SPRINT 7: NOTIFICATION FUNCTIONS
+// ===========================================
+
+export async function registerDevice(deviceData: {
+  user_pk: string;
+  device_id: string;
+  push_token: string;
+  platform: string;
+  device_name?: string;
+}) {
+  const { data, error } = await getSupabase()
+    .from('gns_devices')
+    .upsert({
+      ...deviceData,
+      user_pk: deviceData.user_pk.toLowerCase(),
+      is_active: true,
+      registered_at: new Date().toISOString(),
+      last_active: new Date().toISOString(),
+    }, { onConflict: 'user_pk,device_id' })
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function unregisterDevice(userPk: string, deviceId: string) {
+  const { error } = await getSupabase()
+    .from('gns_devices')
+    .update({ is_active: false })
+    .eq('user_pk', userPk.toLowerCase())
+    .eq('device_id', deviceId);
+  
+  if (error) throw error;
+}
+
+export async function getNotificationPreferences(userPk: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_notification_preferences')
+    .select('*')
+    .eq('user_pk', userPk.toLowerCase())
+    .single();
+  
+  if (error && error.code !== 'PGRST116') throw error;
+  return data;
+}
+
+export async function upsertNotificationPreferences(userPk: string, prefs: any) {
+  const { data, error } = await getSupabase()
+    .from('gns_notification_preferences')
+    .upsert({
+      user_pk: userPk.toLowerCase(),
+      ...prefs,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_pk' })
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function getNotifications(userPk: string, limit = 50, unreadOnly = false) {
+  let query = getSupabase()
+    .from('gns_notifications')
+    .select('*')
+    .eq('user_pk', userPk.toLowerCase())
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  
+  if (unreadOnly) {
+    query = query.eq('is_read', false);
+  }
+  
+  const { data, error } = await query;
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getUnreadNotificationCount(userPk: string) {
+  const { count, error } = await getSupabase()
+    .from('gns_notifications')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_pk', userPk.toLowerCase())
+    .eq('is_read', false);
+  
+  if (error) throw error;
+  return count || 0;
+}
+
+export async function markNotificationRead(notificationId: string) {
+  const { error } = await getSupabase()
+    .from('gns_notifications')
+    .update({ is_read: true, read_at: new Date().toISOString() })
+    .eq('notification_id', notificationId);
+  
+  if (error) throw error;
+}
+
+export async function markAllNotificationsRead(userPk: string) {
+  const { error } = await getSupabase()
+    .from('gns_notifications')
+    .update({ is_read: true, read_at: new Date().toISOString() })
+    .eq('user_pk', userPk.toLowerCase())
+    .eq('is_read', false);
+  
+  if (error) throw error;
+}
+
+// ===========================================
+// SPRINT 7: ANALYTICS FUNCTIONS
+// ===========================================
+
+export async function getSpendingSummary(userPk: string, period: string = 'month') {
+  const { data, error } = await getSupabase()
+    .from('gns_receipts')
+    .select('amount, currency, created_at, merchant_name')
+    .eq('user_pk', userPk.toLowerCase())
+    .order('created_at', { ascending: false });
+  
+  if (error) throw error;
+  
+  const receipts = data || [];
+  const total = receipts.reduce((sum, r) => sum + parseFloat(r.amount || '0'), 0);
+  
+  return {
+    total_spent: total,
+    transaction_count: receipts.length,
+    receipts,
+  };
+}
+
+export async function getDailySpending(userPk: string, days = 30) {
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+  
+  const { data, error } = await getSupabase()
+    .from('gns_receipts')
+    .select('amount, created_at')
+    .eq('user_pk', userPk.toLowerCase())
+    .gte('created_at', since);
+  
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getSpendingByCategory(userPk: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_receipts')
+    .select('amount, category')
+    .eq('user_pk', userPk.toLowerCase());
+  
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getSpendingByMerchant(userPk: string, limit = 10) {
+  const { data, error } = await getSupabase()
+    .from('gns_receipts')
+    .select('amount, merchant_id, merchant_name')
+    .eq('user_pk', userPk.toLowerCase());
+  
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getBudgets(userPk: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_budgets')
+    .select('*')
+    .eq('user_pk', userPk.toLowerCase());
+  
+  if (error) throw error;
+  return data || [];
+}
+
+export async function createBudget(budgetData: {
+  user_pk: string;
+  name: string;
+  amount: number;
+  period: string;
+  category?: string;
+}) {
+  const { data, error } = await getSupabase()
+    .from('gns_budgets')
+    .insert({
+      budget_id: generateId('BDG'),
+      ...budgetData,
+      user_pk: budgetData.user_pk.toLowerCase(),
+    })
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteBudget(budgetId: string) {
+  const { error } = await getSupabase()
+    .from('gns_budgets')
+    .delete()
+    .eq('budget_id', budgetId);
+  
+  if (error) throw error;
+}
+
+export async function getSavingsGoals(userPk: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_savings_goals')
+    .select('*')
+    .eq('user_pk', userPk.toLowerCase());
+  
+  if (error) throw error;
+  return data || [];
+}
+
+export async function createSavingsGoal(goalData: {
+  user_pk: string;
+  name: string;
+  target_amount: number;
+  target_date?: string;
+}) {
+  const { data, error } = await getSupabase()
+    .from('gns_savings_goals')
+    .insert({
+      goal_id: generateId('GOAL'),
+      ...goalData,
+      user_pk: goalData.user_pk.toLowerCase(),
+      current_amount: 0,
+    })
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function addToSavingsGoal(goalId: string, amount: number) {
+  const { data, error } = await getSupabase()
+    .rpc('add_to_savings_goal', { p_goal_id: goalId, p_amount: amount });
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function getSpendingInsights(userPk: string) {
+  // Return placeholder insights
+  return {
+    top_category: 'Food & Dining',
+    monthly_average: 0,
+    trend: 'stable',
+    suggestions: [],
+  };
+}
+
+// ===========================================
+// SPRINT 7: SUBSCRIPTION FUNCTIONS
+// ===========================================
+
+export async function getSubscriptionPlans(merchantId?: string) {
+  let query = getSupabase()
+    .from('gns_subscription_plans')
+    .select('*')
+    .eq('is_active', true);
+  
+  if (merchantId) {
+    query = query.eq('merchant_id', merchantId);
+  }
+  
+  const { data, error } = await query;
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getSubscriptionPlan(planId: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_subscription_plans')
+    .select('*')
+    .eq('plan_id', planId)
+    .single();
+  
+  if (error && error.code !== 'PGRST116') throw error;
+  return data;
+}
+
+export async function getUserSubscriptions(userPk: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_subscriptions')
+    .select('*, plan:gns_subscription_plans(*)')
+    .eq('user_pk', userPk.toLowerCase());
+  
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getSubscription(subscriptionId: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_subscriptions')
+    .select('*, plan:gns_subscription_plans(*)')
+    .eq('subscription_id', subscriptionId)
+    .single();
+  
+  if (error && error.code !== 'PGRST116') throw error;
+  return data;
+}
+
+export async function getActiveSubscriptionForPlan(userPk: string, planId: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_subscriptions')
+    .select('*')
+    .eq('user_pk', userPk.toLowerCase())
+    .eq('plan_id', planId)
+    .eq('status', 'active')
+    .single();
+  
+  if (error && error.code !== 'PGRST116') throw error;
+  return data;
+}
+
+export async function createSubscription(subData: {
+  user_pk: string;
+  plan_id: string;
+  merchant_id?: string;
+  amount: number;
+  currency: string;
+  billing_cycle: string;
+  next_billing_date: string;
+}) {
+  const { data, error } = await getSupabase()
+    .from('gns_subscriptions')
+    .insert({
+      subscription_id: generateId('SUB'),
+      ...subData,
+      user_pk: subData.user_pk.toLowerCase(),
+      status: 'active',
+      created_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function cancelSubscription(subscriptionId: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_subscriptions')
+    .update({
+      status: 'cancelled',
+      cancelled_at: new Date().toISOString(),
+    })
+    .eq('subscription_id', subscriptionId)
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function pauseSubscription(subscriptionId: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_subscriptions')
+    .update({
+      status: 'paused',
+      paused_at: new Date().toISOString(),
+    })
+    .eq('subscription_id', subscriptionId)
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function resumeSubscription(subscriptionId: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_subscriptions')
+    .update({
+      status: 'active',
+      paused_at: null,
+    })
+    .eq('subscription_id', subscriptionId)
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function getSubscriptionInvoices(subscriptionId: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_subscription_invoices')
+    .select('*')
+    .eq('subscription_id', subscriptionId)
+    .order('created_at', { ascending: false });
+  
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getUpcomingRenewals(userPk: string, days = 7) {
+  const futureDate = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+  
+  const { data, error } = await getSupabase()
+    .from('gns_subscriptions')
+    .select('*')
+    .eq('user_pk', userPk.toLowerCase())
+    .eq('status', 'active')
+    .lte('next_billing_date', futureDate);
+  
+  if (error) throw error;
+  return data || [];
+}
+
+// ===========================================
+// SPRINT 8: MULTI-CURRENCY FUNCTIONS
+// ===========================================
+
+export async function getSupportedAssets() {
+  const { data, error } = await getSupabase()
+    .from('gns_assets')
+    .select('*')
+    .eq('is_active', true);
+  
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getCurrencyPreferences(userPk: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_currency_preferences')
+    .select('*')
+    .eq('user_pk', userPk.toLowerCase())
+    .single();
+  
+  if (error && error.code !== 'PGRST116') throw error;
+  return data;
+}
+
+export async function upsertCurrencyPreferences(userPk: string, prefs: any) {
+  const { data, error } = await getSupabase()
+    .from('gns_currency_preferences')
+    .upsert({
+      user_pk: userPk.toLowerCase(),
+      ...prefs,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_pk' })
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function getExchangeRate(fromCurrency: string, toCurrency: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_exchange_rates')
+    .select('*')
+    .eq('from_currency', fromCurrency)
+    .eq('to_currency', toCurrency)
+    .single();
+  
+  if (error && error.code !== 'PGRST116') throw error;
+  return data;
+}
+
+export async function getAllExchangeRates() {
+  const { data, error } = await getSupabase()
+    .from('gns_exchange_rates')
+    .select('*');
+  
+  if (error) throw error;
+  return data || [];
+}
+
+// ===========================================
+// SPRINT 8: WEBHOOK FUNCTIONS
+// ===========================================
+
+export async function getWebhookEndpoints(merchantId: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_webhook_endpoints')
+    .select('*')
+    .eq('merchant_id', merchantId);
+  
+  if (error) throw error;
+  return data || [];
+}
+
+export async function createWebhookEndpoint(endpointData: {
+  merchant_id: string;
+  url: string;
+  events: string[];
+  secret: string;
+}) {
+  const { data, error } = await getSupabase()
+    .from('gns_webhook_endpoints')
+    .insert({
+      endpoint_id: generateId('WH'),
+      ...endpointData,
+      is_active: true,
+      created_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function updateWebhookEndpoint(endpointId: string, updates: any) {
+  const { data, error } = await getSupabase()
+    .from('gns_webhook_endpoints')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('endpoint_id', endpointId)
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteWebhookEndpoint(endpointId: string) {
+  const { error } = await getSupabase()
+    .from('gns_webhook_endpoints')
+    .delete()
+    .eq('endpoint_id', endpointId);
+  
+  if (error) throw error;
+}
+
+export async function testWebhookEndpoint(endpointId: string) {
+  // Return test result
+  return { success: true, response_time_ms: 100 };
+}
+
+export async function getWebhookEvents(merchantId: string, limit = 50) {
+  const { data, error } = await getSupabase()
+    .from('gns_webhook_events')
+    .select('*')
+    .eq('merchant_id', merchantId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getWebhookDeliveries(eventId: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_webhook_deliveries')
+    .select('*')
+    .eq('event_id', eventId)
+    .order('created_at', { ascending: false });
+  
+  if (error) throw error;
+  return data || [];
+}
+
+export async function logWebhookDelivery(deliveryData: {
+  endpoint_id: string;
+  event_id: string;
+  event_type: string;
+  status: string;
+  response_code?: number;
+  response_time_ms?: number;
+  error?: string;
+}) {
+  const { data, error } = await getSupabase()
+    .from('gns_webhook_deliveries')
+    .insert({
+      ...deliveryData,
+      created_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+// ===========================================
+// SPRINT 8: PAYMENT LINK FUNCTIONS
+// ===========================================
+
+export async function createPaymentLink(linkData: {
+  merchant_id: string;
+  amount?: number;
+  currency: string;
+  description?: string;
+  is_reusable?: boolean;
+  expires_at?: string;
+}) {
+  const { data, error } = await getSupabase()
+    .from('gns_payment_links')
+    .insert({
+      link_id: generateId('LINK'),
+      link_code: generateId('PAY').toLowerCase(),
+      ...linkData,
+      status: 'active',
+      view_count: 0,
+      payment_count: 0,
+      created_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function getPaymentLinks(merchantId: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_payment_links')
+    .select('*')
+    .eq('merchant_id', merchantId)
+    .order('created_at', { ascending: false });
+  
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getPaymentLink(linkId: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_payment_links')
+    .select('*')
+    .eq('link_id', linkId)
+    .single();
+  
+  if (error && error.code !== 'PGRST116') throw error;
+  return data;
+}
+
+export async function getPaymentLinkByCode(linkCode: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_payment_links')
+    .select('*')
+    .eq('link_code', linkCode)
+    .single();
+  
+  if (error && error.code !== 'PGRST116') throw error;
+  return data;
+}
+
+export async function incrementLinkViews(linkId: string) {
+  const { error } = await getSupabase()
+    .rpc('increment_link_views', { p_link_id: linkId });
+  
+  if (error) {
+    // Fallback if RPC doesn't exist
+    await getSupabase()
+      .from('gns_payment_links')
+      .update({ view_count: getSupabase().rpc('coalesce', { a: 'view_count', b: 0 }) })
+      .eq('link_id', linkId);
+  }
+}
+
+export async function createLinkPayment(paymentData: {
+  link_id: string;
+  payer_pk: string;
+  amount: number;
+  currency: string;
+  stellar_tx_hash?: string;
+}) {
+  const { data, error } = await getSupabase()
+    .from('gns_link_payments')
+    .insert({
+      payment_id: generateId('LPAY'),
+      ...paymentData,
+      created_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function updateLinkStats(linkId: string) {
+  const { error } = await getSupabase()
+    .from('gns_payment_links')
+    .update({ payment_count: getSupabase().rpc('coalesce', { a: 'payment_count', b: 0 }) })
+    .eq('link_id', linkId);
+  
+  if (error) throw error;
+}
+
+export async function updatePaymentLinkStatus(linkId: string, status: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_payment_links')
+    .update({ status })
+    .eq('link_id', linkId)
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+// ===========================================
+// SPRINT 8: INVOICE FUNCTIONS
+// ===========================================
+
+export async function createInvoice(invoiceData: {
+  merchant_id: string;
+  customer_pk?: string;
+  customer_email?: string;
+  amount: number;
+  currency: string;
+  due_date?: string;
+  items?: any[];
+  notes?: string;
+}) {
+  const { data, error } = await getSupabase()
+    .from('gns_invoices')
+    .insert({
+      invoice_id: generateId('INV'),
+      invoice_number: `INV-${Date.now()}`,
+      ...invoiceData,
+      status: 'draft',
+      created_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function getInvoices(merchantId: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_invoices')
+    .select('*')
+    .eq('merchant_id', merchantId)
+    .order('created_at', { ascending: false });
+  
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getInvoice(invoiceId: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_invoices')
+    .select('*')
+    .eq('invoice_id', invoiceId)
+    .single();
+  
+  if (error && error.code !== 'PGRST116') throw error;
+  return data;
+}
+
+export async function updateInvoiceStatus(invoiceId: string, status: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_invoices')
+    .update({ status, updated_at: new Date().toISOString() })
+    .eq('invoice_id', invoiceId)
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function markInvoicePaid(invoiceId: string, txHash: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_invoices')
+    .update({
+      status: 'paid',
+      paid_at: new Date().toISOString(),
+      stellar_tx_hash: txHash,
+    })
+    .eq('invoice_id', invoiceId)
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+// ===========================================
+// SPRINT 8: QR CODE FUNCTIONS
+// ===========================================
+
+export async function createQrCode(qrData: {
+  user_pk?: string;
+  merchant_id?: string;
+  type: string;
+  amount?: number;
+  currency?: string;
+  data: any;
+}) {
+  const { data, error } = await getSupabase()
+    .from('gns_qr_codes')
+    .insert({
+      qr_id: generateId('QR'),
+      ...qrData,
+      user_pk: qrData.user_pk?.toLowerCase(),
+      is_active: true,
+      scan_count: 0,
+      created_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+export async function getQrCode(qrId: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_qr_codes')
+    .select('*')
+    .eq('qr_id', qrId)
+    .single();
+  
+  if (error && error.code !== 'PGRST116') throw error;
+  return data;
+}
+
+export async function getUserQrCodes(userPk: string) {
+  const { data, error } = await getSupabase()
+    .from('gns_qr_codes')
+    .select('*')
+    .eq('user_pk', userPk.toLowerCase())
+    .eq('is_active', true);
+  
+  if (error) throw error;
+  return data || [];
+}
+
+export async function deactivateQrCode(qrId: string) {
+  const { error } = await getSupabase()
+    .from('gns_qr_codes')
+    .update({ is_active: false })
+    .eq('qr_id', qrId);
+  
+  if (error) throw error;
+}

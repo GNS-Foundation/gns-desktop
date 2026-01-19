@@ -14,12 +14,14 @@ pub mod network;
 pub mod stellar;
 pub mod storage;
 pub mod dix;
+pub mod home;
 
 use crate::crypto::IdentityManager;
 use crate::network::{ApiClient, RelayConnection};
 use crate::stellar::StellarService;
 use crate::storage::Database;
 use crate::dix::DixService;
+use crate::home::HomeService;
 
 #[cfg(any(target_os = "ios", target_os = "android"))]
 use crate::location::BreadcrumbCollector;
@@ -32,6 +34,7 @@ pub struct AppState {
     pub relay: Arc<Mutex<RelayConnection>>,
     pub stellar: Arc<Mutex<StellarService>>,
     pub dix: Arc<DixService>,
+    pub home: Arc<HomeService>,
     #[cfg(any(target_os = "ios", target_os = "android"))]
     pub breadcrumb_collector: Arc<Mutex<BreadcrumbCollector>>,
 }
@@ -45,6 +48,7 @@ fn setup_app_state() -> Result<AppState, Box<dyn std::error::Error>> {
     let stellar = Arc::new(Mutex::new(StellarService::mainnet()));
 
     let dix = Arc::new(DixService::new(identity.clone(), api.clone()));
+    let home = Arc::new(HomeService::new(identity.clone()));
 
     #[cfg(any(target_os = "ios", target_os = "android"))]
     let breadcrumb_collector = Arc::new(Mutex::new(BreadcrumbCollector::new()));
@@ -56,6 +60,7 @@ fn setup_app_state() -> Result<AppState, Box<dyn std::error::Error>> {
         relay,
         stellar,
         dix,
+        home,
         #[cfg(any(target_os = "ios", target_os = "android"))]
         breadcrumb_collector,
     })
@@ -152,7 +157,12 @@ pub fn run() {
             commands::dix::like_post,
             commands::dix::repost_post,
             commands::dix::get_post,
+            commands::dix::get_post,
             commands::dix::get_posts_by_user,
+            // Home commands
+            commands::home::discover_hubs,
+            commands::home::get_devices,
+            commands::home::execute_command,
         ])
         .run(tauri::generate_context!())
         .expect("Error while running GNS Browser");

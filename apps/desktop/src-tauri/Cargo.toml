@@ -29,7 +29,7 @@ tauri-plugin-notification = "2.0"
 tauri-plugin-dialog = "2.0"
 
 # GNS Protocol Plugin - Core identity and messaging
-tauri-plugin-gns = { path = "../../../../tauri-plugin-gns", features = ["trajectory", "payments", "dix"] }
+tauri-plugin-gns = { path = "../../../../tauri-plugin-gns", features = [] }
 
 # Our crypto core
 gns-crypto-core = { path = "../../../crates/gns-crypto-core" }
@@ -69,6 +69,7 @@ stellar-xdr = { version = "21.1", features = ["std", "curr"] }
 # Logging
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+mdns-sd = "0.15.1"
 
 [target.'cfg(target_os = "ios")'.dependencies]
 # iOS-specific plugins

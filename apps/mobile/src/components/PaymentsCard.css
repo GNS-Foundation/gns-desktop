@@ -1,5 +1,6 @@
 .payments-card {
-    background: linear-gradient(135deg, rgba(25, 118, 210, 0.15) 0%, rgba(103, 58, 183, 0.1) 100%);
+    /* Flutter: AppTheme.primary (Purple) .15 -> AppTheme.secondary (Pink) .1 */
+    background: linear-gradient(135deg, rgba(124, 58, 237, 0.15) 0%, rgba(236, 72, 153, 0.1) 100%);
     border-radius: 16px;
     padding: 16px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);

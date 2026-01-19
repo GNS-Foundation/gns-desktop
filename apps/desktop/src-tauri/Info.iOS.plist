@@ -8,5 +8,12 @@
     <string>Gcrumbs collects location in the background to build your proof-of-trajectory and claim your @handle.</string>
     <key>NSCameraUsageDescription</key>
     <string>Camera access is needed to scan QR codes for browser pairing.</string>
+    <key>NFCReaderUsageDescription</key>
+    <string>Gcrumbs uses NFC to verify other users and process payments via tap-to-pay.</string>
+    <key>com.apple.developer.nfc.readersession.formats</key>
+    <array>
+       <string>NDEF</string>
+       <string>TAG</string>
+    </array>
 </dict>
 </plist>

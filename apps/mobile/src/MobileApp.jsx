@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { HomeTab } from './screens/HomeTab';
 import { MessagesTab } from './screens/MessagesTab';
 import { ContactsTab } from './screens/ContactsTab';
 import { HistoryTab } from './screens/HistoryTab';
 import { SettingsTab } from './screens/SettingsTab';
+import { TvRemoteScreen } from './screens/TvRemoteScreen';
 import './MobileApp.css';
 
-export default function MobileApp() {
+function TabsLayout() {
     const [activeTab, setActiveTab] = useState(0);
 
     const tabs = [
@@ -38,5 +40,21 @@ export default function MobileApp() {
                 ))}
             </nav>
         </div>
+    );
+}
+
+import { FinancialHubScreen } from './screens/FinancialHubScreen';
+import { SendMoneyScreen } from './screens/SendMoneyScreen';
+import { TransactionHistoryScreen } from './screens/TransactionHistoryScreen';
+
+export default function MobileApp() {
+    return (
+        <Routes>
+            <Route path="/" element={<TabsLayout />} />
+            <Route path="/remote/:id" element={<TvRemoteScreen />} />
+            <Route path="/financial" element={<FinancialHubScreen />} />
+            <Route path="/financial/send" element={<SendMoneyScreen />} />
+            <Route path="/financial/history" element={<TransactionHistoryScreen />} />
+        </Routes>
     );
 }

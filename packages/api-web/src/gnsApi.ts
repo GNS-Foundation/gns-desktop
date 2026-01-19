@@ -254,9 +254,70 @@ function extractLinks(profile: any) {
     return links;
 }
 
+// ===========================================
+// ORG REGISTRATION API
+// ===========================================
+
+export async function checkOrgAvailability(namespace: string) {
+    try {
+        const response = await fetch(`${GNS_API_BASE}/org/check/${namespace}`);
+        return await response.json();
+    } catch (error) {
+        console.error('Org availability check error:', error);
+        // Fallback to offline/error state
+        return { success: false, error: 'Network error checking availability' };
+    }
+}
+
+export async function registerOrg(data: any) {
+    try {
+        const response = await fetch(`${GNS_API_BASE}/org/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+        return await response.json();
+    } catch (error) {
+        console.error('Org registration error:', error);
+        return { success: false, letter: 'Network error submitting registration' };
+    }
+}
+
+export async function verifyOrgDns(data: { registration_id?: string; domain?: string; verification_code?: string }) {
+    try {
+        const response = await fetch(`${GNS_API_BASE}/org/verify`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+        return await response.json();
+    } catch (error) {
+        console.error('Org verification error:', error);
+        return { success: false, error: 'Network error verifying DNS' };
+    }
+}
+
+export async function activateOrg(namespace: string, adminPk: string, email: string) {
+    try {
+        const response = await fetch(`${GNS_API_BASE}/org/${namespace}/activate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ admin_pk: adminPk, email }),
+        });
+        return await response.json();
+    } catch (error) {
+        console.error('Org activation error:', error);
+        return { success: false, error: 'Network error activating namespace' };
+    }
+}
+
 export default {
     getProfileByHandle,
     resolveHandle,
     searchIdentities,
+    checkOrgAvailability,
+    registerOrg,
+    verifyOrgDns,
+    activateOrg,
     SAMPLE_PROFILES
 };

@@ -23,7 +23,7 @@
 import { Router, Request, Response } from 'express';
 import { isValidPublicKey, verifySignature } from '../lib/crypto';
 import * as db from '../lib/db';
-import { StellarService } from '../lib/stellar_service';
+import { StellarService } from '../services/stellar_service';
 import { ApiResponse } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { createHash } from 'crypto';

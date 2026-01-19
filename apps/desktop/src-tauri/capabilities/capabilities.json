@@ -11,10 +11,10 @@
         "core:event:allow-listen",
         "core:event:allow-emit",
         "shell:allow-open",
+        "gns:default",
         "http:default",
         "os:default",
         "notification:default",
-        "dialog:default",
-        "gns:default"
+        "dialog:default"
     ]
 }

@@ -89,7 +89,7 @@ impl HomeService {
                             let ip = info.get_addresses().iter().next();
                             let port = info.get_port();
                             
-                            if let (Some(ip), Some(port)) = (ip, &port) {
+                            if let Some(ip) = ip {
                                 let url = format!("http://{}:{}", ip, port);
                                 
                                 // Try to fetch hub info from the discovered URL

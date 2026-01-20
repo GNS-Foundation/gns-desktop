@@ -68,7 +68,7 @@ setInterval(() => {
   for (const [id, request] of paymentRequests.entries()) {
     if (request.status === 'pending' && request.expires_at < now) {
       request.status = 'expired';
-      
+
       // Trigger webhook
       WebhookEvents.paymentRequestCompleted(request.creator_pk, request.payment_id, '', undefined);
     }
@@ -111,7 +111,7 @@ async function resolveToPublicKey(identifier: string): Promise<{
     // It's a public key
     const publicKey = identifier.toLowerCase();
     if (!isValidPublicKey(publicKey)) return null;
-    
+
     const alias = await db.getAliasByPk(publicKey);
     return { publicKey, handle: alias?.handle };
   }
@@ -379,10 +379,10 @@ router.get('/:paymentId', async (req: Request, res: Response) => {
 
     const response: PaymentResponse = {
       payment_id: request.payment_id,
-      status: request.status,
+      status: request.status as PaymentStatus,
       from_pk: request.from_pk,
       from_handle: fromHandle ? `@${fromHandle}` : undefined,
-      to_pk: request.to_pk,
+      to_pk: request.to_pk || '', // Should ensure this is valid but for now default to empty if undefined
       to_handle: request.to_handle ? `@${request.to_handle}` : undefined,
       amount: request.amount,
       currency: request.currency as PaymentCurrency,
@@ -547,7 +547,7 @@ router.post('/:paymentId/pay', authenticateGns, async (req: AuthenticatedRequest
 
     // Trigger webhooks
     WebhookEvents.paymentReceived(
-      request.to_pk,
+      request.to_pk || '',
       paymentId,
       request.amount,
       request.currency,
@@ -584,7 +584,7 @@ router.post('/:paymentId/pay', authenticateGns, async (req: AuthenticatedRequest
       status: 'completed',
       from_pk: payerPk,
       from_handle: payerAlias?.handle ? `@${payerAlias.handle}` : undefined,
-      to_pk: request.to_pk,
+      to_pk: request.to_pk || '',
       to_handle: request.to_handle ? `@${request.to_handle}` : undefined,
       amount: request.amount,
       currency: request.currency as PaymentCurrency,
@@ -794,7 +794,7 @@ router.get('/balance', authenticateGns, async (req: AuthenticatedRequest, res: R
 
     // In production, query Stellar Horizon for actual balances
     // For now, return placeholder
-    
+
     // TODO: Integrate with stellar_service.ts
     // const balances = await stellarService.getBalances(publicKey);
 

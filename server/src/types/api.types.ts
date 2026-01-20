@@ -286,18 +286,20 @@ export interface PaymentResponse {
 export interface DbPaymentRequest {
   id: string;
   payment_id: string;
-  creator_pk: PublicKey;
-  to_pk: PublicKey;
+  creator_pk: string;
+  from_pk?: string;
+  to_pk?: string;
   to_handle?: string;
   amount: string;
   currency: string;
+  status: string;
+  metadata?: any;
   memo?: string;
   reference_id?: string;
   callback_url?: string;
-  status: PaymentStatus;
-  from_pk?: string;
   stellar_tx_hash?: string;
   created_at: string;
+  updated_at?: string;
   expires_at: string;
   completed_at?: string;
 }
@@ -349,4 +351,217 @@ export interface AuthenticatedRequest extends Request {
     handle?: string;
     scope?: string;
   };
+}
+
+// ===========================================
+// PAYMENT & MERCHANT EXTENDED TYPES
+// ===========================================
+
+export interface RedemptionInput {
+  redemption_id?: string;
+  reward_id: string;
+  reward_name: string;
+  user_pk: string;
+  points_spent: number;
+  merchant_id?: string;
+  expires_at?: string;
+  coupon_code?: string;
+}
+
+export interface MerchantInput {
+  merchant_id: string;
+  name: string;
+  display_name?: string;
+  stellar_address: string;
+  category?: string;
+  status?: string;
+  email: string;
+  phone?: string;
+  website?: string;
+  address?: string;
+  h3_cell?: string;
+  accepted_currencies?: string[];
+  settlement_currency?: string;
+  instant_settlement?: boolean;
+  api_key_hash?: string;
+  logo_url?: string;
+}
+
+export interface SettlementInput {
+  settlement_id: string;
+  merchant_id: string;
+  user_pk: string;
+  amount: string;
+  currency?: string;
+  asset_code: string;
+  request_id: string;
+  h3_cell?: string;
+  from_stellar_address: string;
+  to_stellar_address: string;
+  memo?: string;
+  order_id?: string;
+  status?: string;
+}
+
+export interface SettlementCompletionInput {
+  settlement_id: string;
+  stellar_tx_hash: string;
+  completed_at: string;
+  merchant_id?: string;
+  request_id?: string;
+}
+
+export interface ReceiptInput {
+  receipt_id: string;
+  settlement_id?: string;
+  merchant_id: string;
+  merchant_name: string;
+  user_pk: string;
+  amount: string;
+  currency: string;
+  order_id?: string;
+  stellar_tx_hash?: string;
+  transaction_hash?: string;
+  items?: any[];
+  status?: string;
+  timestamp?: string;
+  metadata?: any;
+}
+
+export interface RefundInput {
+  refund_id: string;
+  settlement_id: string;
+  original_receipt_id?: string;
+  original_transaction_hash?: string;
+  merchant_id: string;
+  user_pk: string;
+  original_amount: string;
+  refund_amount: string;
+  currency: string;
+  reason: string;
+  reason_details?: string | null;
+  status: string;
+}
+
+export interface SubscriptionInput {
+  user_pk: string;
+  plan_id: string;
+  plan_name?: string;
+  merchant_id?: string;
+  merchant_name?: string;
+  amount: number;
+  currency: string;
+  billing_cycle: string;
+  next_billing_date: string;
+  payment_method?: string;
+  trial_days?: number;
+}
+
+export interface PaymentCompletionInput {
+  request_id: string;
+  merchant_id: string;
+  user_pk: string;
+  transaction_hash: string;
+  amount: string;
+  currency: string;
+  order_id?: string;
+  completed_at: string;
+}
+
+export interface LoyaltyProfileInput {
+  user_pk: string;
+  total_points?: number;
+  available_points?: number;
+  lifetime_points?: number;
+  tier?: string;
+  tier_progress?: number;
+  total_transactions?: number;
+  total_spent?: number;
+}
+
+export interface PointTransactionInput {
+  transaction_id: string;
+  user_pk: string;
+  points: number;
+  type: string;
+  description: string;
+  reference_id?: string;
+  merchant_id?: string;
+  merchant_name?: string;
+  balance_after: number;
+}
+
+export interface WebhookEventFilter {
+  status?: string;
+  limit?: number;
+  eventId?: string;
+  event_id?: string;
+  event_type?: string;
+  type?: string;
+  offset?: number;
+}
+
+export interface PaymentLinkInput {
+  merchant_id: string;
+  type?: string;
+  amount?: number;
+  currency: string;
+  description?: string;
+  is_reusable?: boolean;
+  expires_at?: string | null;
+  short_code?: string;
+  fixed_amount?: number;
+  min_amount?: number;
+  max_amount?: number;
+  title?: string;
+  max_payments?: number;
+  collect_email?: boolean;
+  collect_phone?: boolean;
+  metadata?: any;
+}
+
+export interface LinkPaymentInput {
+  link_id: string;
+  payer_pk?: string;
+  payer_public_key?: string;
+  payer_email?: string;
+  amount: number;
+  currency: string;
+  stellar_tx_hash?: string;
+  payer_phone?: string;
+}
+
+export interface InvoiceInput {
+  merchant_id: string;
+  customer_pk?: string;
+  customer_public_key?: string;
+  customer_email?: string;
+  customer_handle?: string;
+  customer_name?: string;
+  amount: number;
+  currency: string;
+  due_date?: string;
+  items?: any[];
+  line_items?: any[];
+  subtotal?: number;
+  total_discount?: number;
+  total_tax?: number;
+  total?: number;
+  notes?: string;
+  terms?: string;
+  due_days?: number;
+}
+
+export interface QrCodeInput {
+  user_pk?: string;
+  merchant_id?: string;
+  type: string;
+  reference?: string;
+  amount?: number;
+  currency?: string;
+  data: any;
+  memo?: string;
+  default_memo?: string;
+  expires_at?: string;
+  single_use?: boolean;
 }

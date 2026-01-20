@@ -262,6 +262,156 @@ class StellarService {
   }
   
   // ===========================================
+  // GENERAL ASSET SENDING
+  // ===========================================
+  
+  /**
+   * Send native XLM
+   */
+  async sendXlm(
+    destinationAddress: string,
+    amount: string,
+    memo?: string
+  ): Promise<{ success: boolean; txHash?: string; error?: string }> {
+    if (!this.distributionKeypair) {
+      return { success: false, error: 'Distribution wallet not configured' };
+    }
+    
+    try {
+      const sourceAccount = await this.server.loadAccount(this.distributionKeypair.publicKey());
+      const exists = await this.accountExists(destinationAddress);
+      
+      let txBuilder = new StellarSdk.TransactionBuilder(sourceAccount, {
+        fee: StellarSdk.BASE_FEE,
+        networkPassphrase: CONFIG.networkPassphrase,
+      });
+      
+      if (exists) {
+        txBuilder = txBuilder.addOperation(StellarSdk.Operation.payment({
+          destination: destinationAddress,
+          asset: StellarSdk.Asset.native(),
+          amount: amount,
+        }));
+      } else {
+        txBuilder = txBuilder.addOperation(StellarSdk.Operation.createAccount({
+          destination: destinationAddress,
+          startingBalance: amount,
+        }));
+      }
+      
+      if (memo) {
+        txBuilder = txBuilder.addMemo(StellarSdk.Memo.text(memo));
+      }
+      
+      const transaction = txBuilder.setTimeout(30).build();
+      transaction.sign(this.distributionKeypair);
+      
+      const result = await this.server.submitTransaction(transaction);
+      return { success: true, txHash: result.hash };
+    } catch (e: any) {
+      console.error('[Stellar] sendXlm failed:', e.message);
+      return { success: false, error: e.message };
+    }
+  }
+  
+  /**
+   * Send any Stellar asset
+   */
+  async sendAsset(
+    destinationAddress: string,
+    assetCode: string,
+    assetIssuer: string | null,
+    amount: string,
+    memo?: string
+  ): Promise<{ success: boolean; txHash?: string; error?: string }> {
+    if (!this.distributionKeypair) {
+      return { success: false, error: 'Distribution wallet not configured' };
+    }
+    
+    try {
+      const sourceAccount = await this.server.loadAccount(this.distributionKeypair.publicKey());
+      
+      const asset = assetIssuer 
+        ? new StellarSdk.Asset(assetCode, assetIssuer)
+        : StellarSdk.Asset.native();
+      
+      let txBuilder = new StellarSdk.TransactionBuilder(sourceAccount, {
+        fee: StellarSdk.BASE_FEE,
+        networkPassphrase: CONFIG.networkPassphrase,
+      })
+        .addOperation(StellarSdk.Operation.payment({
+          destination: destinationAddress,
+          asset: asset,
+          amount: amount,
+        }));
+      
+      if (memo) {
+        txBuilder = txBuilder.addMemo(StellarSdk.Memo.text(memo));
+      }
+      
+      const transaction = txBuilder.setTimeout(30).build();
+      transaction.sign(this.distributionKeypair);
+      
+      const result = await this.server.submitTransaction(transaction);
+      return { success: true, txHash: result.hash };
+    } catch (e: any) {
+      console.error('[Stellar] sendAsset failed:', e.message);
+      return { success: false, error: e.message };
+    }
+  }
+  
+  /**
+   * Send GNS tokens
+   */
+  async sendGns(params: {
+    destination: string;
+    amount: string;
+    memo?: string;
+  }): Promise<{ success: boolean; txHash?: string; error?: string }> {
+    return this.sendAsset(
+      params.destination,
+      CONFIG.gnsAssetCode,
+      CONFIG.gnsIssuer,
+      params.amount,
+      params.memo
+    );
+  }
+  
+  /**
+   * Send USDC
+   */
+  async sendUsdc(params: {
+    destination: string;
+    amount: string;
+    memo?: string;
+  }): Promise<{ success: boolean; txHash?: string; error?: string }> {
+    return this.sendAsset(
+      params.destination,
+      'USDC',
+      'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN',
+      params.amount,
+      params.memo
+    );
+  }
+  
+  /**
+   * Send EURC
+   */
+  async sendEurc(params: {
+    destination: string;
+    amount: string;
+    memo?: string;
+  }): Promise<{ success: boolean; txHash?: string; error?: string }> {
+    return this.sendAsset(
+      params.destination,
+      'EURC',
+      'GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2',
+      params.amount,
+      params.memo
+    );
+  }
+  
+  // ===========================================
   // MAIN AIRDROP FUNCTION
   // ===========================================
   

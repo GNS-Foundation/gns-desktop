@@ -417,7 +417,7 @@ router.post('/settle', verifyUserAuth, async (req: UserRequest, res: Response) =
       // For GNS tokens, we need user's signed transaction
       // For now, we'll execute via distribution wallet for demo
       // In production, user would sign the transaction client-side
-      
+
       if (settlement.asset_code === 'XLM') {
         txResult = await stellarService.sendXlm(
           merchant.stellar_address,
@@ -427,17 +427,18 @@ router.post('/settle', verifyUserAuth, async (req: UserRequest, res: Response) =
         // For GNS/USDC/EURC, use asset payment
         txResult = await stellarService.sendAsset(
           merchant.stellar_address,
-          settlement.amount,
-          settlement.asset_code
+          settlement.asset_code,
+          null, // Issuer will be handled by stellarService based on code or use native/default
+          settlement.amount
         );
       }
 
     } catch (e: any) {
       console.error('Stellar transaction failed:', e);
-      
+
       // Update settlement status
       await db.updateSettlementStatus(transactionId, 'failed', e.message);
-      
+
       return res.status(500).json({
         success: false,
         error: `Payment failed: ${e.message}`,
@@ -446,7 +447,7 @@ router.post('/settle', verifyUserAuth, async (req: UserRequest, res: Response) =
 
     if (!txResult.success) {
       await db.updateSettlementStatus(transactionId, 'failed', txResult.error);
-      
+
       return res.status(500).json({
         success: false,
         error: txResult.error || 'Transaction failed',
@@ -509,7 +510,7 @@ router.post('/payment-complete', verifyUserAuth, async (req: UserRequest, res: R
 
     // Validate transaction exists on Stellar
     // In production, verify the transaction hash is real
-    
+
     // Store payment completion record
     await db.createPaymentCompletion({
       request_id,
@@ -568,7 +569,7 @@ router.get('/:merchantId/transactions', verifyMerchantAuth, async (req: Merchant
     // Calculate totals
     let totalAmount = 0;
     let totalFees = 0;
-    
+
     for (const tx of transactions) {
       if (tx.status === 'completed') {
         totalAmount += parseFloat(tx.amount);
@@ -699,7 +700,7 @@ function verifyMerchantSignature(
   signature: string
 ): boolean {
   if (!publicKey) return false;
-  
+
   // In production, use Ed25519 verification
   // For now, return true for demo
   try {

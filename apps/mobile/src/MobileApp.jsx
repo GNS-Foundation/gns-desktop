@@ -47,6 +47,8 @@ import { FinancialHubScreen } from './screens/FinancialHubScreen';
 import { SendMoneyScreen } from './screens/SendMoneyScreen';
 import { TransactionHistoryScreen } from './screens/TransactionHistoryScreen';
 
+import { ChatScreen } from './screens/ChatScreen';
+
 export default function MobileApp() {
     return (
         <Routes>
@@ -55,6 +57,7 @@ export default function MobileApp() {
             <Route path="/financial" element={<FinancialHubScreen />} />
             <Route path="/financial/send" element={<SendMoneyScreen />} />
             <Route path="/financial/history" element={<TransactionHistoryScreen />} />
+            <Route path="/chat/:threadId" element={<ChatScreen />} />
         </Routes>
     );
 }

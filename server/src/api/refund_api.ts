@@ -45,7 +45,7 @@ interface MerchantRequest extends Request {
 
 type RefundStatus = 'pending' | 'approved' | 'processing' | 'completed' | 'rejected' | 'failed' | 'cancelled';
 
-type RefundReason = 
+type RefundReason =
   | 'customer_request'
   | 'duplicate_payment'
   | 'incorrect_amount'
@@ -230,7 +230,7 @@ router.post('/request', verifyUserAuth, async (req: UserRequest, res: Response) 
 
     // Create refund request
     const refundId = `REF-${uuidv4().substring(0, 8).toUpperCase()}`;
-    
+
     const refund = await db.createRefundRequest({
       refund_id: refundId,
       settlement_id: settlement.settlement_id,
@@ -432,25 +432,22 @@ router.post('/:id/approve', verifyMerchantAuth, async (req: MerchantRequest, res
       switch (refund.currency.toUpperCase()) {
         case 'GNS':
           txResult = await stellarService.sendGns({
-            from: merchant.stellar_address,
-            to: refund.user_stellar_address,
-            amount: refundAmount,
+            destination: refund.user_stellar_address,
+            amount: refundAmount.toString(),
             memo: `Refund: ${refund.refund_id}`,
           });
           break;
         case 'USDC':
           txResult = await stellarService.sendUsdc({
-            from: merchant.stellar_address,
-            to: refund.user_stellar_address,
-            amount: refundAmount,
+            destination: refund.user_stellar_address,
+            amount: refundAmount.toString(),
             memo: `Refund: ${refund.refund_id}`,
           });
           break;
         case 'EURC':
           txResult = await stellarService.sendEurc({
-            from: merchant.stellar_address,
-            to: refund.user_stellar_address,
-            amount: refundAmount,
+            destination: refund.user_stellar_address,
+            amount: refundAmount.toString(),
             memo: `Refund: ${refund.refund_id}`,
           });
           break;
@@ -475,7 +472,7 @@ router.post('/:id/approve', verifyMerchantAuth, async (req: MerchantRequest, res
 
     // Update refund with transaction hash
     const updatedRefund = await db.completeRefund(id, {
-      refund_transaction_hash: txResult.hash,
+      refund_transaction_hash: txResult.txHash!,
       processed_at: new Date().toISOString(),
       processed_by: merchantId,
     });
@@ -483,7 +480,7 @@ router.post('/:id/approve', verifyMerchantAuth, async (req: MerchantRequest, res
     // Update original settlement status
     await db.updateSettlementStatus(refund.settlement_id, 'refunded');
 
-    console.log(`✅ Refund approved: ${id} → ${txResult.hash}`);
+    console.log(`✅ Refund approved: ${id} → ${txResult.txHash}`);
 
     return res.json({
       success: true,

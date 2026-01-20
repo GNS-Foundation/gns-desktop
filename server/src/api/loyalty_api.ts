@@ -151,7 +151,7 @@ router.get('/profile', verifyUserAuth, async (req: UserRequest, res: Response) =
 
     // Get or create loyalty profile
     let profile = await db.getLoyaltyProfile(userPk);
-    
+
     if (!profile) {
       // Create new profile
       profile = await db.createLoyaltyProfile({
@@ -406,7 +406,7 @@ router.post('/rewards/:id/redeem', verifyUserAuth, async (req: UserRequest, res:
       reward_name: reward.name,
       user_pk: userPk,
       points_spent: reward.points_cost,
-      coupon_code: couponCode,
+      coupon_code: couponCode || undefined,
       expires_at: reward.expires_at,
       merchant_id: reward.merchant_id,
     });

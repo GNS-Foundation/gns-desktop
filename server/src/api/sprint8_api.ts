@@ -78,7 +78,7 @@ router.get('/currency/preferences', verifyGnsAuth, async (req: AuthenticatedRequ
   try {
     const userPk = req.gnsPublicKey!;
     const prefs = await db.getCurrencyPreferences(userPk);
-    
+
     res.json({
       success: true,
       data: prefs || {
@@ -103,7 +103,7 @@ router.put('/currency/preferences', verifyGnsAuth, async (req: AuthenticatedRequ
   try {
     const userPk = req.gnsPublicKey!;
     const prefs = await db.upsertCurrencyPreferences(userPk, req.body);
-    
+
     res.json({ success: true, data: prefs, message: 'Preferences updated' });
   } catch (error) {
     console.error('PUT /currency/preferences error:', error);
@@ -118,23 +118,23 @@ router.put('/currency/preferences', verifyGnsAuth, async (req: AuthenticatedRequ
 router.get('/exchange/rate', async (req: Request, res: Response) => {
   try {
     const { from, to } = req.query;
-    
+
     if (!from || !to) {
       return res.status(400).json({
         success: false,
         error: 'Missing from and/or to parameters',
       });
     }
-    
+
     const rate = await db.getExchangeRate(from as string, to as string);
-    
+
     if (!rate) {
       return res.status(404).json({
         success: false,
         error: 'Exchange rate not available',
       });
     }
-    
+
     res.json({ success: true, data: rate });
   } catch (error) {
     console.error('GET /exchange/rate error:', error);
@@ -168,7 +168,7 @@ router.get('/webhooks/endpoints', verifyMerchantAuth, async (req: AuthenticatedR
   try {
     const merchantId = req.merchantId!;
     const endpoints = await db.getWebhookEndpoints(merchantId);
-    
+
     res.json({ success: true, data: endpoints });
   } catch (error) {
     console.error('GET /webhooks/endpoints error:', error);
@@ -184,17 +184,17 @@ router.post('/webhooks/endpoints', verifyMerchantAuth, async (req: Authenticated
   try {
     const merchantId = req.merchantId!;
     const { url, description, events } = req.body;
-    
+
     if (!url || !events || !Array.isArray(events)) {
       return res.status(400).json({
         success: false,
         error: 'Missing required fields: url, events[]',
       });
     }
-    
+
     // Generate secret
     const secret = `whsec_${crypto.randomBytes(24).toString('hex')}`;
-    
+
     const endpoint = await db.createWebhookEndpoint({
       merchant_id: merchantId,
       url,
@@ -202,9 +202,9 @@ router.post('/webhooks/endpoints', verifyMerchantAuth, async (req: Authenticated
       events,
       secret,
     });
-    
+
     console.log(`🪝 Webhook endpoint created: ${merchantId} -> ${url}`);
-    
+
     res.status(201).json({ success: true, data: endpoint });
   } catch (error) {
     console.error('POST /webhooks/endpoints error:', error);
@@ -220,13 +220,13 @@ router.put('/webhooks/endpoints/:endpointId', verifyMerchantAuth, async (req: Au
   try {
     const { endpointId } = req.params;
     const merchantId = req.merchantId!;
-    
+
     const endpoint = await db.updateWebhookEndpoint(endpointId, merchantId, req.body);
-    
+
     if (!endpoint) {
       return res.status(404).json({ success: false, error: 'Endpoint not found' });
     }
-    
+
     res.json({ success: true, data: endpoint });
   } catch (error) {
     console.error('PUT /webhooks/endpoints error:', error);
@@ -242,9 +242,9 @@ router.delete('/webhooks/endpoints/:endpointId', verifyMerchantAuth, async (req:
   try {
     const { endpointId } = req.params;
     const merchantId = req.merchantId!;
-    
+
     await db.deleteWebhookEndpoint(endpointId, merchantId);
-    
+
     res.json({ success: true, message: 'Endpoint deleted' });
   } catch (error) {
     console.error('DELETE /webhooks/endpoints error:', error);
@@ -260,9 +260,9 @@ router.post('/webhooks/endpoints/:endpointId/test', verifyMerchantAuth, async (r
   try {
     const { endpointId } = req.params;
     const merchantId = req.merchantId!;
-    
+
     const result = await db.testWebhookEndpoint(endpointId, merchantId);
-    
+
     res.json({ success: true, data: result });
   } catch (error) {
     console.error('POST /webhooks/endpoints/:id/test error:', error);
@@ -278,13 +278,13 @@ router.get('/webhooks/events', verifyMerchantAuth, async (req: AuthenticatedRequ
   try {
     const merchantId = req.merchantId!;
     const { type, limit = '50', offset = '0' } = req.query;
-    
+
     const events = await db.getWebhookEvents(merchantId, {
       type: type as string,
       limit: parseInt(limit as string),
       offset: parseInt(offset as string),
-    });
-    
+    } as any);
+
     res.json({ success: true, data: events });
   } catch (error) {
     console.error('GET /webhooks/events error:', error);
@@ -300,14 +300,14 @@ router.get('/webhooks/deliveries', verifyMerchantAuth, async (req: Authenticated
   try {
     const merchantId = req.merchantId!;
     const { event_id, endpoint_id, status, limit = '50' } = req.query;
-    
+
     const deliveries = await db.getWebhookDeliveries(merchantId, {
       eventId: event_id as string,
       endpointId: endpoint_id as string,
       status: status as string,
       limit: parseInt(limit as string),
-    });
-    
+    } as any);
+
     res.json({ success: true, data: deliveries });
   } catch (error) {
     console.error('GET /webhooks/deliveries error:', error);
@@ -340,10 +340,10 @@ router.post('/payment-links', verifyMerchantAuth, async (req: AuthenticatedReque
       collect_phone,
       metadata,
     } = req.body;
-    
+
     // Generate short code
     const shortCode = crypto.randomBytes(4).toString('hex');
-    
+
     const link = await db.createPaymentLink({
       merchant_id: merchantId,
       short_code: shortCode,
@@ -362,9 +362,9 @@ router.post('/payment-links', verifyMerchantAuth, async (req: AuthenticatedReque
       collect_phone,
       metadata,
     });
-    
+
     console.log(`🔗 Payment link created: ${shortCode}`);
-    
+
     res.status(201).json({ success: true, data: link });
   } catch (error) {
     console.error('POST /payment-links error:', error);
@@ -380,13 +380,13 @@ router.get('/payment-links', verifyMerchantAuth, async (req: AuthenticatedReques
   try {
     const merchantId = req.merchantId!;
     const { status, limit = '50', offset = '0' } = req.query;
-    
+
     const links = await db.getPaymentLinks(merchantId, {
       status: status as string,
       limit: parseInt(limit as string),
       offset: parseInt(offset as string),
     });
-    
+
     res.json({ success: true, data: links });
   } catch (error) {
     console.error('GET /payment-links error:', error);
@@ -402,13 +402,13 @@ router.get('/payment-links/:linkId', verifyMerchantAuth, async (req: Authenticat
   try {
     const { linkId } = req.params;
     const merchantId = req.merchantId!;
-    
+
     const link = await db.getPaymentLink(linkId);
-    
+
     if (!link || link.merchant_id !== merchantId) {
       return res.status(404).json({ success: false, error: 'Link not found' });
     }
-    
+
     res.json({ success: true, data: link });
   } catch (error) {
     console.error('GET /payment-links/:id error:', error);
@@ -423,16 +423,16 @@ router.get('/payment-links/:linkId', verifyMerchantAuth, async (req: Authenticat
 router.get('/pay/:shortCode', async (req: Request, res: Response) => {
   try {
     const { shortCode } = req.params;
-    
+
     const link = await db.getPaymentLinkByCode(shortCode);
-    
+
     if (!link) {
       return res.status(404).json({ success: false, error: 'Link not found' });
     }
-    
+
     // Increment view count
     await db.incrementLinkViews(link.link_id);
-    
+
     res.json({ success: true, data: link });
   } catch (error) {
     console.error('GET /pay/:shortCode error:', error);
@@ -449,24 +449,24 @@ router.post('/pay/:shortCode', verifyGnsAuth, async (req: AuthenticatedRequest, 
     const { shortCode } = req.params;
     const userPk = req.gnsPublicKey!;
     const { amount, email, phone } = req.body;
-    
+
     const link = await db.getPaymentLinkByCode(shortCode);
-    
+
     if (!link) {
       return res.status(404).json({ success: false, error: 'Link not found' });
     }
-    
+
     // Validate link is active
     if (link.status !== 'active') {
       return res.status(400).json({ success: false, error: 'Link is not active' });
     }
-    
+
     // Validate amount
     const payAmount = link.fixed_amount || amount;
     if (!payAmount) {
       return res.status(400).json({ success: false, error: 'Amount required' });
     }
-    
+
     // Create payment record
     const payment = await db.createLinkPayment({
       link_id: link.link_id,
@@ -476,17 +476,17 @@ router.post('/pay/:shortCode', verifyGnsAuth, async (req: AuthenticatedRequest, 
       payer_email: email,
       payer_phone: phone,
     });
-    
+
     // Update link stats
     await db.updateLinkStats(link.link_id, payAmount);
-    
+
     // For one-time links, mark as completed
     if (link.type === 'oneTime') {
       await db.updatePaymentLinkStatus(link.link_id, 'completed');
     }
-    
+
     console.log(`💳 Payment via link: ${shortCode} - $${payAmount}`);
-    
+
     res.json({
       success: true,
       data: {
@@ -524,31 +524,31 @@ router.post('/invoices', verifyMerchantAuth, async (req: AuthenticatedRequest, r
       send_email,
       create_payment_link,
     } = req.body;
-    
+
     if (!line_items || !Array.isArray(line_items) || line_items.length === 0) {
       return res.status(400).json({
         success: false,
         error: 'At least one line item required',
       });
     }
-    
+
     // Calculate totals
     let subtotal = 0;
     let totalTax = 0;
     let totalDiscount = 0;
-    
+
     for (const item of line_items) {
       const itemSubtotal = item.quantity * item.unit_price;
       const discount = item.discount_percent ? itemSubtotal * (item.discount_percent / 100) : 0;
       const tax = item.tax_rate ? (itemSubtotal - discount) * (item.tax_rate / 100) : 0;
-      
+
       subtotal += itemSubtotal;
       totalDiscount += discount;
       totalTax += tax;
     }
-    
+
     const total = subtotal - totalDiscount + totalTax;
-    
+
     const invoice = await db.createInvoice({
       merchant_id: merchantId,
       customer_public_key,
@@ -560,12 +560,13 @@ router.post('/invoices', verifyMerchantAuth, async (req: AuthenticatedRequest, r
       total_discount: totalDiscount,
       total_tax: totalTax,
       total,
+      amount: total,
       currency,
       due_days,
       notes,
       terms,
     });
-    
+
     // Create payment link if requested
     if (create_payment_link) {
       const linkCode = crypto.randomBytes(4).toString('hex');
@@ -579,15 +580,15 @@ router.post('/invoices', verifyMerchantAuth, async (req: AuthenticatedRequest, r
         metadata: { invoice_id: invoice.invoice_id },
       });
     }
-    
+
     // Send email if requested
     if (send_email && customer_email) {
       // TODO: Implement email sending
       console.log(`📧 Would send invoice to ${customer_email}`);
     }
-    
+
     console.log(`📄 Invoice created: ${invoice.invoice_number}`);
-    
+
     res.status(201).json({ success: true, data: invoice });
   } catch (error) {
     console.error('POST /invoices error:', error);
@@ -603,13 +604,13 @@ router.get('/invoices', verifyMerchantAuth, async (req: AuthenticatedRequest, re
   try {
     const merchantId = req.merchantId!;
     const { status, limit = '50', offset = '0' } = req.query;
-    
+
     const invoices = await db.getInvoices(merchantId, {
       status: status as string,
       limit: parseInt(limit as string),
       offset: parseInt(offset as string),
     });
-    
+
     res.json({ success: true, data: invoices });
   } catch (error) {
     console.error('GET /invoices error:', error);
@@ -625,13 +626,13 @@ router.get('/invoices/:invoiceId', verifyMerchantAuth, async (req: Authenticated
   try {
     const { invoiceId } = req.params;
     const merchantId = req.merchantId!;
-    
+
     const invoice = await db.getInvoice(invoiceId);
-    
+
     if (!invoice || invoice.merchant_id !== merchantId) {
       return res.status(404).json({ success: false, error: 'Invoice not found' });
     }
-    
+
     res.json({ success: true, data: invoice });
   } catch (error) {
     console.error('GET /invoices/:id error:', error);
@@ -648,19 +649,19 @@ router.post('/invoices/:invoiceId/send', verifyMerchantAuth, async (req: Authent
     const { invoiceId } = req.params;
     const merchantId = req.merchantId!;
     const { email } = req.body;
-    
+
     const invoice = await db.getInvoice(invoiceId);
-    
+
     if (!invoice || invoice.merchant_id !== merchantId) {
       return res.status(404).json({ success: false, error: 'Invoice not found' });
     }
-    
+
     // Update status to sent
     await db.updateInvoiceStatus(invoiceId, 'sent');
-    
+
     // TODO: Send email
     console.log(`📧 Invoice ${invoice.invoice_number} sent`);
-    
+
     res.json({ success: true, message: 'Invoice sent' });
   } catch (error) {
     console.error('POST /invoices/:id/send error:', error);
@@ -677,16 +678,16 @@ router.post('/invoices/:invoiceId/mark-paid', verifyMerchantAuth, async (req: Au
     const { invoiceId } = req.params;
     const merchantId = req.merchantId!;
     const { transaction_hash, notes } = req.body;
-    
+
     const invoice = await db.markInvoicePaid(invoiceId, merchantId, {
       transaction_hash,
       notes,
     });
-    
+
     if (!invoice) {
       return res.status(404).json({ success: false, error: 'Invoice not found' });
     }
-    
+
     res.json({ success: true, data: invoice });
   } catch (error) {
     console.error('POST /invoices/:id/mark-paid error:', error);
@@ -701,13 +702,13 @@ router.post('/invoices/:invoiceId/mark-paid', verifyMerchantAuth, async (req: Au
 router.get('/invoices/:invoiceId/pdf', async (req: Request, res: Response) => {
   try {
     const { invoiceId } = req.params;
-    
+
     const invoice = await db.getInvoice(invoiceId);
-    
+
     if (!invoice) {
       return res.status(404).json({ success: false, error: 'Invoice not found' });
     }
-    
+
     // TODO: Generate actual PDF
     // For now, return placeholder
     res.setHeader('Content-Type', 'application/pdf');
@@ -739,10 +740,10 @@ router.post('/qr/generate', verifyGnsAuth, async (req: AuthenticatedRequest, res
       expires_in_seconds,
       single_use,
     } = req.body;
-    
+
     // Generate QR data
     const qrData = `gns://pay?to=${userPk}&currency=${currency}${amount ? `&amount=${amount}` : ''}${memo ? `&memo=${encodeURIComponent(memo)}` : ''}`;
-    
+
     const qr = await db.createQrCode({
       user_pk: userPk,
       type,
@@ -753,10 +754,10 @@ router.post('/qr/generate', verifyGnsAuth, async (req: AuthenticatedRequest, res
       reference,
       expires_at: expires_in_seconds
         ? new Date(Date.now() + expires_in_seconds * 1000).toISOString()
-        : null,
+        : undefined,
       single_use,
     });
-    
+
     res.status(201).json({ success: true, data: qr });
   } catch (error) {
     console.error('POST /qr/generate error:', error);
@@ -772,14 +773,14 @@ router.post('/qr/merchant', verifyMerchantAuth, async (req: AuthenticatedRequest
   try {
     const merchantId = req.merchantId!;
     const { currency = 'USDC', default_memo } = req.body;
-    
+
     const merchant = await db.getMerchant(merchantId);
     if (!merchant) {
       return res.status(404).json({ success: false, error: 'Merchant not found' });
     }
-    
+
     const qrData = `gns://pay?merchant=${merchantId}&currency=${currency}${default_memo ? `&memo=${encodeURIComponent(default_memo)}` : ''}`;
-    
+
     const qr = await db.createQrCode({
       merchant_id: merchantId,
       type: 'staticMerchant',
@@ -787,7 +788,7 @@ router.post('/qr/merchant', verifyMerchantAuth, async (req: AuthenticatedRequest
       currency,
       memo: default_memo,
     });
-    
+
     res.status(201).json({ success: true, data: qr });
   } catch (error) {
     console.error('POST /qr/merchant error:', error);
@@ -802,13 +803,13 @@ router.post('/qr/merchant', verifyMerchantAuth, async (req: AuthenticatedRequest
 router.get('/qr/:qrId', async (req: Request, res: Response) => {
   try {
     const { qrId } = req.params;
-    
+
     const qr = await db.getQrCode(qrId);
-    
+
     if (!qr) {
       return res.status(404).json({ success: false, error: 'QR code not found' });
     }
-    
+
     res.json({ success: true, data: qr });
   } catch (error) {
     console.error('GET /qr/:qrId error:', error);
@@ -823,9 +824,9 @@ router.get('/qr/:qrId', async (req: Request, res: Response) => {
 router.get('/qr/user/list', verifyGnsAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userPk = req.gnsPublicKey!;
-    
+
     const qrCodes = await db.getUserQrCodes(userPk);
-    
+
     res.json({ success: true, data: qrCodes });
   } catch (error) {
     console.error('GET /qr/user/list error:', error);
@@ -841,9 +842,9 @@ router.delete('/qr/:qrId', verifyGnsAuth, async (req: AuthenticatedRequest, res:
   try {
     const { qrId } = req.params;
     const userPk = req.gnsPublicKey!;
-    
+
     await db.deactivateQrCode(qrId, userPk);
-    
+
     res.json({ success: true, message: 'QR code deactivated' });
   } catch (error) {
     console.error('DELETE /qr/:qrId error:', error);

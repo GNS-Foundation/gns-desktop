@@ -26,7 +26,7 @@ export const HomePage = ({ handleSearch, isLoading, shortcuts, setCurrentView, s
 
             <div className="flex gap-6 md:gap-8 mb-16 flex-wrap justify-center">
                 {shortcuts.map((s) => (
-                    <button key={s.label} onClick={() => s.isStudio ? setCurrentView('studio') : handleSearch(s.handle || s.label)} className="flex flex-col items-center gap-3 group" disabled={isLoading}>
+                    <button key={s.label} onClick={() => s.isStudio ? setCurrentView('studio') : s.isPayments ? setCurrentView('payments') : handleSearch(s.handle || s.label)} className="flex flex-col items-center gap-3 group" disabled={isLoading}>
                         <div className={`w-14 h-14 md:w-16 md:h-16 rounded-2xl ${theme.bgSecondary} border ${theme.border} flex items-center justify-center group-hover:scale-110 group-hover:shadow-lg transition-all`} style={{ boxShadow: `0 4px 20px ${s.color}20` }}>
                             <s.icon size={26} style={{ color: s.color }} />
                         </div>

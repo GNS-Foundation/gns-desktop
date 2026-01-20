@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Globe, Megaphone, Mail, MessageCircle, Video, Home, Sparkles } from 'lucide-react';
+import { Globe, Megaphone, Mail, MessageCircle, Video, Home, Sparkles, CreditCard } from 'lucide-react';
 import { ApiProvider } from '@gns/ui';
 import { webAdapter } from './lib/adapter';
 import { EmailView } from './components/EmailView';
@@ -21,6 +21,9 @@ import { BrowserChrome, HomePage, ProfileView, SearchResultsView, NotFoundView, 
 import { MessagesView } from './components/messages';
 import { StudioView } from './components/studio';
 import { SignInModal, MessageModal, QRLoginModal } from './components/modals';
+
+// Payment components
+import PaymentsHub from './components/PaymentsHub';
 
 const queryClient = new QueryClient();
 
@@ -89,6 +92,8 @@ const AppContent = () => {
     { icon: MessageCircle, label: 'echo', color: '#10B981' },
     { icon: Video, label: 'video', color: '#F59E0B' },
     { icon: Home, label: 'home', color: '#6366F1' },
+    // Payments tab - only shows when authenticated
+    ...(authUser ? [{ icon: CreditCard, label: 'payments', color: '#10B981', isPayments: true }] : []),
     // Studio tab - only shows when authenticated
     ...(authUser ? [{ icon: Sparkles, label: 'studio', color: '#06B6D4', isStudio: true }] : []),
   ];
@@ -247,6 +252,13 @@ const AppContent = () => {
 
         {currentView === 'email' && (
           <EmailView />
+        )}
+
+        {currentView === 'payments' && (
+          <PaymentsHub 
+            darkMode={theme.isDark}
+            onNavigate={(view) => setCurrentView(view)}
+          />
         )}
 
         {currentView === 'studio' && (

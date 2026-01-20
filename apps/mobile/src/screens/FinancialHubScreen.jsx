@@ -35,16 +35,28 @@ export function FinancialHubScreen() {
                         onClick={() => navigate('/financial/send')}
                     />
                     <ActionButton
-                        icon="⬇️"
-                        label="Receive"
+                        icon="📊"
+                        label="Analytics"
                         color="#2ecc71"
-                        onClick={() => alert('Receive Screen - Coming Soon')}
+                        onClick={() => navigate('/financial/analytics')}
                     />
                     <ActionButton
                         icon="📜"
                         label="History"
                         color="#f39c12"
                         onClick={() => navigate('/financial/history')}
+                    />
+                    <ActionButton
+                        icon="🎁"
+                        label="Rewards"
+                        color="#9b59b6"
+                        onClick={() => navigate('/financial/loyalty')}
+                    />
+                    <ActionButton
+                        icon="🔄"
+                        label="Subs"
+                        color="#e67e22"
+                        onClick={() => navigate('/financial/subscriptions')}
                     />
                 </div>
 

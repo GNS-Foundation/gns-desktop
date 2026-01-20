@@ -8,6 +8,19 @@ use std::path::PathBuf;
 
 use crate::commands::messaging::{Message, ThreadPreview, Reaction};
 
+/// Profile data stored in the database
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
+pub struct Profile {
+    pub public_key: String,
+    pub display_name: Option<String>,
+    pub bio: Option<String>,
+    pub avatar_url: Option<String>,
+    pub links: Option<String>, // JSON array
+    pub location_public: bool,
+    pub location_resolution: i32,
+    pub updated_at: i64,
+}
+
 /// Local database
 pub struct Database {
     conn: Connection,
@@ -107,6 +120,17 @@ impl Database {
             CREATE INDEX IF NOT EXISTS idx_messages_thread ON messages(thread_id, timestamp DESC);
             CREATE INDEX IF NOT EXISTS idx_breadcrumbs_time ON breadcrumbs(timestamp DESC);
             CREATE INDEX IF NOT EXISTS idx_reactions_message ON reactions(message_id);
+
+            CREATE TABLE IF NOT EXISTS profiles (
+                public_key TEXT PRIMARY KEY,
+                display_name TEXT,
+                bio TEXT,
+                avatar_url TEXT,
+                links_json TEXT,
+                location_public INTEGER DEFAULT 0,
+                location_resolution INTEGER DEFAULT 7,
+                updated_at INTEGER NOT NULL
+            );
         "#,
             )
             .map_err(|e| DatabaseError::SqliteError(e.to_string()))?;
@@ -801,6 +825,70 @@ impl Database {
             .execute(
                 "INSERT OR REPLACE INTO sync_state (key, value) VALUES ('collection_enabled', ?)",
                 params![if enabled { "true" } else { "false" }],
+            )
+            .map_err(|e| DatabaseError::SqliteError(e.to_string()))?;
+        Ok(())
+    }
+
+    // ==================== Profile Operations ====================
+
+    /// Get profile for a public key
+    pub fn get_profile(&self, public_key: &str) -> Result<Option<Profile>, DatabaseError> {
+        let mut stmt = self
+            .conn
+            .prepare(
+                "SELECT public_key, display_name, bio, avatar_url, links_json, location_public, location_resolution, updated_at FROM profiles WHERE public_key = ?",
+            )
+            .map_err(|e| DatabaseError::SqliteError(e.to_string()))?;
+
+        let mut rows = stmt
+            .query_map(params![public_key], |row| {
+                Ok(Profile {
+                    public_key: row.get(0)?,
+                    display_name: row.get(1)?,
+                    bio: row.get(2)?,
+                    avatar_url: row.get(3)?,
+                    links: row.get(4)?,
+                    location_public: row.get::<_, i32>(5)? == 1,
+                    location_resolution: row.get(6)?,
+                    updated_at: row.get(7)?,
+                })
+            })
+            .map_err(|e| DatabaseError::SqliteError(e.to_string()))?;
+
+        if let Some(row) = rows.next() {
+            row.map(Some).map_err(|e| DatabaseError::SqliteError(e.to_string()))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Update or insert profile
+    pub fn upsert_profile(&mut self, profile: &Profile) -> Result<(), DatabaseError> {
+        self.conn
+            .execute(
+                r#"
+                INSERT INTO profiles (public_key, display_name, bio, avatar_url, links_json, location_public, location_resolution, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(public_key) DO UPDATE SET
+                    display_name = excluded.display_name,
+                    bio = excluded.bio,
+                    avatar_url = excluded.avatar_url,
+                    links_json = excluded.links_json,
+                    location_public = excluded.location_public,
+                    location_resolution = excluded.location_resolution,
+                    updated_at = excluded.updated_at
+                "#,
+                params![
+                    profile.public_key,
+                    profile.display_name,
+                    profile.bio,
+                    profile.avatar_url,
+                    profile.links,
+                    if profile.location_public { 1 } else { 0 },
+                    profile.location_resolution,
+                    profile.updated_at
+                ],
             )
             .map_err(|e| DatabaseError::SqliteError(e.to_string()))?;
         Ok(())

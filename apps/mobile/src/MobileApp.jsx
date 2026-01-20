@@ -48,6 +48,11 @@ import { SendMoneyScreen } from './screens/SendMoneyScreen';
 import { TransactionHistoryScreen } from './screens/TransactionHistoryScreen';
 
 import { ChatScreen } from './screens/ChatScreen';
+import { ProfileEditor } from './screens/ProfileEditor';
+import { HandleManagement } from './screens/HandleManagement';
+import { AnalyticsScreen } from './screens/AnalyticsScreen';
+import { LoyaltyScreen } from './screens/LoyaltyScreen';
+import { SubscriptionsScreen } from './screens/SubscriptionsScreen';
 
 export default function MobileApp() {
     return (
@@ -57,7 +62,13 @@ export default function MobileApp() {
             <Route path="/financial" element={<FinancialHubScreen />} />
             <Route path="/financial/send" element={<SendMoneyScreen />} />
             <Route path="/financial/history" element={<TransactionHistoryScreen />} />
+            <Route path="/financial/history" element={<TransactionHistoryScreen />} />
             <Route path="/chat/:threadId" element={<ChatScreen />} />
+            <Route path="/profile/edit" element={<ProfileEditor />} />
+            <Route path="/handle/manage" element={<HandleManagement />} />
+            <Route path="/financial/analytics" element={<AnalyticsScreen />} />
+            <Route path="/financial/loyalty" element={<LoyaltyScreen />} />
+            <Route path="/financial/subscriptions" element={<SubscriptionsScreen />} />
         </Routes>
     );
 }

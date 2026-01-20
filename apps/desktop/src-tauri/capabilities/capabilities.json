@@ -12,6 +12,7 @@
         "core:event:allow-emit",
         "shell:allow-open",
         "gns:default",
+        "barcode-scanner:default",
         "http:default",
         "os:default",
         "notification:default",

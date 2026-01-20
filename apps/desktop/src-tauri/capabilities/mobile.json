@@ -21,6 +21,8 @@
         "notification:default",
         "dialog:default",
         "core:default",
-        "gns:default"
+        "core:default",
+        "gns:default",
+        "barcode-scanner:default"
     ]
 }

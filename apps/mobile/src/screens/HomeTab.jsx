@@ -12,6 +12,7 @@ import { GnsTokenCard } from '../components/GnsTokenCard';
 import { PaymentsCard } from '../components/PaymentsCard';
 import { FloatingNfcButton } from '../components/FloatingNfcButton';
 import { ReadyToPaySheet } from '../components/ReadyToPaySheet';
+import { QrScanner } from '../components/QrScanner';
 import './HomeTab.css';
 
 export function HomeTab() {
@@ -20,6 +21,7 @@ export function HomeTab() {
     const { status, start, stop, drop, loading: breadcrumbsLoading } = useBreadcrumbs();
     const { dailyStats, pendingCount } = usePayments();
     const [showPaySheet, setShowPaySheet] = React.useState(false);
+    const [showScanner, setShowScanner] = useState(false);
 
     // Smart Home State
     const [hubs, setHubs] = useState([]);
@@ -82,7 +84,7 @@ export function HomeTab() {
     };
 
     const handleManageHandle = () => {
-        alert('Handle Management - Coming soon');
+        navigate('/handle/manage');
     };
 
     const handleViewGnsWallet = () => {
@@ -94,7 +96,7 @@ export function HomeTab() {
     };
 
     const handleEditProfile = () => {
-        alert('Profile Editor - Coming soon');
+        navigate('/profile/edit');
     };
 
     if (identityLoading) {
@@ -195,9 +197,21 @@ export function HomeTab() {
                 <ReadyToPaySheet
                     onClose={() => setShowPaySheet(false)}
                     onScanQr={() => {
-                        alert('QR Scanner - Coming soon');
                         setShowPaySheet(false);
+                        setShowScanner(true);
                     }}
+                />
+            )}
+
+            {showScanner && (
+                <QrScanner
+                    onResult={(result) => {
+                        console.log('QR Code Scanned:', result);
+                        setShowScanner(false);
+                        alert(`Scanned: ${result}`);
+                        // TODO: Handle paired browser or payment URL
+                    }}
+                    onCancel={() => setShowScanner(false)}
                 />
             )}
         </div>

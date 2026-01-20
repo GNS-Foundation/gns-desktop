@@ -1,0 +1,133 @@
+.subscriptions-screen {
+    height: 100vh;
+    background-color: #121212;
+    color: white;
+    display: flex;
+    flex-direction: column;
+}
+
+.subs-header {
+    background-color: #1e1e1e;
+    padding-top: 16px;
+    display: flex;
+    flex-direction: column;
+    border-bottom: 1px solid #333;
+}
+
+.subs-nav {
+    display: flex;
+    align-items: center;
+    padding: 0 16px 16px 16px;
+}
+
+.subs-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+}
+
+.subs-banner {
+    background-color: rgba(243, 156, 18, 0.1);
+    border: 1px solid rgba(243, 156, 18, 0.3);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.sb-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: rgba(243, 156, 18, 0.2);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #f39c12;
+    margin-right: 12px;
+}
+
+.sub-card {
+    background-color: #1e1e1e;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    border: 1px solid #333;
+}
+
+.sub-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.sub-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    background-color: rgba(108, 92, 231, 0.1);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 24px;
+    margin-right: 12px;
+}
+
+.sub-info {
+    flex: 1;
+}
+
+.sub-name {
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.sub-merchant {
+    font-size: 12px;
+    color: #888;
+}
+
+.sub-status {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 8px;
+    font-weight: bold;
+}
+
+.sub-status.active {
+    background-color: rgba(46, 204, 113, 0.2);
+    color: #2ecc71;
+}
+
+.sub-status.paused {
+    background-color: rgba(243, 156, 18, 0.2);
+    color: #f39c12;
+}
+
+.sub-status.cancelled {
+    background-color: rgba(127, 140, 141, 0.2);
+    color: #95a5a6;
+}
+
+.sub-details {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+}
+
+.sub-price {
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.sub-cycle {
+    font-size: 12px;
+    color: #888;
+}
+
+.sub-renewal {
+    text-align: right;
+    font-size: 12px;
+    color: #888;
+}

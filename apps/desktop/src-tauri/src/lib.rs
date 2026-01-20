@@ -106,7 +106,9 @@ pub fn run() {
 
     // Add geolocation plugin for mobile platforms
     #[cfg(any(target_os = "ios", target_os = "android"))]
-    let builder = builder.plugin(tauri_plugin_geolocation::init());
+    let builder = builder
+        .plugin(tauri_plugin_geolocation::init())
+        .plugin(tauri_plugin_barcode_scanner::init());
 
     builder
         .setup(|app| {
@@ -162,7 +164,19 @@ pub fn run() {
             // Home commands
             commands::home::discover_hubs,
             commands::home::get_devices,
+            commands::home::get_devices,
             commands::home::execute_command,
+            // Profile commands
+            commands::profile::get_profile,
+            commands::profile::update_profile,
+            // Handle commands
+            commands::commands_handle::validate_handle_format,
+            commands::commands_handle::check_handle_available,
+            commands::commands_handle::create_identity_with_handle,
+            commands::commands_handle::get_identity_info,
+            commands::commands_handle::reserve_handle,
+            commands::commands_handle::claim_handle,
+            commands::commands_handle::publish_identity,
         ])
         .run(tauri::generate_context!())
         .expect("Error while running GNS Browser");

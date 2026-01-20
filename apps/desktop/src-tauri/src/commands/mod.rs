@@ -20,3 +20,4 @@ pub mod handles;
 pub mod utils;
 pub mod dix;
 pub mod home;
+pub mod profile;

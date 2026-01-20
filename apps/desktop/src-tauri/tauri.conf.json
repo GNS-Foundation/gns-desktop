@@ -4,10 +4,10 @@
   "version": "1.0.1",
   "identifier": "com.gcrumbs.browser",
   "build": {
-    "beforeDevCommand": "pnpm --filter @gns/web dev",
-    "devUrl": "http://localhost:5173",
-    "beforeBuildCommand": "pnpm --filter @gns/web build",
-    "frontendDist": "../../web/build"
+    "beforeDevCommand": "pnpm --filter @gns/mobile dev",
+    "devUrl": "http://localhost:1421",
+    "beforeBuildCommand": "pnpm --filter @gns/mobile build",
+    "frontendDist": "../../apps/mobile/dist"
   },
   "app": {
     "withGlobalTauri": true,

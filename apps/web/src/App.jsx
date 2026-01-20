@@ -6,7 +6,8 @@ import { EmailView } from './components/EmailView';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // Mobile UI import
-import MobileApp from '../../mobile/src/MobileApp';
+// MobileApp not available in web build
+const MobileApp = null;
 import { isMobilePlatform } from './lib/platformDetection';
 
 import { getProfileByHandle, searchIdentities, SAMPLE_PROFILES, getSession, isAuthenticated, wsService, crypto } from '@gns/api-web';

@@ -1,0 +1,14 @@
+# Exclude Tauri/native stuff
+target/
+src-tauri/
+crates/
+*.rs
+Cargo.toml
+Cargo.lock
+apps/mobile/
+apps/desktop/
+packages/api-mobile/
+ios/
+android/
+.git/
+node_modules/

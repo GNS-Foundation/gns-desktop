@@ -1,13 +1,11 @@
-
-
 [phases.setup]
 nixPkgs = ["nodejs_18", "pnpm"]
 
 [phases.install]
-cmds = ["pnpm install --no-frozen-lockfile --filter @gns/web..."]
+cmds = ["pnpm install"]
 
 [phases.build]
-cmds = ["pnpm --filter @gns/web... build"]
+cmds = ["pnpm --filter web build"]
 
 [start]
-cmd = "cd apps/web && pnpm run start:prod"
+cmd = "cd apps/web && npx serve -s build -l $PORT"

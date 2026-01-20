@@ -2,10 +2,10 @@
 nixPkgs = ["nodejs_18", "pnpm"]
 
 [phases.install]
-cmds = ["pnpm install"]
+cmds = ["pnpm install --filter @gns/web... --filter @gns/api-web..."]
 
 [phases.build]
-cmds = ["pnpm --filter web build"]
+cmds = ["pnpm --filter @gns/web build"]
 
 [start]
 cmd = "cd apps/web && npx serve -s build -l $PORT"

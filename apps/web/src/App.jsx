@@ -25,6 +25,7 @@ import { SignInModal, MessageModal, QRLoginModal } from './components/modals';
 
 // Payment components
 import PaymentsHub from './components/PaymentsHub';
+import PayPage from './components/PayPage';
 
 const queryClient = new QueryClient();
 
@@ -82,6 +83,26 @@ const AppContent = () => {
 
   // WebSocket state
   const [wsConnected, setWsConnected] = useState(false);
+
+  // Payment link state
+  const [payCode, setPayCode] = useState(null);
+
+  // Detect /pay/:code URLs
+  useEffect(() => {
+    const checkPayUrl = () => {
+      const path = window.location.pathname;
+      const match = path.match(/^\/pay\/([A-Za-z0-9]+)$/);
+      if (match) {
+        setPayCode(match[1]);
+      } else {
+        setPayCode(null);
+      }
+    };
+    
+    checkPayUrl();
+    window.addEventListener('popstate', checkPayUrl);
+    return () => window.removeEventListener('popstate', checkPayUrl);
+  }, []);
 
   // Custom Studio Hook
   const studioState = useStudioState();
@@ -184,6 +205,22 @@ const AppContent = () => {
     setUnreadCount(0);
     setWsConnected(false);
   };
+
+  // If viewing a payment link, show PayPage
+  if (payCode) {
+    return (
+      <PayPage
+        code={payCode}
+        darkMode={theme.isDark}
+        isAuthenticated={!!authUser}
+        onSignIn={() => setShowSignIn(true)}
+        onBack={() => {
+          setPayCode(null);
+          window.history.pushState({}, '', '/');
+        }}
+      />
+    );
+  }
 
   return (
     <div className={`h-screen flex flex-col ${theme.bg} ${theme.text}`}>

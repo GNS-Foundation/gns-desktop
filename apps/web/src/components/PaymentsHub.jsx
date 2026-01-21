@@ -190,7 +190,14 @@ const PaymentsHub = ({ darkMode = false }) => {
                             active
                           </span>
                         </div>
-                        <p className={`text-sm ${textMuted} mt-1`}>{link.url}</p>
+                        <a 
+                          href={link.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className={`text-sm text-indigo-500 hover:text-indigo-600 hover:underline mt-1 block`}
+                        >
+                          {link.url}
+                        </a>
                       </div>
                       <div className="flex items-center gap-4">
                         <p className={`font-semibold ${text}`}>

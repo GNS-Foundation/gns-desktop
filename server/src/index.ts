@@ -33,6 +33,7 @@ import breadcrumbsRouter from './api/breadcrumbs';
 // 🆕 API v1 Routes (New Protocol APIs)
 import verifyRouter from './api/verify';
 import oauthRouter from './api/oauth';
+import paymentHubRoutes from './api/payment-hub';
 import webhooksRouter from './api/webhooks';
 import paymentsV2Router from './api/payments-v2';
 
@@ -179,6 +180,7 @@ app.use('/org', orgRouter);
 app.use('/org', orgMembersRouter);
 app.use('/cms', cmsRouter);
 app.use('/breadcrumbs', breadcrumbsRouter);
+app.use('/api', paymentHubRoutes);
 
 // ===========================================
 // 🆕 API v1 - New Protocol APIs

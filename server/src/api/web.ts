@@ -141,7 +141,6 @@ router.get('/search', async (req: Request, res: Response) => {
     
     const results: any[] = [];
     
-    // Search aliases
     if (type === 'all' || type === 'identity') {
       const aliases = await db.searchAliases(searchQuery, limit);
       

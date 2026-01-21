@@ -3,36 +3,13 @@
 // Payment Links, Invoices, and QR Codes
 //
 // Location: src/api/payment-hub.ts
-//
-// ENDPOINTS:
-//   Payment Links:
-//     GET  /api/link/list           - List user's payment links
-//     POST /api/link/create         - Create payment link
-//     PUT  /api/link/:id/deactivate - Deactivate link
-//     GET  /api/link/:code          - Get public link info
-//     POST /api/link/:code/pay      - Pay via link
-//
-//   Invoices:
-//     GET  /api/invoice/list        - List user's invoices
-//     POST /api/invoice/create      - Create invoice
-//     GET  /api/invoice/:id         - Get invoice
-//     POST /api/invoice/:id/send    - Send invoice
-//     POST /api/invoice/:id/paid    - Mark as paid
-//
-//   QR Codes:
-//     GET  /api/qr/list             - List user's QR codes
-//     POST /api/qr/create           - Create QR code
-//     GET  /api/qr/:id              - Get QR code
-//     DELETE /api/qr/:id            - Delete QR code
-//
-// REQUIRES: Run sprint8_migration.sql in Supabase first
+// Uses EXISTING db.ts functions with correct types
 // ===========================================
 
 import { Router, Request, Response } from 'express';
 import { isValidPublicKey } from '../lib/crypto';
 import * as db from '../lib/db';
 import { ApiResponse } from '../types';
-import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 
 const router = Router();
@@ -75,12 +52,10 @@ const verifyGnsAuth = async (
 // ===========================================
 
 function generateLinkCode(): string {
-  // Generate 8-character alphanumeric code
   return crypto.randomBytes(4).toString('hex').toUpperCase();
 }
 
 function generateQRCode(): string {
-  // Generate 12-character alphanumeric code
   return crypto.randomBytes(6).toString('hex').toUpperCase();
 }
 
@@ -88,39 +63,44 @@ function generateQRCode(): string {
 // PAYMENT LINKS ENDPOINTS
 // ===========================================
 
-/**
- * GET /api/link/list
- * List all payment links for authenticated user
- */
+// GET /api/link/list - List user's payment links
 router.get('/link/list', verifyGnsAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const publicKey = req.gnsPublicKey!;
-    
-    const links = await db.getPaymentLinksByOwner(publicKey);
-    
+    const links = await db.getPaymentLinks(publicKey);
+
     return res.json({
       success: true,
-      links: links || [],
-    });
+      links: (links || []).map((link: any) => ({
+        id: link.id,
+        code: link.short_code || link.link_code || link.code,
+        title: link.title,
+        description: link.description,
+        amount: link.amount || link.fixed_amount,
+        currency: link.currency,
+        type: link.type || (link.is_reusable ? 'reusable' : 'one_time'),
+        status: link.status,
+        url: `https://panthera.gcrumbs.com/pay/${link.short_code || link.link_code || link.code}`,
+        paymentCount: link.payment_count || 0,
+        totalReceived: link.total_collected || link.total_received || 0,
+        expiresAt: link.expires_at,
+        createdAt: link.created_at,
+      })),
+    } as ApiResponse);
+
   } catch (error) {
-    console.error('GET /link/list error:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to fetch payment links',
-    });
+    console.error('GET /api/link/list error:', error);
+    return res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
-/**
- * POST /api/link/create
- * Create a new payment link
- */
+// POST /api/link/create - Create payment link
 router.post('/link/create', verifyGnsAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const publicKey = req.gnsPublicKey!;
-    const { title, description, amount, currency = 'EUR', type = 'one_time' } = req.body;
+    const { title, description, amount, currency = 'EUR', type = 'one_time', expiresAt } = req.body;
 
-    if (!title || !amount) {
+    if (!title || amount === undefined) {
       return res.status(400).json({
         success: false,
         error: 'Title and amount are required',
@@ -128,266 +108,229 @@ router.post('/link/create', verifyGnsAuth, async (req: AuthenticatedRequest, res
     }
 
     const linkCode = generateLinkCode();
-    const linkId = uuidv4();
     
+    // Match PaymentLinkInput type
     const link = await db.createPaymentLink({
-      id: linkId,
-      code: linkCode,
-      owner_pk: publicKey,
+      merchant_id: publicKey,
+      short_code: linkCode,
       title,
-      description: description || null,
+      description: description || undefined,
       amount: parseFloat(amount),
       currency,
-      type, // 'one_time' or 'reusable'
-      status: 'active',
-      created_at: new Date().toISOString(),
-      payment_count: 0,
-      total_received: 0,
+      type,
+      is_reusable: type === 'reusable',
+      expires_at: expiresAt || null,
     });
+
+    if (!link) {
+      return res.status(500).json({ success: false, error: 'Failed to create link' });
+    }
 
     return res.json({
       success: true,
       link: {
-        id: linkId,
-        code: linkCode,
-        title,
-        description,
-        amount: parseFloat(amount),
-        currency,
-        type,
-        status: 'active',
-        url: `https://panthera.gcrumbs.com/pay/${linkCode}`,
-        createdAt: new Date().toISOString(),
+        id: link.id,
+        code: link.short_code || link.link_code,
+        title: link.title,
+        description: link.description,
+        amount: link.amount,
+        currency: link.currency,
+        type: link.type,
+        status: link.status,
+        url: `https://panthera.gcrumbs.com/pay/${link.short_code || link.link_code}`,
+        createdAt: link.created_at,
       },
-    });
+    } as ApiResponse);
+
   } catch (error) {
-    console.error('POST /link/create error:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to create payment link',
-    });
+    console.error('POST /api/link/create error:', error);
+    return res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
-/**
- * PUT /api/link/:id/deactivate
- * Deactivate a payment link
- */
+// GET /api/link/:code - Get public link info (for PayPage)
+router.get('/link/:code', async (req: Request, res: Response) => {
+  try {
+    const { code } = req.params;
+    const link = await db.getPaymentLinkByCode(code);
+
+    if (!link) {
+      return res.status(404).json({ success: false, error: 'Payment link not found' });
+    }
+
+    if (link.status !== 'active') {
+      return res.status(410).json({ success: false, error: 'Payment link is no longer active' });
+    }
+
+    // Check expiration
+    if (link.expires_at && new Date(link.expires_at) < new Date()) {
+      return res.status(410).json({ success: false, error: 'Payment link has expired' });
+    }
+
+    // Get recipient handle
+    const alias = await db.getAliasByPk(link.merchant_id);
+
+    return res.json({
+      success: true,
+      link: {
+        code: link.short_code || link.link_code || link.code,
+        title: link.title,
+        description: link.description,
+        amount: link.amount || link.fixed_amount,
+        currency: link.currency,
+        type: link.type,
+        recipientHandle: alias?.handle ? `@${alias.handle}` : null,
+        recipientPk: link.merchant_id,
+      },
+    } as ApiResponse);
+
+  } catch (error) {
+    console.error('GET /api/link/:code error:', error);
+    return res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+// PUT /api/link/:id/deactivate - Deactivate link
 router.put('/link/:id/deactivate', verifyGnsAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const publicKey = req.gnsPublicKey!;
     const { id } = req.params;
 
     const link = await db.getPaymentLink(id);
-    
+
     if (!link) {
-      return res.status(404).json({
-        success: false,
-        error: 'Payment link not found',
-      });
+      return res.status(404).json({ success: false, error: 'Payment link not found' });
     }
 
-    if (link.owner_pk !== publicKey) {
-      return res.status(403).json({
-        success: false,
-        error: 'Not authorized to modify this link',
-      });
+    if (link.merchant_id !== publicKey) {
+      return res.status(403).json({ success: false, error: 'Not authorized' });
     }
 
     await db.updatePaymentLinkStatus(id, 'inactive');
 
-    return res.json({
-      success: true,
-      message: 'Payment link deactivated',
-    });
+    return res.json({ success: true, message: 'Payment link deactivated' } as ApiResponse);
+
   } catch (error) {
-    console.error('PUT /link/:id/deactivate error:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to deactivate link',
-    });
-  }
-});
-
-/**
- * GET /api/link/:code
- * Get public payment link info (no auth required)
- */
-router.get('/link/:code', async (req: Request, res: Response) => {
-  try {
-    const { code } = req.params;
-    
-    const link = await db.getPaymentLinkByCode(code);
-    
-    if (!link || link.status !== 'active') {
-      return res.status(404).json({
-        success: false,
-        error: 'Payment link not found or inactive',
-      });
-    }
-
-    // Get owner's handle
-    const ownerAlias = await db.getAliasByPublicKey(link.owner_pk);
-
-    return res.json({
-      success: true,
-      link: {
-        code: link.code,
-        title: link.title,
-        description: link.description,
-        amount: link.amount,
-        currency: link.currency,
-        recipientHandle: ownerAlias?.handle ? `@${ownerAlias.handle}` : null,
-        recipientPublicKey: link.owner_pk,
-      },
-    });
-  } catch (error) {
-    console.error('GET /link/:code error:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to fetch payment link',
-    });
+    console.error('PUT /api/link/:id/deactivate error:', error);
+    return res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
 // ===========================================
-// INVOICE ENDPOINTS
+// INVOICES ENDPOINTS
 // ===========================================
 
-/**
- * GET /api/invoice/list
- * List all invoices for authenticated user
- */
+// GET /api/invoice/list - List user's invoices
 router.get('/invoice/list', verifyGnsAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const publicKey = req.gnsPublicKey!;
-    
-    const invoices = await db.getInvoicesByOwner(publicKey);
-    
+    const invoices = await db.getInvoices(publicKey);
+
     return res.json({
       success: true,
-      invoices: invoices || [],
-    });
+      invoices: (invoices || []).map((inv: any) => ({
+        id: inv.id,
+        invoiceNumber: inv.invoice_number,
+        customerName: inv.customer_name,
+        customerEmail: inv.customer_email,
+        customerHandle: inv.customer_handle,
+        items: inv.items || inv.line_items,
+        subtotal: inv.subtotal,
+        tax: inv.total_tax || inv.tax_amount || inv.tax,
+        total: inv.total || inv.amount,
+        currency: inv.currency,
+        status: inv.status,
+        dueDate: inv.due_date,
+        createdAt: inv.created_at,
+        paidAt: inv.paid_at,
+      })),
+    } as ApiResponse);
+
   } catch (error) {
-    console.error('GET /invoice/list error:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to fetch invoices',
-    });
+    console.error('GET /api/invoice/list error:', error);
+    return res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
-/**
- * POST /api/invoice/create
- * Create a new invoice
- */
+// POST /api/invoice/create - Create invoice
 router.post('/invoice/create', verifyGnsAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const publicKey = req.gnsPublicKey!;
-    const { 
-      customerName, 
-      customerEmail, 
+    const {
+      customerName,
+      customerEmail,
       customerHandle,
-      items = [], 
+      items,
       currency = 'EUR',
       dueDate,
-      notes 
+      notes,
+      taxRate = 22, // Default Italian VAT
     } = req.body;
 
-    if (!customerName && !customerHandle) {
-      return res.status(400).json({
-        success: false,
-        error: 'Customer name or handle is required',
-      });
-    }
-
-    if (!items || items.length === 0) {
-      return res.status(400).json({
-        success: false,
-        error: 'At least one item is required',
-      });
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ success: false, error: 'Items are required' });
     }
 
     // Calculate totals
     const subtotal = items.reduce((sum: number, item: any) => {
-      return sum + (parseFloat(item.quantity || 1) * parseFloat(item.unitPrice || 0));
+      return sum + (parseFloat(item.amount || item.unit_price || 0) * (item.quantity || 1));
     }, 0);
-    const tax = subtotal * 0.22; // 22% VAT (Italy)
+    const tax = subtotal * (taxRate / 100);
     const total = subtotal + tax;
 
-    const invoiceId = uuidv4();
-    const invoiceNumber = `INV-${Date.now().toString(36).toUpperCase()}`;
-    
+    // Match InvoiceInput type
     const invoice = await db.createInvoice({
-      id: invoiceId,
-      invoice_number: invoiceNumber,
-      owner_pk: publicKey,
-      customer_name: customerName,
-      customer_email: customerEmail || null,
-      customer_handle: customerHandle || null,
-      items: JSON.stringify(items),
+      merchant_id: publicKey,
+      customer_name: customerName || undefined,
+      customer_email: customerEmail || undefined,
+      customer_handle: customerHandle || undefined,
+      items,
       subtotal,
-      tax,
+      total_tax: tax,
       total,
+      amount: total, // required field
       currency,
-      status: 'draft',
-      due_date: dueDate || null,
-      notes: notes || null,
-      created_at: new Date().toISOString(),
+      due_date: dueDate || undefined,
+      notes: notes || undefined,
     });
+
+    if (!invoice) {
+      return res.status(500).json({ success: false, error: 'Failed to create invoice' });
+    }
 
     return res.json({
       success: true,
       invoice: {
-        id: invoiceId,
-        invoiceNumber,
-        customerName,
-        customerEmail,
-        customerHandle,
-        items,
-        subtotal,
-        tax,
-        total,
-        currency,
-        status: 'draft',
-        dueDate,
-        notes,
-        createdAt: new Date().toISOString(),
+        id: invoice.id,
+        invoiceNumber: invoice.invoice_number,
+        customerName: invoice.customer_name,
+        total: invoice.total || invoice.amount,
+        currency: invoice.currency,
+        status: invoice.status,
+        createdAt: invoice.created_at,
       },
-    });
+    } as ApiResponse);
+
   } catch (error) {
-    console.error('POST /invoice/create error:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to create invoice',
-    });
+    console.error('POST /api/invoice/create error:', error);
+    return res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
-/**
- * GET /api/invoice/:id
- * Get invoice details
- */
+// GET /api/invoice/:id - Get invoice details
 router.get('/invoice/:id', verifyGnsAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const publicKey = req.gnsPublicKey!;
     const { id } = req.params;
 
     const invoice = await db.getInvoice(id);
-    
+
     if (!invoice) {
-      return res.status(404).json({
-        success: false,
-        error: 'Invoice not found',
-      });
+      return res.status(404).json({ success: false, error: 'Invoice not found' });
     }
 
-    // Only owner or recipient can view
-    if (invoice.owner_pk !== publicKey && invoice.customer_handle !== publicKey) {
-      return res.status(403).json({
-        success: false,
-        error: 'Not authorized to view this invoice',
-      });
+    if (invoice.merchant_id !== publicKey) {
+      return res.status(403).json({ success: false, error: 'Not authorized' });
     }
 
     return res.json({
@@ -398,10 +341,10 @@ router.get('/invoice/:id', verifyGnsAuth, async (req: AuthenticatedRequest, res:
         customerName: invoice.customer_name,
         customerEmail: invoice.customer_email,
         customerHandle: invoice.customer_handle,
-        items: JSON.parse(invoice.items || '[]'),
+        items: invoice.items || invoice.line_items,
         subtotal: invoice.subtotal,
-        tax: invoice.tax,
-        total: invoice.total,
+        tax: invoice.total_tax || invoice.tax_amount || invoice.tax,
+        total: invoice.total || invoice.amount,
         currency: invoice.currency,
         status: invoice.status,
         dueDate: invoice.due_date,
@@ -410,297 +353,225 @@ router.get('/invoice/:id', verifyGnsAuth, async (req: AuthenticatedRequest, res:
         sentAt: invoice.sent_at,
         paidAt: invoice.paid_at,
       },
-    });
+    } as ApiResponse);
+
   } catch (error) {
-    console.error('GET /invoice/:id error:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to fetch invoice',
-    });
+    console.error('GET /api/invoice/:id error:', error);
+    return res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
-/**
- * POST /api/invoice/:id/send
- * Send invoice to customer
- */
+// POST /api/invoice/:id/send - Mark invoice as sent
 router.post('/invoice/:id/send', verifyGnsAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const publicKey = req.gnsPublicKey!;
     const { id } = req.params;
 
     const invoice = await db.getInvoice(id);
-    
+
     if (!invoice) {
-      return res.status(404).json({
-        success: false,
-        error: 'Invoice not found',
-      });
+      return res.status(404).json({ success: false, error: 'Invoice not found' });
     }
 
-    if (invoice.owner_pk !== publicKey) {
-      return res.status(403).json({
-        success: false,
-        error: 'Not authorized to send this invoice',
-      });
+    if (invoice.merchant_id !== publicKey) {
+      return res.status(403).json({ success: false, error: 'Not authorized' });
     }
 
-    await db.updateInvoiceStatus(id, 'sent', { sent_at: new Date().toISOString() });
+    await db.updateInvoiceStatus(id, 'sent');
 
-    // TODO: Send actual notification to customer (email or GNS message)
+    return res.json({ success: true, message: 'Invoice marked as sent' } as ApiResponse);
 
-    return res.json({
-      success: true,
-      message: 'Invoice sent',
-    });
   } catch (error) {
-    console.error('POST /invoice/:id/send error:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to send invoice',
-    });
+    console.error('POST /api/invoice/:id/send error:', error);
+    return res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
-/**
- * POST /api/invoice/:id/paid
- * Mark invoice as paid
- */
+// POST /api/invoice/:id/paid - Mark invoice as paid
 router.post('/invoice/:id/paid', verifyGnsAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const publicKey = req.gnsPublicKey!;
     const { id } = req.params;
-    const { transactionId, paymentMethod = 'stellar' } = req.body;
+    const { transactionId } = req.body;
 
     const invoice = await db.getInvoice(id);
-    
+
     if (!invoice) {
-      return res.status(404).json({
-        success: false,
-        error: 'Invoice not found',
-      });
+      return res.status(404).json({ success: false, error: 'Invoice not found' });
     }
 
-    if (invoice.owner_pk !== publicKey) {
-      return res.status(403).json({
-        success: false,
-        error: 'Not authorized to update this invoice',
-      });
+    if (invoice.merchant_id !== publicKey) {
+      return res.status(403).json({ success: false, error: 'Not authorized' });
     }
 
-    await db.updateInvoiceStatus(id, 'paid', { 
-      paid_at: new Date().toISOString(),
-      transaction_id: transactionId,
-      payment_method: paymentMethod,
-    });
+    await db.markInvoicePaid(id, transactionId || publicKey);
 
-    return res.json({
-      success: true,
-      message: 'Invoice marked as paid',
-    });
+    return res.json({ success: true, message: 'Invoice marked as paid' } as ApiResponse);
+
   } catch (error) {
-    console.error('POST /invoice/:id/paid error:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to update invoice',
-    });
+    console.error('POST /api/invoice/:id/paid error:', error);
+    return res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
 // ===========================================
-// QR CODE ENDPOINTS
+// QR CODES ENDPOINTS
 // ===========================================
 
-/**
- * GET /api/qr/list
- * List all QR codes for authenticated user
- */
+// GET /api/qr/list - List user's QR codes
 router.get('/qr/list', verifyGnsAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const publicKey = req.gnsPublicKey!;
-    
-    const qrCodes = await db.getQRCodesByOwner(publicKey);
-    
+    const qrCodes = await db.getUserQrCodes(publicKey);
+
     return res.json({
       success: true,
-      qrCodes: qrCodes || [],
-    });
+      qrCodes: (qrCodes || []).map((qr: any) => ({
+        id: qr.id,
+        code: qr.reference || qr.qr_code || qr.code,
+        name: qr.memo || qr.name,
+        description: qr.default_memo || qr.description,
+        amount: qr.amount,
+        currency: qr.currency,
+        type: qr.type,
+        status: qr.is_active ? 'active' : 'inactive',
+        qrData: qr.data,
+        scanCount: qr.scan_count || 0,
+        createdAt: qr.created_at,
+      })),
+    } as ApiResponse);
+
   } catch (error) {
-    console.error('GET /qr/list error:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to fetch QR codes',
-    });
+    console.error('GET /api/qr/list error:', error);
+    return res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
-/**
- * POST /api/qr/create
- * Create a new QR code for payments
- */
+// POST /api/qr/create - Create QR code
 router.post('/qr/create', verifyGnsAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const publicKey = req.gnsPublicKey!;
-    const { 
-      name, 
-      amount, 
-      currency = 'EUR', 
-      type = 'fixed', // 'fixed' or 'dynamic' (user enters amount)
-      description 
-    } = req.body;
+    const { name, description, amount, currency = 'EUR', type = 'fixed' } = req.body;
 
     if (!name) {
-      return res.status(400).json({
-        success: false,
-        error: 'Name is required',
-      });
+      return res.status(400).json({ success: false, error: 'Name is required' });
     }
 
-    if (type === 'fixed' && !amount) {
-      return res.status(400).json({
-        success: false,
-        error: 'Amount is required for fixed QR codes',
-      });
-    }
+    // Get handle for QR data
+    const alias = await db.getAliasByPk(publicKey);
+    const handle = alias?.handle || publicKey.substring(0, 8);
 
-    const qrId = uuidv4();
     const qrCode = generateQRCode();
-
-    // Get owner's handle for the QR data
-    const ownerAlias = await db.getAliasByPublicKey(publicKey);
-    const handle = ownerAlias?.handle || publicKey.substring(0, 16);
-
-    // GNS QR payment URI format: gns:pay/<handle>?amount=<amount>&currency=<currency>&ref=<qrCode>
-    const qrData = type === 'fixed'
-      ? `gns:pay/${handle}?amount=${amount}&currency=${currency}&ref=${qrCode}`
-      : `gns:pay/${handle}?ref=${qrCode}`;
     
-    const qr = await db.createQRCode({
-      id: qrId,
-      code: qrCode,
-      owner_pk: publicKey,
-      name,
-      description: description || null,
-      amount: amount ? parseFloat(amount) : null,
+    // Build QR data
+    const qrData = {
+      type: 'gns_pay',
+      handle,
+      amount: amount ? parseFloat(amount) : undefined,
       currency,
+      reference: qrCode,
+    };
+
+    // Match QrCodeInput type
+    const qr = await db.createQrCode({
+      user_pk: publicKey,
+      merchant_id: publicKey,
       type,
-      qr_data: qrData,
-      status: 'active',
-      created_at: new Date().toISOString(),
-      scan_count: 0,
+      reference: qrCode,
+      amount: amount ? parseFloat(amount) : undefined,
+      currency,
+      data: qrData,
+      memo: name,
+      default_memo: description || undefined,
     });
 
-    return res.json({
-      success: true,
-      qrCode: {
-        id: qrId,
-        code: qrCode,
-        name,
-        description,
-        amount: amount ? parseFloat(amount) : null,
-        currency,
-        type,
-        qrData,
-        status: 'active',
-        createdAt: new Date().toISOString(),
-      },
-    });
-  } catch (error) {
-    console.error('POST /qr/create error:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to create QR code',
-    });
-  }
-});
-
-/**
- * GET /api/qr/:id
- * Get QR code details
- */
-router.get('/qr/:id', verifyGnsAuth, async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const publicKey = req.gnsPublicKey!;
-    const { id } = req.params;
-
-    const qr = await db.getQRCode(id);
-    
     if (!qr) {
-      return res.status(404).json({
-        success: false,
-        error: 'QR code not found',
-      });
-    }
-
-    if (qr.owner_pk !== publicKey) {
-      return res.status(403).json({
-        success: false,
-        error: 'Not authorized to view this QR code',
-      });
+      return res.status(500).json({ success: false, error: 'Failed to create QR code' });
     }
 
     return res.json({
       success: true,
       qrCode: {
         id: qr.id,
-        code: qr.code,
-        name: qr.name,
-        description: qr.description,
+        code: qr.reference,
+        name: qr.memo,
+        description: qr.default_memo,
         amount: qr.amount,
         currency: qr.currency,
         type: qr.type,
-        qrData: qr.qr_data,
-        status: qr.status,
-        scanCount: qr.scan_count,
+        qrData: qr.data,
         createdAt: qr.created_at,
       },
-    });
+    } as ApiResponse);
+
   } catch (error) {
-    console.error('GET /qr/:id error:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to fetch QR code',
-    });
+    console.error('POST /api/qr/create error:', error);
+    return res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 
-/**
- * DELETE /api/qr/:id
- * Delete/deactivate a QR code
- */
+// GET /api/qr/:id - Get QR code details
+router.get('/qr/:id', verifyGnsAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const publicKey = req.gnsPublicKey!;
+    const { id } = req.params;
+
+    const qr = await db.getQrCode(id);
+
+    if (!qr) {
+      return res.status(404).json({ success: false, error: 'QR code not found' });
+    }
+
+    if (qr.user_pk !== publicKey && qr.merchant_id !== publicKey) {
+      return res.status(403).json({ success: false, error: 'Not authorized' });
+    }
+
+    return res.json({
+      success: true,
+      qrCode: {
+        id: qr.id,
+        code: qr.reference || qr.qr_code,
+        name: qr.memo || qr.name,
+        description: qr.default_memo || qr.description,
+        amount: qr.amount,
+        currency: qr.currency,
+        type: qr.type,
+        status: qr.is_active ? 'active' : 'inactive',
+        qrData: qr.data,
+        scanCount: qr.scan_count || 0,
+        createdAt: qr.created_at,
+      },
+    } as ApiResponse);
+
+  } catch (error) {
+    console.error('GET /api/qr/:id error:', error);
+    return res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+// DELETE /api/qr/:id - Delete QR code
 router.delete('/qr/:id', verifyGnsAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const publicKey = req.gnsPublicKey!;
     const { id } = req.params;
 
-    const qr = await db.getQRCode(id);
-    
+    const qr = await db.getQrCode(id);
+
     if (!qr) {
-      return res.status(404).json({
-        success: false,
-        error: 'QR code not found',
-      });
+      return res.status(404).json({ success: false, error: 'QR code not found' });
     }
 
-    if (qr.owner_pk !== publicKey) {
-      return res.status(403).json({
-        success: false,
-        error: 'Not authorized to delete this QR code',
-      });
+    if (qr.user_pk !== publicKey && qr.merchant_id !== publicKey) {
+      return res.status(403).json({ success: false, error: 'Not authorized' });
     }
 
-    await db.updateQRCodeStatus(id, 'deleted');
+    await db.deactivateQrCode(id, publicKey);
 
-    return res.json({
-      success: true,
-      message: 'QR code deleted',
-    });
+    return res.json({ success: true, message: 'QR code deleted' } as ApiResponse);
+
   } catch (error) {
-    console.error('DELETE /qr/:id error:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to delete QR code',
-    });
+    console.error('DELETE /api/qr/:id error:', error);
+    return res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 

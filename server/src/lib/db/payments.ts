@@ -1,18 +1,18 @@
 
 import { getSupabase, generateId } from './client';
 import {
-    DbPaymentIntent, DbPaymentAck
+  DbPaymentIntent, DbPaymentAck
 } from '../../types';
 import {
-    DbPaymentRequest,
-    SettlementInput,
-    RefundInput,
-    PaymentCompletionInput,
-    ReceiptInput,
-    RedemptionInput,
-    PaymentLinkInput,
-    LinkPaymentInput,
-    InvoiceInput
+  DbPaymentRequest,
+  SettlementInput,
+  RefundInput,
+  PaymentCompletionInput,
+  ReceiptInput,
+  RedemptionInput,
+  PaymentLinkInput,
+  LinkPaymentInput,
+  InvoiceInput
 } from '../../types/api.types';
 
 // ===========================================
@@ -641,13 +641,23 @@ export async function getRefundStats(merchantId: string, _period?: string) {
       .reduce((sum, r) => sum + parseFloat(r.refund_amount || '0'), 0),
   };
 }
+import { getMerchantOwnerPk } from './merchants';
+
 export async function createPaymentLink(linkData: PaymentLinkInput) {
+  const effectiveOwner = linkData.owner_pk
+    ?? (linkData.merchant_id ? await getMerchantOwnerPk(linkData.merchant_id) : null);
+
+  if (!effectiveOwner) {
+    throw new Error('Either owner_pk or merchant_id with valid owner required');
+  }
+
   const { data, error } = await getSupabase()
     .from('gns_payment_links')
     .insert({
       link_id: generateId('LINK'),
       link_code: linkData.short_code || generateId('PAY').toLowerCase(),
-      merchant_id: linkData.merchant_id,
+      merchant_id: linkData.merchant_id || linkData.owner_pk, // Fallback to owner_pk if merchant_id missing
+      owner_pk: linkData.owner_pk?.toLowerCase(),
       amount: linkData.amount,
       currency: linkData.currency,
       description: linkData.description,
@@ -754,12 +764,20 @@ export async function updatePaymentLinkStatus(linkId: string, status: string) {
 // ===========================================
 
 export async function createInvoice(invoiceData: InvoiceInput) {
+  const effectiveOwner = invoiceData.owner_pk
+    ?? (invoiceData.merchant_id ? await getMerchantOwnerPk(invoiceData.merchant_id) : null);
+
+  if (!effectiveOwner) {
+    throw new Error('Either owner_pk or merchant_id with valid owner required');
+  }
+
   const { data, error } = await getSupabase()
     .from('gns_invoices')
     .insert({
       invoice_id: generateId('INV'),
       invoice_number: `INV-${Date.now()}`,
-      merchant_id: invoiceData.merchant_id,
+      merchant_id: invoiceData.merchant_id || invoiceData.owner_pk, // Fallback
+      owner_pk: invoiceData.owner_pk?.toLowerCase(),
       customer_pk: invoiceData.customer_pk || invoiceData.customer_public_key,
       customer_email: invoiceData.customer_email,
       amount: invoiceData.amount,

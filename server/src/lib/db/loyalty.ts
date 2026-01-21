@@ -1,11 +1,11 @@
 
 import { getSupabase, generateId } from './client';
 import {
-    SubscriptionInput,
-    QrCodeInput,
-    PointTransactionInput,
-    LoyaltyProfileInput,
-    RedemptionInput
+  SubscriptionInput,
+  QrCodeInput,
+  PointTransactionInput,
+  LoyaltyProfileInput,
+  RedemptionInput
 } from '../../types/api.types';
 
 // ===========================================
@@ -805,13 +805,23 @@ export async function getAllExchangeRates() {
   if (error) throw error;
   return data || [];
 }
+import { getMerchantOwnerPk } from './merchants';
+
 export async function createQrCode(qrData: QrCodeInput) {
+  const effectiveOwner = qrData.owner_pk
+    ?? (qrData.merchant_id ? await getMerchantOwnerPk(qrData.merchant_id) : null);
+
+  if (!effectiveOwner) {
+    throw new Error('Either owner_pk or merchant_id with valid owner required');
+  }
+
   const { data, error } = await getSupabase()
     .from('gns_qr_codes')
     .insert({
       qr_id: generateId('QR'),
       user_pk: qrData.user_pk?.toLowerCase(),
-      merchant_id: qrData.merchant_id,
+      owner_pk: qrData.owner_pk?.toLowerCase(),
+      merchant_id: qrData.merchant_id || qrData.owner_pk,
       type: qrData.type,
       amount: qrData.amount,
       currency: qrData.currency,

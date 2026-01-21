@@ -370,6 +370,7 @@ export interface RedemptionInput {
 
 export interface MerchantInput {
   merchant_id: string;
+  owner_pk?: string;
   name: string;
   display_name?: string;
   stellar_address: string;
@@ -502,7 +503,8 @@ export interface WebhookEventFilter {
 }
 
 export interface PaymentLinkInput {
-  merchant_id: string;
+  merchant_id?: string;
+  owner_pk?: string;
   type?: string;
   amount?: number;
   currency: string;
@@ -532,7 +534,8 @@ export interface LinkPaymentInput {
 }
 
 export interface InvoiceInput {
-  merchant_id: string;
+  merchant_id?: string;
+  owner_pk?: string;
   customer_pk?: string;
   customer_public_key?: string;
   customer_email?: string;
@@ -554,6 +557,7 @@ export interface InvoiceInput {
 
 export interface QrCodeInput {
   user_pk?: string;
+  owner_pk?: string;
   merchant_id?: string;
   type: string;
   reference?: string;

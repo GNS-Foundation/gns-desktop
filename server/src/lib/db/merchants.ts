@@ -1,13 +1,13 @@
 
 import { getSupabase, generateId } from './client';
 import {
-    DbGeoAuthSession
+  DbGeoAuthSession
 } from '../../types';
 import {
-    MerchantInput,
-    WebhookSubscription,
-    OAuthClient,
-    WebhookEventFilter
+  MerchantInput,
+  WebhookSubscription,
+  OAuthClient,
+  WebhookEventFilter
 } from '../../types/api.types';
 
 // ===========================================
@@ -461,6 +461,7 @@ export async function createMerchant(merchantData: MerchantInput) {
     .from('gns_merchants')
     .insert({
       merchant_id: merchantData.merchant_id,
+      owner_pk: merchantData.owner_pk?.toLowerCase(),
       name: merchantData.name,
       display_name: merchantData.display_name,
       stellar_address: merchantData.stellar_address,
@@ -816,4 +817,15 @@ export async function getWebhookDeliveries(
 
   if (error) throw error;
   return data || [];
+}
+
+export async function getMerchantOwnerPk(merchantId: string): Promise<string | null> {
+  const { data, error } = await getSupabase()
+    .from('gns_merchants')
+    .select('owner_pk')
+    .eq('merchant_id', merchantId)
+    .single();
+
+  if (error || !data) return null;
+  return data.owner_pk;
 }

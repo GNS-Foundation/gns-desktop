@@ -374,7 +374,7 @@ const PaymentsHub = ({ darkMode = false, onNavigate }) => {
                 <input
                   type="text"
                   value={newLink.title}
-                  onChange={(e) => setNewLink({ ...newLink, title: e.target.value })}
+                  onChange={(e) => setNewLink(prev => ({ ...prev, title: e.target.value }))}
                   placeholder="e.g., Coffee Payment"
                   className={`w-full px-4 py-3 rounded-lg ${theme.bgInput} ${theme.text} border ${theme.border} focus:outline-none focus:ring-2 focus:ring-indigo-500`}
                   required
@@ -388,7 +388,7 @@ const PaymentsHub = ({ darkMode = false, onNavigate }) => {
                     type="number"
                     step="0.01"
                     value={newLink.amount}
-                    onChange={(e) => setNewLink({ ...newLink, amount: e.target.value })}
+                    onChange={(e) => setNewLink(prev => ({ ...prev, amount: e.target.value }))}
                     placeholder="0.00"
                     className={`w-full px-4 py-3 rounded-lg ${theme.bgInput} ${theme.text} border ${theme.border} focus:outline-none focus:ring-2 focus:ring-indigo-500`}
                     required
@@ -398,7 +398,7 @@ const PaymentsHub = ({ darkMode = false, onNavigate }) => {
                   <label className={`block text-sm font-medium ${theme.text} mb-2`}>Currency</label>
                   <select
                     value={newLink.currency}
-                    onChange={(e) => setNewLink({ ...newLink, currency: e.target.value })}
+                    onChange={(e) => setNewLink(prev => ({ ...prev, currency: e.target.value }))}
                     className={`w-full px-4 py-3 rounded-lg ${theme.bgInput} ${theme.text} border ${theme.border} focus:outline-none focus:ring-2 focus:ring-indigo-500`}
                   >
                     <option value="EUR">EUR (€)</option>
@@ -413,7 +413,7 @@ const PaymentsHub = ({ darkMode = false, onNavigate }) => {
                 <label className={`block text-sm font-medium ${theme.text} mb-2`}>Description</label>
                 <textarea
                   value={newLink.description}
-                  onChange={(e) => setNewLink({ ...newLink, description: e.target.value })}
+                  onChange={(e) => setNewLink(prev => ({ ...prev, description: e.target.value }))}
                   placeholder="Optional description..."
                   rows={3}
                   className={`w-full px-4 py-3 rounded-lg ${theme.bgInput} ${theme.text} border ${theme.border} focus:outline-none focus:ring-2 focus:ring-indigo-500`}

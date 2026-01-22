@@ -16,7 +16,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { getSession } from '@gns/api-web';
 
 // API Configuration
-const API_BASE = process.env.REACT_APP_API_URL || 'https://superb-adaptation-production.up.railway.app';
+const API_BASE = process.env.REACT_APP_API_URL || 'https://gns-browser-production.up.railway.app';
 
 /**
  * Payment Links Manager Component

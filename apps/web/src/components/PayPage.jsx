@@ -9,7 +9,7 @@
 
 import React, { useState, useEffect } from 'react';
 
-const API_BASE = process.env.REACT_APP_API_URL || 'https://superb-adaptation-production.up.railway.app';
+const API_BASE = process.env.REACT_APP_API_URL || 'https://gns-browser-production.up.railway.app';
 
 const PayPage = ({ code, darkMode = false, onBack, onSignIn, isAuthenticated }) => {
   const [link, setLink] = useState(null);

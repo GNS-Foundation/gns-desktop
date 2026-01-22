@@ -53,6 +53,7 @@ import { HandleManagement } from './screens/HandleManagement';
 import { AnalyticsScreen } from './screens/AnalyticsScreen';
 import { LoyaltyScreen } from './screens/LoyaltyScreen';
 import { SubscriptionsScreen } from './screens/SubscriptionsScreen';
+import { PaymentLinksScreen } from './screens/PaymentLinksScreen';
 
 export default function MobileApp() {
     return (
@@ -69,6 +70,7 @@ export default function MobileApp() {
             <Route path="/financial/analytics" element={<AnalyticsScreen />} />
             <Route path="/financial/loyalty" element={<LoyaltyScreen />} />
             <Route path="/financial/subscriptions" element={<SubscriptionsScreen />} />
+            <Route path="/financial/links" element={<PaymentLinksScreen />} />
         </Routes>
     );
 }

@@ -58,6 +58,12 @@ export function FinancialHubScreen() {
                         color="#e67e22"
                         onClick={() => navigate('/financial/subscriptions')}
                     />
+                    <ActionButton
+                        icon="🔗"
+                        label="Links"
+                        color="#1abc9c"
+                        onClick={() => navigate('/financial/links')}
+                    />
                 </div>
 
                 {/* Recent Activity */}

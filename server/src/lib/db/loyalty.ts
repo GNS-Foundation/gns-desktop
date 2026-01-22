@@ -827,6 +827,8 @@ export async function createQrCode(qrData: QrCodeInput) {
       amount: qrData.amount,
       currency: qrData.currency,
       data: qrData.data,
+      memo: qrData.memo,
+      default_memo: qrData.default_memo,
       is_active: true,
       scan_count: 0,
       created_at: new Date().toISOString(),

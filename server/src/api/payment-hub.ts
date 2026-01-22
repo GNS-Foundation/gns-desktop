@@ -98,7 +98,13 @@ router.get('/link/list', verifyGnsAuth, async (req: AuthenticatedRequest, res: R
 router.post('/link/create', verifyGnsAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const publicKey = req.gnsPublicKey!;
-    const { title, description, amount, currency = 'EUR', type = 'one_time', expiresAt } = req.body;
+    const body = req.body;
+    const title = body.title || body.link_title || body.name;
+    const description = body.description || body.memo;
+    const amount = body.amount;
+    const currency = body.currency || 'EUR';
+    const type = body.type || 'one_time';
+    const expiresAt = body.expiresAt || body.expires_at;
 
     if (!title || amount === undefined) {
       return res.status(400).json({
@@ -257,16 +263,17 @@ router.get('/invoice/list', verifyGnsAuth, async (req: AuthenticatedRequest, res
 router.post('/invoice/create', verifyGnsAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const publicKey = req.gnsPublicKey!;
-    const {
-      customerName,
-      customerEmail,
-      customerHandle,
-      items,
-      currency = 'EUR',
-      dueDate,
-      notes,
-      taxRate = 22, // Default Italian VAT
-    } = req.body;
+    const body = req.body;
+
+    // Support camelCase and snake_case
+    const customerName = body.customerName || body.customer_name || body.name;
+    const customerEmail = body.customerEmail || body.customer_email || body.email;
+    const customerHandle = body.customerHandle || body.customer_handle || body.handle;
+    const items = body.items || body.line_items;
+    const currency = body.currency || 'EUR';
+    const dueDate = body.dueDate || body.due_date;
+    const notes = body.notes || body.memo;
+    const taxRate = body.taxRate || body.tax_rate || 22; // Default Italian VAT
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ success: false, error: 'Items are required' });
@@ -453,7 +460,13 @@ router.get('/qr/list', verifyGnsAuth, async (req: AuthenticatedRequest, res: Res
 router.post('/qr/create', verifyGnsAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const publicKey = req.gnsPublicKey!;
-    const { name, description, amount, currency = 'EUR', type = 'fixed' } = req.body;
+    const body = req.body;
+
+    const name = body.name || body.memo || body.title;
+    const description = body.description || body.default_memo;
+    const amount = body.amount;
+    const currency = body.currency || 'EUR';
+    const type = body.type || 'fixed';
 
     if (!name) {
       return res.status(400).json({ success: false, error: 'Name is required' });

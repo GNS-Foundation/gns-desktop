@@ -7,6 +7,7 @@ import {
   LoyaltyProfileInput,
   RedemptionInput
 } from '../../types/api.types';
+import crypto from 'crypto';
 
 // ===========================================
 // LOYALTY FUNCTIONS
@@ -174,7 +175,7 @@ export async function createRedemption(redemptionData: RedemptionInput) {
   const { data, error } = await getSupabase()
     .from('gns_redemptions')
     .insert({
-      redemption_id: redemptionData.redemption_id || generateId('RDM'),
+      redemption_id: crypto.randomUUID(),
       reward_id: redemptionData.reward_id,
       reward_name: redemptionData.reward_name,
       user_pk: redemptionData.user_pk.toLowerCase(),
@@ -483,7 +484,7 @@ export async function createBudget(budgetData: {
   const { data, error } = await getSupabase()
     .from('gns_budgets')
     .insert({
-      budget_id: generateId('BDG'),
+      budget_id: crypto.randomUUID(),
       user_pk: budgetData.user_pk.toLowerCase(),
       name: budgetData.name,
       amount: budgetData.amount,
@@ -528,7 +529,7 @@ export async function createSavingsGoal(goalData: {
   const { data, error } = await getSupabase()
     .from('gns_savings_goals')
     .insert({
-      goal_id: generateId('GOAL'),
+      goal_id: crypto.randomUUID(),
       user_pk: goalData.user_pk.toLowerCase(),
       name: goalData.name,
       target_amount: goalData.target_amount,
@@ -658,7 +659,7 @@ export async function createSubscription(subData: SubscriptionInput) {
   const { data, error } = await getSupabase()
     .from('gns_subscriptions')
     .insert({
-      subscription_id: generateId('SUB'),
+      subscription_id: crypto.randomUUID(),
       user_pk: subData.user_pk.toLowerCase(),
       plan_id: subData.plan_id,
       amount: subData.amount,
@@ -818,7 +819,7 @@ export async function createQrCode(qrData: QrCodeInput) {
   const { data, error } = await getSupabase()
     .from('gns_qr_codes')
     .insert({
-      qr_id: generateId('QR'),
+      qr_id: crypto.randomUUID(),
       user_pk: qrData.user_pk?.toLowerCase(),
       owner_pk: qrData.owner_pk?.toLowerCase(),
       merchant_id: qrData.merchant_id || qrData.owner_pk,

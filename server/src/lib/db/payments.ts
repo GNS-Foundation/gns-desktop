@@ -3,6 +3,7 @@ import { getSupabase, generateId } from './client';
 import {
   DbPaymentIntent, DbPaymentAck
 } from '../../types';
+import crypto from 'crypto';
 import {
   DbPaymentRequest,
   SettlementInput,
@@ -654,10 +655,11 @@ export async function createPaymentLink(linkData: PaymentLinkInput) {
   const { data, error } = await getSupabase()
     .from('gns_payment_links')
     .insert({
-      link_id: generateId('LINK'),
+      link_id: crypto.randomUUID(),
       link_code: linkData.short_code || generateId('PAY').toLowerCase(),
       merchant_id: linkData.merchant_id || linkData.owner_pk, // Fallback to owner_pk if merchant_id missing
       owner_pk: linkData.owner_pk?.toLowerCase(),
+      title: linkData.title,
       amount: linkData.amount,
       currency: linkData.currency,
       description: linkData.description,
@@ -723,7 +725,7 @@ export async function createLinkPayment(paymentData: LinkPaymentInput) {
   const { data, error } = await getSupabase()
     .from('gns_link_payments')
     .insert({
-      payment_id: generateId('LPAY'),
+      payment_id: crypto.randomUUID(),
       link_id: paymentData.link_id,
       payer_pk: paymentData.payer_pk || paymentData.payer_public_key,
       amount: paymentData.amount,
@@ -774,7 +776,7 @@ export async function createInvoice(invoiceData: InvoiceInput) {
   const { data, error } = await getSupabase()
     .from('gns_invoices')
     .insert({
-      invoice_id: generateId('INV'),
+      invoice_id: crypto.randomUUID(),
       invoice_number: `INV-${Date.now()}`,
       merchant_id: invoiceData.merchant_id || invoiceData.owner_pk, // Fallback
       owner_pk: invoiceData.owner_pk?.toLowerCase(),

@@ -108,10 +108,11 @@ router.post('/link/create', verifyGnsAuth, async (req: AuthenticatedRequest, res
     }
 
     const linkCode = generateLinkCode();
-    
+
     // Match PaymentLinkInput type
     const link = await db.createPaymentLink({
       merchant_id: publicKey,
+      owner_pk: publicKey,
       short_code: linkCode,
       title,
       description: description || undefined,
@@ -281,6 +282,7 @@ router.post('/invoice/create', verifyGnsAuth, async (req: AuthenticatedRequest, 
     // Match InvoiceInput type
     const invoice = await db.createInvoice({
       merchant_id: publicKey,
+      owner_pk: publicKey,
       customer_name: customerName || undefined,
       customer_email: customerEmail || undefined,
       customer_handle: customerHandle || undefined,
@@ -462,7 +464,7 @@ router.post('/qr/create', verifyGnsAuth, async (req: AuthenticatedRequest, res: 
     const handle = alias?.handle || publicKey.substring(0, 8);
 
     const qrCode = generateQRCode();
-    
+
     // Build QR data
     const qrData = {
       type: 'gns_pay',
@@ -475,6 +477,7 @@ router.post('/qr/create', verifyGnsAuth, async (req: AuthenticatedRequest, res: 
     // Match QrCodeInput type
     const qr = await db.createQrCode({
       user_pk: publicKey,
+      owner_pk: publicKey,
       merchant_id: publicKey,
       type,
       reference: qrCode,

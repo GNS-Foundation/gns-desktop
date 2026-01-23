@@ -1,0 +1,4 @@
+# NFC permissions temporarily disabled for build debugging
+# [[permission]]
+# identifier = "nfc"
+# ...

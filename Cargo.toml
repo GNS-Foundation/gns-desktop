@@ -4,6 +4,7 @@ members = [
     "apps/desktop/src-tauri",
     "crates/gns-crypto-core",
     "crates/gns-crypto-wasm",
+    "crates/tauri-plugin-gns",
 ]
 
 [workspace.package]

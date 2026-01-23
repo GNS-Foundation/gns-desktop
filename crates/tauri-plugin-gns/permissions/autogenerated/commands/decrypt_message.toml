@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-decrypt-message"
+description = "Enables the decrypt_message command without any pre-configured scope."
+commands.allow = ["decrypt_message"]
+
+[[permission]]
+identifier = "deny-decrypt-message"
+description = "Denies the decrypt_message command without any pre-configured scope."
+commands.deny = ["decrypt_message"]

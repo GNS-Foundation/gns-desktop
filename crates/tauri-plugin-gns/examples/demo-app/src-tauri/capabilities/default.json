@@ -1,0 +1,17 @@
+{
+  "$schema": "https://schema.tauri.app/config/2/capabilities",
+  "identifier": "default",
+  "description": "Default capabilities for the GNS demo app",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "gns:default",
+    "gns:allow-start-collection",
+    "gns:allow-stop-collection",
+    "gns:allow-get-collection-status",
+    "gns:allow-get-breadcrumbs",
+    "gns:allow-collect-breadcrumb",
+    "gns:allow-publish-epoch",
+    "gns:allow-get-epochs"
+  ]
+}

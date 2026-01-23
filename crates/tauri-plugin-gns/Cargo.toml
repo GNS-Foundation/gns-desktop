@@ -1,0 +1,125 @@
+[package]
+name = "tauri-plugin-gns"
+links = "tauri-plugin-gns"
+version = "0.1.0"
+description = "Decentralized identity plugin for Tauri using the GNS Protocol (Geospatial Naming System)"
+authors = ["GNS Protocol Team <team@gns.earth>"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/gns-protocol/tauri-plugin-gns"
+homepage = "https://gns.earth"
+documentation = "https://docs.rs/tauri-plugin-gns"
+readme = "README.md"
+edition = "2021"
+rust-version = "1.77.2"
+categories = ["api-bindings", "authentication", "cryptography", "wasm"]
+keywords = ["tauri", "plugin", "identity", "decentralized", "gns", "proof-of-trajectory"]
+
+[package.metadata.docs.rs]
+rustc-args = ["--cfg", "docsrs"]
+rustdoc-args = ["--cfg", "docsrs"]
+targets = ["x86_64-unknown-linux-gnu", "aarch64-apple-darwin", "x86_64-pc-windows-msvc"]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[build-dependencies]
+tauri-plugin = { version = "2", features = ["build"] }
+
+[dependencies]
+# Tauri Core
+tauri = { version = "2", default-features = false }
+tauri-plugin = { version = "2", features = ["runtime"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Error Handling
+thiserror = "2"
+
+# Async Runtime
+tokio = { version = "1", features = ["sync", "time", "rt-multi-thread"] }
+
+# Logging
+log = "0.4"
+tracing = "0.1"
+
+# Cryptography (Ed25519/X25519/ChaCha20-Poly1305)
+ed25519-dalek = { version = "2", features = ["serde", "rand_core"] }
+x25519-dalek = { version = "2", features = ["serde", "static_secrets"] }
+chacha20poly1305 = "0.10"
+hkdf = "0.12"
+sha2 = "0.10"
+rand = "0.8"
+
+# Storage
+rusqlite = { version = "0.32", features = ["bundled", "serde_json"] }
+
+# Network
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+url = "2"
+futures = "0.3"
+
+# Utilities
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+hex = "0.4"
+base64 = "0.22"
+
+# Security: Secure memory wiping for sensitive data
+zeroize = { version = "1.7", features = ["derive"] }
+
+# Password-based key derivation for export encryption
+argon2 = "0.5"
+
+# H3 Geospatial Indexing (for location privacy)
+h3o = "0.6"
+
+# Optional dependencies (feature-gated)
+# Trajectory feature: geographic utilities
+geoutils = { version = "0.5", optional = true }
+
+# Biometric feature: system keyring access
+keyring = { version = "3", optional = true }
+
+# Payments feature: Stellar blockchain integration
+# Note: We use stellar-strkey for address encoding (compatible with ed25519-dalek)
+# and implement transaction signing ourselves using existing ed25519-dalek
+stellar-strkey = { version = "0.0.8", optional = true }
+
+# Platform-specific dependencies
+[target.'cfg(target_os = "ios")'.dependencies]
+tauri = { version = "2", features = ["wry"] }
+
+[target.'cfg(target_os = "android")'.dependencies]
+tauri = { version = "2", features = ["wry"] }
+
+[features]
+default = []
+
+# Enable Proof-of-Trajectory breadcrumb collection (requires geolocation)
+# This enables GPS-based identity verification via breadcrumb chains
+trajectory = ["dep:geoutils"]
+
+# Enable biometric key protection (iOS Face ID/Touch ID, Android BiometricPrompt)
+# Adds secure enclave integration for key storage
+biometric = ["dep:keyring"]
+
+# Enable Stellar blockchain integration for payments
+# Allows GNS identity keys to function as Stellar wallets
+payments = ["dep:stellar-strkey"]
+
+# Enable DIX (Decentralized Identity Broadcasting)
+# Adds microblogging/social features
+dix = []
+
+# Enable full feature set
+full = ["trajectory", "biometric", "payments", "dix"]
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full", "test-util"] }
+tempfile = "3"
+pretty_assertions = "1"
+
+# Additional dev dependencies for integration tests
+async-trait = "0.1"

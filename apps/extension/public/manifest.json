@@ -1,0 +1,23 @@
+{
+    "manifest_version": 3,
+    "name": "GNS Content Protection",
+    "description": "Proof-of-Trajectory Verification for GNS",
+    "version": "1.0.0",
+    "action": {
+        "default_popup": "index.html",
+        "default_title": "GNS Verification"
+    },
+    "permissions": [
+        "storage",
+        "activeTab",
+        "scripting"
+    ],
+    "host_permissions": [
+        "<all_urls>"
+    ],
+    "icons": {
+        "16": "vite.svg",
+        "48": "vite.svg",
+        "128": "vite.svg"
+    }
+}

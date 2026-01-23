@@ -1,0 +1,434 @@
+# GNS Protocol Plugin Permissions
+# Default permission set that enables all safe operations
+
+[[set]]
+identifier = "default"
+description = "Default permissions for GNS Protocol plugin - enables identity, messaging, resolution, and trust operations"
+permissions = [
+    "allow-create-identity",
+    "allow-load-identity",
+    "allow-get-identity",
+    "allow-list-identities",
+    "allow-export-identity",
+    "allow-import-identity",
+    "allow-get-public-key",
+    "allow-sign-message",
+    "allow-verify-signature",
+    "allow-set-default-identity",
+    "allow-send-message",
+    "allow-get-messages",
+    "allow-get-message",
+    "allow-decrypt-message",
+    "allow-mark-as-read",
+    "allow-delete-message",
+    "allow-get-conversations",
+    "allow-resolve-handle",
+    "allow-resolve-identity",
+    "allow-is-handle-available",
+    "allow-claim-handle",
+    "allow-release-handle",
+    "allow-get-record",
+    "allow-update-record",
+    "allow-get-trust-score",
+    "allow-get-trust-details",
+    "allow-verify-identity",
+]
+
+# Identity Management Permissions
+
+[[permission]]
+identifier = "allow-create-identity"
+description = "Allows creating new GNS identities"
+commands.allow = ["create_identity"]
+
+[[permission]]
+identifier = "deny-create-identity"
+description = "Denies creating new GNS identities"
+commands.deny = ["create_identity"]
+
+[[permission]]
+identifier = "allow-load-identity"
+description = "Allows loading existing identities"
+commands.allow = ["load_identity"]
+
+[[permission]]
+identifier = "deny-load-identity"
+description = "Denies loading existing identities"
+commands.deny = ["load_identity"]
+
+[[permission]]
+identifier = "allow-get-identity"
+description = "Allows getting identity information"
+commands.allow = ["get_identity"]
+
+[[permission]]
+identifier = "deny-get-identity"
+description = "Denies getting identity information"
+commands.deny = ["get_identity"]
+
+[[permission]]
+identifier = "allow-list-identities"
+description = "Allows listing all identities"
+commands.allow = ["list_identities"]
+
+[[permission]]
+identifier = "deny-list-identities"
+description = "Denies listing all identities"
+commands.deny = ["list_identities"]
+
+[[permission]]
+identifier = "allow-delete-identity"
+description = "Allows deleting identities - DANGEROUS"
+commands.allow = ["delete_identity"]
+
+[[permission]]
+identifier = "deny-delete-identity"
+description = "Denies deleting identities"
+commands.deny = ["delete_identity"]
+
+[[permission]]
+identifier = "allow-export-identity"
+description = "Allows exporting identity for backup"
+commands.allow = ["export_identity"]
+
+[[permission]]
+identifier = "deny-export-identity"
+description = "Denies exporting identity"
+commands.deny = ["export_identity"]
+
+[[permission]]
+identifier = "allow-import-identity"
+description = "Allows importing identity from backup"
+commands.allow = ["import_identity"]
+
+[[permission]]
+identifier = "deny-import-identity"
+description = "Denies importing identity"
+commands.deny = ["import_identity"]
+
+[[permission]]
+identifier = "allow-get-public-key"
+description = "Allows getting active public key"
+commands.allow = ["get_public_key"]
+
+[[permission]]
+identifier = "deny-get-public-key"
+description = "Denies getting active public key"
+commands.deny = ["get_public_key"]
+
+[[permission]]
+identifier = "allow-sign-message"
+description = "Allows signing messages with identity key"
+commands.allow = ["sign_message"]
+
+[[permission]]
+identifier = "deny-sign-message"
+description = "Denies signing messages"
+commands.deny = ["sign_message"]
+
+[[permission]]
+identifier = "allow-verify-signature"
+description = "Allows verifying signatures"
+commands.allow = ["verify_signature"]
+
+[[permission]]
+identifier = "deny-verify-signature"
+description = "Denies verifying signatures"
+commands.deny = ["verify_signature"]
+
+[[permission]]
+identifier = "allow-set-default-identity"
+description = "Allows setting default identity"
+commands.allow = ["set_default_identity"]
+
+[[permission]]
+identifier = "deny-set-default-identity"
+description = "Denies setting default identity"
+commands.deny = ["set_default_identity"]
+
+# Messaging Permissions
+
+[[permission]]
+identifier = "allow-send-message"
+description = "Allows sending encrypted messages"
+commands.allow = ["send_message"]
+
+[[permission]]
+identifier = "deny-send-message"
+description = "Denies sending messages"
+commands.deny = ["send_message"]
+
+[[permission]]
+identifier = "allow-get-messages"
+description = "Allows retrieving messages"
+commands.allow = ["get_messages"]
+
+[[permission]]
+identifier = "deny-get-messages"
+description = "Denies retrieving messages"
+commands.deny = ["get_messages"]
+
+[[permission]]
+identifier = "allow-get-message"
+description = "Allows getting a single message"
+commands.allow = ["get_message"]
+
+[[permission]]
+identifier = "deny-get-message"
+description = "Denies getting a single message"
+commands.deny = ["get_message"]
+
+[[permission]]
+identifier = "allow-decrypt-message"
+description = "Allows decrypting messages"
+commands.allow = ["decrypt_message"]
+
+[[permission]]
+identifier = "deny-decrypt-message"
+description = "Denies decrypting messages"
+commands.deny = ["decrypt_message"]
+
+[[permission]]
+identifier = "allow-mark-as-read"
+description = "Allows marking messages as read"
+commands.allow = ["mark_as_read"]
+
+[[permission]]
+identifier = "deny-mark-as-read"
+description = "Denies marking messages as read"
+commands.deny = ["mark_as_read"]
+
+[[permission]]
+identifier = "allow-delete-message"
+description = "Allows deleting messages"
+commands.allow = ["delete_message"]
+
+[[permission]]
+identifier = "deny-delete-message"
+description = "Denies deleting messages"
+commands.deny = ["delete_message"]
+
+[[permission]]
+identifier = "allow-get-conversations"
+description = "Allows listing conversations"
+commands.allow = ["get_conversations"]
+
+[[permission]]
+identifier = "deny-get-conversations"
+description = "Denies listing conversations"
+commands.deny = ["get_conversations"]
+
+# Resolution Permissions
+
+[[permission]]
+identifier = "allow-resolve-handle"
+description = "Allows resolving @handles to public keys"
+commands.allow = ["resolve_handle"]
+
+[[permission]]
+identifier = "deny-resolve-handle"
+description = "Denies resolving handles"
+commands.deny = ["resolve_handle"]
+
+[[permission]]
+identifier = "allow-resolve-identity"
+description = "Allows resolving identities to GNS records"
+commands.allow = ["resolve_identity"]
+
+[[permission]]
+identifier = "deny-resolve-identity"
+description = "Denies resolving identities"
+commands.deny = ["resolve_identity"]
+
+[[permission]]
+identifier = "allow-is-handle-available"
+description = "Allows checking handle availability"
+commands.allow = ["is_handle_available"]
+
+[[permission]]
+identifier = "deny-is-handle-available"
+description = "Denies checking handle availability"
+commands.deny = ["is_handle_available"]
+
+[[permission]]
+identifier = "allow-claim-handle"
+description = "Allows claiming @handles"
+commands.allow = ["claim_handle"]
+
+[[permission]]
+identifier = "deny-claim-handle"
+description = "Denies claiming handles"
+commands.deny = ["claim_handle"]
+
+[[permission]]
+identifier = "allow-release-handle"
+description = "Allows releasing @handles"
+commands.allow = ["release_handle"]
+
+[[permission]]
+identifier = "deny-release-handle"
+description = "Denies releasing handles"
+commands.deny = ["release_handle"]
+
+[[permission]]
+identifier = "allow-get-record"
+description = "Allows getting GNS records"
+commands.allow = ["get_record"]
+
+[[permission]]
+identifier = "deny-get-record"
+description = "Denies getting GNS records"
+commands.deny = ["get_record"]
+
+[[permission]]
+identifier = "allow-update-record"
+description = "Allows updating GNS records"
+commands.allow = ["update_record"]
+
+[[permission]]
+identifier = "deny-update-record"
+description = "Denies updating GNS records"
+commands.deny = ["update_record"]
+
+# Trust Permissions
+
+[[permission]]
+identifier = "allow-get-trust-score"
+description = "Allows getting trust scores"
+commands.allow = ["get_trust_score"]
+
+[[permission]]
+identifier = "deny-get-trust-score"
+description = "Denies getting trust scores"
+commands.deny = ["get_trust_score"]
+
+[[permission]]
+identifier = "allow-get-trust-details"
+description = "Allows getting detailed trust breakdown"
+commands.allow = ["get_trust_details"]
+
+[[permission]]
+identifier = "deny-get-trust-details"
+description = "Denies getting trust details"
+commands.deny = ["get_trust_details"]
+
+[[permission]]
+identifier = "allow-verify-identity"
+description = "Allows verifying identity trust"
+commands.allow = ["verify_identity"]
+
+[[permission]]
+identifier = "deny-verify-identity"
+description = "Denies verifying identity trust"
+commands.deny = ["verify_identity"]
+
+# Trajectory Permissions (requires 'trajectory' feature)
+
+[[permission]]
+identifier = "allow-start-collection"
+description = "Allows starting breadcrumb collection"
+commands.allow = ["start_collection"]
+
+[[permission]]
+identifier = "deny-start-collection"
+description = "Denies starting collection"
+commands.deny = ["start_collection"]
+
+[[permission]]
+identifier = "allow-stop-collection"
+description = "Allows stopping breadcrumb collection"
+commands.allow = ["stop_collection"]
+
+[[permission]]
+identifier = "deny-stop-collection"
+description = "Denies stopping collection"
+commands.deny = ["stop_collection"]
+
+[[permission]]
+identifier = "allow-get-breadcrumbs"
+description = "Allows retrieving breadcrumbs"
+commands.allow = ["get_breadcrumbs"]
+
+[[permission]]
+identifier = "deny-get-breadcrumbs"
+description = "Denies retrieving breadcrumbs"
+commands.deny = ["get_breadcrumbs"]
+
+[[permission]]
+identifier = "allow-publish-epoch"
+description = "Allows publishing epochs"
+commands.allow = ["publish_epoch"]
+
+[[permission]]
+identifier = "deny-publish-epoch"
+description = "Denies publishing epochs"
+commands.deny = ["publish_epoch"]
+
+# Permission Sets
+
+[[set]]
+identifier = "read-only"
+description = "Read-only access to GNS data"
+permissions = [
+    "allow-get-identity",
+    "allow-list-identities",
+    "allow-get-public-key",
+    "allow-verify-signature",
+    "allow-get-messages",
+    "allow-get-message",
+    "allow-get-conversations",
+    "allow-resolve-handle",
+    "allow-resolve-identity",
+    "allow-is-handle-available",
+    "allow-get-record",
+    "allow-get-trust-score",
+    "allow-get-trust-details",
+    "allow-verify-identity",
+]
+
+[[set]]
+identifier = "messaging"
+description = "Full messaging capabilities"
+permissions = [
+    "allow-send-message",
+    "allow-get-messages",
+    "allow-get-message",
+    "allow-decrypt-message",
+    "allow-mark-as-read",
+    "allow-delete-message",
+    "allow-get-conversations",
+    "allow-resolve-handle",
+]
+
+[[set]]
+identifier = "identity-management"
+description = "Full identity management"
+permissions = [
+    "allow-create-identity",
+    "allow-load-identity",
+    "allow-get-identity",
+    "allow-list-identities",
+    "allow-delete-identity",
+    "allow-export-identity",
+    "allow-import-identity",
+    "allow-set-default-identity",
+]
+
+[[set]]
+identifier = "trajectory"
+description = "Breadcrumb collection and epoch publishing"
+permissions = [
+    "allow-start-collection",
+    "allow-stop-collection",
+    "allow-get-breadcrumbs",
+    "allow-publish-epoch",
+]
+
+[[set]]
+identifier = "all"
+description = "All GNS permissions including dangerous operations"
+permissions = [
+    "default",
+    "allow-delete-identity",
+    "trajectory",
+]

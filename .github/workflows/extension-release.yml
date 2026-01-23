@@ -1,0 +1,57 @@
+name: Build Extension
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/extension/**"
+      - "crates/gns-crypto-wasm/**"
+    tags:
+      - "ext-*"
+  workflow_dispatch:
+
+jobs:
+  build-extension:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        run: cargo install wasm-pack
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build WASM
+        working-directory: ./crates/gns-crypto-wasm
+        run: wasm-pack build --target web --release
+
+      - name: Build Extension
+        working-directory: ./apps/extension
+        run: pnpm build
+
+      - name: Zip Extension
+        working-directory: ./apps/extension/dist
+        run: zip -r ../../../gns-extension.zip .
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gns-extension
+          path: gns-extension.zip

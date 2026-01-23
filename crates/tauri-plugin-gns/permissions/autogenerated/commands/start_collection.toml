@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-start-collection"
+description = "Enables the start_collection command without any pre-configured scope."
+commands.allow = ["start_collection"]
+
+[[permission]]
+identifier = "deny-start-collection"
+description = "Denies the start_collection command without any pre-configured scope."
+commands.deny = ["start_collection"]

@@ -1,0 +1,20 @@
+{
+  "name": "gns-crypto-wasm",
+  "type": "module",
+  "collaborators": [
+    "GNS Team <dev@gcrumbs.com>"
+  ],
+  "description": "GNS Crypto compiled to WebAssembly for browser use",
+  "version": "1.0.0",
+  "license": "BSL-1.1",
+  "files": [
+    "gns_crypto_wasm_bg.wasm",
+    "gns_crypto_wasm.js",
+    "gns_crypto_wasm.d.ts"
+  ],
+  "main": "gns_crypto_wasm.js",
+  "types": "gns_crypto_wasm.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}

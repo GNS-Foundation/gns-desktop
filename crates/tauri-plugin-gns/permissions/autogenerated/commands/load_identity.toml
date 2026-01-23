@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-load-identity"
+description = "Enables the load_identity command without any pre-configured scope."
+commands.allow = ["load_identity"]
+
+[[permission]]
+identifier = "deny-load-identity"
+description = "Denies the load_identity command without any pre-configured scope."
+commands.deny = ["load_identity"]

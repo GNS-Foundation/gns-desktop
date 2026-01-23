@@ -29,7 +29,8 @@ tauri-plugin-notification = "2.0"
 tauri-plugin-dialog = "2.0"
 
 # GNS Protocol Plugin - Core identity and messaging
-tauri-plugin-gns = { path = "../../../../tauri-plugin-gns", features = [] }
+tauri-plugin-gns = { path = "../../../crates/tauri-plugin-gns" }
+# tauri-plugin-gns = { git = "https://github.com/cayerbe/tauri-plugin-gns", branch = "main" }
 
 # Our crypto core
 gns-crypto-core = { path = "../../../crates/gns-crypto-core" }

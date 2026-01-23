@@ -1,0 +1,1200 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PermissionFile",
+  "description": "Permission file that can define a default permission, a set of permissions or a list of inlined permissions.",
+  "type": "object",
+  "properties": {
+    "default": {
+      "description": "The default permission set for the plugin",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/DefaultPermission"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "set": {
+      "description": "A list of permissions sets defined",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/PermissionSet"
+      }
+    },
+    "permission": {
+      "description": "A list of inlined permissions",
+      "default": [],
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Permission"
+      }
+    }
+  },
+  "definitions": {
+    "DefaultPermission": {
+      "description": "The default permission set of the plugin.\n\nWorks similarly to a permission with the \"default\" identifier.",
+      "type": "object",
+      "required": [
+        "permissions"
+      ],
+      "properties": {
+        "version": {
+          "description": "The version of the permission.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 1.0
+        },
+        "description": {
+          "description": "Human-readable description of what the permission does. Tauri convention is to use `<h4>` headings in markdown content for Tauri documentation generation purposes.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "permissions": {
+          "description": "All permissions this set contains.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "PermissionSet": {
+      "description": "A set of direct permissions grouped together under a new name.",
+      "type": "object",
+      "required": [
+        "description",
+        "identifier",
+        "permissions"
+      ],
+      "properties": {
+        "identifier": {
+          "description": "A unique identifier for the permission.",
+          "type": "string"
+        },
+        "description": {
+          "description": "Human-readable description of what the permission does.",
+          "type": "string"
+        },
+        "permissions": {
+          "description": "All permissions this set contains.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PermissionKind"
+          }
+        }
+      }
+    },
+    "Permission": {
+      "description": "Descriptions of explicit privileges of commands.\n\nIt can enable commands to be accessible in the frontend of the application.\n\nIf the scope is defined it can be used to fine grain control the access of individual or multiple commands.",
+      "type": "object",
+      "required": [
+        "identifier"
+      ],
+      "properties": {
+        "version": {
+          "description": "The version of the permission.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 1.0
+        },
+        "identifier": {
+          "description": "A unique identifier for the permission.",
+          "type": "string"
+        },
+        "description": {
+          "description": "Human-readable description of what the permission does. Tauri internal convention is to use `<h4>` headings in markdown content for Tauri documentation generation purposes.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "commands": {
+          "description": "Allowed or denied commands when using this permission.",
+          "default": {
+            "allow": [],
+            "deny": []
+          },
+          "allOf": [
+            {
+              "$ref": "#/definitions/Commands"
+            }
+          ]
+        },
+        "scope": {
+          "description": "Allowed or denied scoped when using this permission.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Scopes"
+            }
+          ]
+        },
+        "platforms": {
+          "description": "Target platforms this permission applies. By default all platforms are affected by this permission.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/definitions/Target"
+          }
+        }
+      }
+    },
+    "Commands": {
+      "description": "Allowed and denied commands inside a permission.\n\nIf two commands clash inside of `allow` and `deny`, it should be denied by default.",
+      "type": "object",
+      "properties": {
+        "allow": {
+          "description": "Allowed command.",
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "deny": {
+          "description": "Denied command, which takes priority.",
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "Scopes": {
+      "description": "An argument for fine grained behavior control of Tauri commands.\n\nIt can be of any serde serializable type and is used to allow or prevent certain actions inside a Tauri command. The configured scope is passed to the command and will be enforced by the command implementation.\n\n## Example\n\n```json { \"allow\": [{ \"path\": \"$HOME/**\" }], \"deny\": [{ \"path\": \"$HOME/secret.txt\" }] } ```",
+      "type": "object",
+      "properties": {
+        "allow": {
+          "description": "Data that defines what is allowed by the scope.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/definitions/Value"
+          }
+        },
+        "deny": {
+          "description": "Data that defines what is denied by the scope. This should be prioritized by validation logic.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/definitions/Value"
+          }
+        }
+      }
+    },
+    "Value": {
+      "description": "All supported ACL values.",
+      "anyOf": [
+        {
+          "description": "Represents a null JSON value.",
+          "type": "null"
+        },
+        {
+          "description": "Represents a [`bool`].",
+          "type": "boolean"
+        },
+        {
+          "description": "Represents a valid ACL [`Number`].",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Number"
+            }
+          ]
+        },
+        {
+          "description": "Represents a [`String`].",
+          "type": "string"
+        },
+        {
+          "description": "Represents a list of other [`Value`]s.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Value"
+          }
+        },
+        {
+          "description": "Represents a map of [`String`] keys to [`Value`]s.",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/Value"
+          }
+        }
+      ]
+    },
+    "Number": {
+      "description": "A valid ACL number.",
+      "anyOf": [
+        {
+          "description": "Represents an [`i64`].",
+          "type": "integer",
+          "format": "int64"
+        },
+        {
+          "description": "Represents a [`f64`].",
+          "type": "number",
+          "format": "double"
+        }
+      ]
+    },
+    "Target": {
+      "description": "Platform target.",
+      "oneOf": [
+        {
+          "description": "MacOS.",
+          "type": "string",
+          "enum": [
+            "macOS"
+          ]
+        },
+        {
+          "description": "Windows.",
+          "type": "string",
+          "enum": [
+            "windows"
+          ]
+        },
+        {
+          "description": "Linux.",
+          "type": "string",
+          "enum": [
+            "linux"
+          ]
+        },
+        {
+          "description": "Android.",
+          "type": "string",
+          "enum": [
+            "android"
+          ]
+        },
+        {
+          "description": "iOS.",
+          "type": "string",
+          "enum": [
+            "iOS"
+          ]
+        }
+      ]
+    },
+    "PermissionKind": {
+      "type": "string",
+      "oneOf": [
+        {
+          "description": "Enables the add_breadcrumb command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-add-breadcrumb",
+          "markdownDescription": "Enables the add_breadcrumb command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the add_breadcrumb command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-add-breadcrumb",
+          "markdownDescription": "Denies the add_breadcrumb command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the claim_handle command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-claim-handle",
+          "markdownDescription": "Enables the claim_handle command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the claim_handle command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-claim-handle",
+          "markdownDescription": "Denies the claim_handle command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the create_identity command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-create-identity",
+          "markdownDescription": "Enables the create_identity command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the create_identity command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-create-identity",
+          "markdownDescription": "Denies the create_identity command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the decrypt_message command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-decrypt-message",
+          "markdownDescription": "Enables the decrypt_message command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the decrypt_message command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-decrypt-message",
+          "markdownDescription": "Denies the decrypt_message command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the delete_identity command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-delete-identity",
+          "markdownDescription": "Enables the delete_identity command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the delete_identity command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-delete-identity",
+          "markdownDescription": "Denies the delete_identity command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the delete_message command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-delete-message",
+          "markdownDescription": "Enables the delete_message command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the delete_message command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-delete-message",
+          "markdownDescription": "Denies the delete_message command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the export_identity command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-export-identity",
+          "markdownDescription": "Enables the export_identity command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the export_identity command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-export-identity",
+          "markdownDescription": "Denies the export_identity command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the export_trajectory command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-export-trajectory",
+          "markdownDescription": "Enables the export_trajectory command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the export_trajectory command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-export-trajectory",
+          "markdownDescription": "Denies the export_trajectory command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the get_breadcrumb_count command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-get-breadcrumb-count",
+          "markdownDescription": "Enables the get_breadcrumb_count command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the get_breadcrumb_count command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-get-breadcrumb-count",
+          "markdownDescription": "Denies the get_breadcrumb_count command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the get_breadcrumbs command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-get-breadcrumbs",
+          "markdownDescription": "Enables the get_breadcrumbs command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the get_breadcrumbs command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-get-breadcrumbs",
+          "markdownDescription": "Denies the get_breadcrumbs command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the get_collection_status command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-get-collection-status",
+          "markdownDescription": "Enables the get_collection_status command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the get_collection_status command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-get-collection-status",
+          "markdownDescription": "Denies the get_collection_status command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the get_conversations command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-get-conversations",
+          "markdownDescription": "Enables the get_conversations command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the get_conversations command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-get-conversations",
+          "markdownDescription": "Denies the get_conversations command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the get_epochs command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-get-epochs",
+          "markdownDescription": "Enables the get_epochs command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the get_epochs command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-get-epochs",
+          "markdownDescription": "Denies the get_epochs command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the get_identity command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-get-identity",
+          "markdownDescription": "Enables the get_identity command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the get_identity command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-get-identity",
+          "markdownDescription": "Denies the get_identity command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the get_message command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-get-message",
+          "markdownDescription": "Enables the get_message command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the get_message command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-get-message",
+          "markdownDescription": "Denies the get_message command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the get_messages command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-get-messages",
+          "markdownDescription": "Enables the get_messages command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the get_messages command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-get-messages",
+          "markdownDescription": "Denies the get_messages command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the get_public_key command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-get-public-key",
+          "markdownDescription": "Enables the get_public_key command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the get_public_key command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-get-public-key",
+          "markdownDescription": "Denies the get_public_key command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the get_record command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-get-record",
+          "markdownDescription": "Enables the get_record command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the get_record command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-get-record",
+          "markdownDescription": "Denies the get_record command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the get_trajectory_stats command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-get-trajectory-stats",
+          "markdownDescription": "Enables the get_trajectory_stats command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the get_trajectory_stats command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-get-trajectory-stats",
+          "markdownDescription": "Denies the get_trajectory_stats command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the get_trust_details command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-get-trust-details",
+          "markdownDescription": "Enables the get_trust_details command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the get_trust_details command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-get-trust-details",
+          "markdownDescription": "Denies the get_trust_details command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the get_trust_score command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-get-trust-score",
+          "markdownDescription": "Enables the get_trust_score command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the get_trust_score command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-get-trust-score",
+          "markdownDescription": "Denies the get_trust_score command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the import_identity command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-import-identity",
+          "markdownDescription": "Enables the import_identity command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the import_identity command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-import-identity",
+          "markdownDescription": "Denies the import_identity command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the import_trajectory command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-import-trajectory",
+          "markdownDescription": "Enables the import_trajectory command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the import_trajectory command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-import-trajectory",
+          "markdownDescription": "Denies the import_trajectory command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the is_handle_available command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-is-handle-available",
+          "markdownDescription": "Enables the is_handle_available command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the is_handle_available command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-is-handle-available",
+          "markdownDescription": "Denies the is_handle_available command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the list_identities command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-list-identities",
+          "markdownDescription": "Enables the list_identities command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the list_identities command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-list-identities",
+          "markdownDescription": "Denies the list_identities command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the load_identity command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-load-identity",
+          "markdownDescription": "Enables the load_identity command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the load_identity command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-load-identity",
+          "markdownDescription": "Denies the load_identity command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the mark_as_read command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-mark-as-read",
+          "markdownDescription": "Enables the mark_as_read command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the mark_as_read command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-mark-as-read",
+          "markdownDescription": "Denies the mark_as_read command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the publish_epoch command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-publish-epoch",
+          "markdownDescription": "Enables the publish_epoch command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the publish_epoch command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-publish-epoch",
+          "markdownDescription": "Denies the publish_epoch command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the release_handle command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-release-handle",
+          "markdownDescription": "Enables the release_handle command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the release_handle command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-release-handle",
+          "markdownDescription": "Denies the release_handle command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the resolve_handle command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-resolve-handle",
+          "markdownDescription": "Enables the resolve_handle command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the resolve_handle command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-resolve-handle",
+          "markdownDescription": "Denies the resolve_handle command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the resolve_identity command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-resolve-identity",
+          "markdownDescription": "Enables the resolve_identity command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the resolve_identity command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-resolve-identity",
+          "markdownDescription": "Denies the resolve_identity command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the send_message command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-send-message",
+          "markdownDescription": "Enables the send_message command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the send_message command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-send-message",
+          "markdownDescription": "Denies the send_message command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the set_default_identity command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-set-default-identity",
+          "markdownDescription": "Enables the set_default_identity command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the set_default_identity command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-set-default-identity",
+          "markdownDescription": "Denies the set_default_identity command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the sign_message command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-sign-message",
+          "markdownDescription": "Enables the sign_message command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the sign_message command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-sign-message",
+          "markdownDescription": "Denies the sign_message command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the start_collection command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-start-collection",
+          "markdownDescription": "Enables the start_collection command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the start_collection command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-start-collection",
+          "markdownDescription": "Denies the start_collection command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the stop_collection command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-stop-collection",
+          "markdownDescription": "Enables the stop_collection command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the stop_collection command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-stop-collection",
+          "markdownDescription": "Denies the stop_collection command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the update_record command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-update-record",
+          "markdownDescription": "Enables the update_record command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the update_record command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-update-record",
+          "markdownDescription": "Denies the update_record command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the verify_chain command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-verify-chain",
+          "markdownDescription": "Enables the verify_chain command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the verify_chain command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-verify-chain",
+          "markdownDescription": "Denies the verify_chain command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the verify_identity command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-verify-identity",
+          "markdownDescription": "Enables the verify_identity command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the verify_identity command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-verify-identity",
+          "markdownDescription": "Denies the verify_identity command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the verify_signature command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-verify-signature",
+          "markdownDescription": "Enables the verify_signature command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the verify_signature command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-verify-signature",
+          "markdownDescription": "Denies the verify_signature command without any pre-configured scope."
+        },
+        {
+          "description": "Default permissions for GNS Protocol plugin - enables identity, messaging, resolution, and trust operations\n#### This permission set includes:\n\n- `allow-create-identity`\n- `allow-load-identity`\n- `allow-get-identity`\n- `allow-list-identities`\n- `allow-export-identity`\n- `allow-import-identity`\n- `allow-get-public-key`\n- `allow-sign-message`\n- `allow-verify-signature`\n- `allow-set-default-identity`\n- `allow-send-message`\n- `allow-get-messages`\n- `allow-get-message`\n- `allow-decrypt-message`\n- `allow-mark-as-read`\n- `allow-delete-message`\n- `allow-get-conversations`\n- `allow-resolve-handle`\n- `allow-resolve-identity`\n- `allow-is-handle-available`\n- `allow-claim-handle`\n- `allow-release-handle`\n- `allow-get-record`\n- `allow-update-record`\n- `allow-get-trust-score`\n- `allow-get-trust-details`\n- `allow-verify-identity`",
+          "type": "string",
+          "const": "default",
+          "markdownDescription": "Default permissions for GNS Protocol plugin - enables identity, messaging, resolution, and trust operations\n#### This permission set includes:\n\n- `allow-create-identity`\n- `allow-load-identity`\n- `allow-get-identity`\n- `allow-list-identities`\n- `allow-export-identity`\n- `allow-import-identity`\n- `allow-get-public-key`\n- `allow-sign-message`\n- `allow-verify-signature`\n- `allow-set-default-identity`\n- `allow-send-message`\n- `allow-get-messages`\n- `allow-get-message`\n- `allow-decrypt-message`\n- `allow-mark-as-read`\n- `allow-delete-message`\n- `allow-get-conversations`\n- `allow-resolve-handle`\n- `allow-resolve-identity`\n- `allow-is-handle-available`\n- `allow-claim-handle`\n- `allow-release-handle`\n- `allow-get-record`\n- `allow-update-record`\n- `allow-get-trust-score`\n- `allow-get-trust-details`\n- `allow-verify-identity`"
+        },
+        {
+          "description": "Read-only access to GNS data\n#### This permission set includes:\n\n- `allow-get-identity`\n- `allow-list-identities`\n- `allow-get-public-key`\n- `allow-verify-signature`\n- `allow-get-messages`\n- `allow-get-message`\n- `allow-get-conversations`\n- `allow-resolve-handle`\n- `allow-resolve-identity`\n- `allow-is-handle-available`\n- `allow-get-record`\n- `allow-get-trust-score`\n- `allow-get-trust-details`\n- `allow-verify-identity`",
+          "type": "string",
+          "const": "read-only",
+          "markdownDescription": "Read-only access to GNS data\n#### This permission set includes:\n\n- `allow-get-identity`\n- `allow-list-identities`\n- `allow-get-public-key`\n- `allow-verify-signature`\n- `allow-get-messages`\n- `allow-get-message`\n- `allow-get-conversations`\n- `allow-resolve-handle`\n- `allow-resolve-identity`\n- `allow-is-handle-available`\n- `allow-get-record`\n- `allow-get-trust-score`\n- `allow-get-trust-details`\n- `allow-verify-identity`"
+        },
+        {
+          "description": "Full messaging capabilities\n#### This permission set includes:\n\n- `allow-send-message`\n- `allow-get-messages`\n- `allow-get-message`\n- `allow-decrypt-message`\n- `allow-mark-as-read`\n- `allow-delete-message`\n- `allow-get-conversations`\n- `allow-resolve-handle`",
+          "type": "string",
+          "const": "messaging",
+          "markdownDescription": "Full messaging capabilities\n#### This permission set includes:\n\n- `allow-send-message`\n- `allow-get-messages`\n- `allow-get-message`\n- `allow-decrypt-message`\n- `allow-mark-as-read`\n- `allow-delete-message`\n- `allow-get-conversations`\n- `allow-resolve-handle`"
+        },
+        {
+          "description": "Full identity management\n#### This permission set includes:\n\n- `allow-create-identity`\n- `allow-load-identity`\n- `allow-get-identity`\n- `allow-list-identities`\n- `allow-delete-identity`\n- `allow-export-identity`\n- `allow-import-identity`\n- `allow-set-default-identity`",
+          "type": "string",
+          "const": "identity-management",
+          "markdownDescription": "Full identity management\n#### This permission set includes:\n\n- `allow-create-identity`\n- `allow-load-identity`\n- `allow-get-identity`\n- `allow-list-identities`\n- `allow-delete-identity`\n- `allow-export-identity`\n- `allow-import-identity`\n- `allow-set-default-identity`"
+        },
+        {
+          "description": "Breadcrumb collection and epoch publishing\n#### This permission set includes:\n\n- `allow-start-collection`\n- `allow-stop-collection`\n- `allow-get-breadcrumbs`\n- `allow-publish-epoch`",
+          "type": "string",
+          "const": "trajectory",
+          "markdownDescription": "Breadcrumb collection and epoch publishing\n#### This permission set includes:\n\n- `allow-start-collection`\n- `allow-stop-collection`\n- `allow-get-breadcrumbs`\n- `allow-publish-epoch`"
+        },
+        {
+          "description": "All GNS permissions including dangerous operations\n#### This permission set includes:\n\n- `default`\n- `allow-delete-identity`\n- `trajectory`",
+          "type": "string",
+          "const": "all",
+          "markdownDescription": "All GNS permissions including dangerous operations\n#### This permission set includes:\n\n- `default`\n- `allow-delete-identity`\n- `trajectory`"
+        },
+        {
+          "description": "Allows creating new GNS identities",
+          "type": "string",
+          "const": "allow-create-identity",
+          "markdownDescription": "Allows creating new GNS identities"
+        },
+        {
+          "description": "Denies creating new GNS identities",
+          "type": "string",
+          "const": "deny-create-identity",
+          "markdownDescription": "Denies creating new GNS identities"
+        },
+        {
+          "description": "Allows loading existing identities",
+          "type": "string",
+          "const": "allow-load-identity",
+          "markdownDescription": "Allows loading existing identities"
+        },
+        {
+          "description": "Denies loading existing identities",
+          "type": "string",
+          "const": "deny-load-identity",
+          "markdownDescription": "Denies loading existing identities"
+        },
+        {
+          "description": "Allows getting identity information",
+          "type": "string",
+          "const": "allow-get-identity",
+          "markdownDescription": "Allows getting identity information"
+        },
+        {
+          "description": "Denies getting identity information",
+          "type": "string",
+          "const": "deny-get-identity",
+          "markdownDescription": "Denies getting identity information"
+        },
+        {
+          "description": "Allows listing all identities",
+          "type": "string",
+          "const": "allow-list-identities",
+          "markdownDescription": "Allows listing all identities"
+        },
+        {
+          "description": "Denies listing all identities",
+          "type": "string",
+          "const": "deny-list-identities",
+          "markdownDescription": "Denies listing all identities"
+        },
+        {
+          "description": "Allows deleting identities - DANGEROUS",
+          "type": "string",
+          "const": "allow-delete-identity",
+          "markdownDescription": "Allows deleting identities - DANGEROUS"
+        },
+        {
+          "description": "Denies deleting identities",
+          "type": "string",
+          "const": "deny-delete-identity",
+          "markdownDescription": "Denies deleting identities"
+        },
+        {
+          "description": "Allows exporting identity for backup",
+          "type": "string",
+          "const": "allow-export-identity",
+          "markdownDescription": "Allows exporting identity for backup"
+        },
+        {
+          "description": "Denies exporting identity",
+          "type": "string",
+          "const": "deny-export-identity",
+          "markdownDescription": "Denies exporting identity"
+        },
+        {
+          "description": "Allows importing identity from backup",
+          "type": "string",
+          "const": "allow-import-identity",
+          "markdownDescription": "Allows importing identity from backup"
+        },
+        {
+          "description": "Denies importing identity",
+          "type": "string",
+          "const": "deny-import-identity",
+          "markdownDescription": "Denies importing identity"
+        },
+        {
+          "description": "Allows getting active public key",
+          "type": "string",
+          "const": "allow-get-public-key",
+          "markdownDescription": "Allows getting active public key"
+        },
+        {
+          "description": "Denies getting active public key",
+          "type": "string",
+          "const": "deny-get-public-key",
+          "markdownDescription": "Denies getting active public key"
+        },
+        {
+          "description": "Allows signing messages with identity key",
+          "type": "string",
+          "const": "allow-sign-message",
+          "markdownDescription": "Allows signing messages with identity key"
+        },
+        {
+          "description": "Denies signing messages",
+          "type": "string",
+          "const": "deny-sign-message",
+          "markdownDescription": "Denies signing messages"
+        },
+        {
+          "description": "Allows verifying signatures",
+          "type": "string",
+          "const": "allow-verify-signature",
+          "markdownDescription": "Allows verifying signatures"
+        },
+        {
+          "description": "Denies verifying signatures",
+          "type": "string",
+          "const": "deny-verify-signature",
+          "markdownDescription": "Denies verifying signatures"
+        },
+        {
+          "description": "Allows setting default identity",
+          "type": "string",
+          "const": "allow-set-default-identity",
+          "markdownDescription": "Allows setting default identity"
+        },
+        {
+          "description": "Denies setting default identity",
+          "type": "string",
+          "const": "deny-set-default-identity",
+          "markdownDescription": "Denies setting default identity"
+        },
+        {
+          "description": "Allows sending encrypted messages",
+          "type": "string",
+          "const": "allow-send-message",
+          "markdownDescription": "Allows sending encrypted messages"
+        },
+        {
+          "description": "Denies sending messages",
+          "type": "string",
+          "const": "deny-send-message",
+          "markdownDescription": "Denies sending messages"
+        },
+        {
+          "description": "Allows retrieving messages",
+          "type": "string",
+          "const": "allow-get-messages",
+          "markdownDescription": "Allows retrieving messages"
+        },
+        {
+          "description": "Denies retrieving messages",
+          "type": "string",
+          "const": "deny-get-messages",
+          "markdownDescription": "Denies retrieving messages"
+        },
+        {
+          "description": "Allows getting a single message",
+          "type": "string",
+          "const": "allow-get-message",
+          "markdownDescription": "Allows getting a single message"
+        },
+        {
+          "description": "Denies getting a single message",
+          "type": "string",
+          "const": "deny-get-message",
+          "markdownDescription": "Denies getting a single message"
+        },
+        {
+          "description": "Allows decrypting messages",
+          "type": "string",
+          "const": "allow-decrypt-message",
+          "markdownDescription": "Allows decrypting messages"
+        },
+        {
+          "description": "Denies decrypting messages",
+          "type": "string",
+          "const": "deny-decrypt-message",
+          "markdownDescription": "Denies decrypting messages"
+        },
+        {
+          "description": "Allows marking messages as read",
+          "type": "string",
+          "const": "allow-mark-as-read",
+          "markdownDescription": "Allows marking messages as read"
+        },
+        {
+          "description": "Denies marking messages as read",
+          "type": "string",
+          "const": "deny-mark-as-read",
+          "markdownDescription": "Denies marking messages as read"
+        },
+        {
+          "description": "Allows deleting messages",
+          "type": "string",
+          "const": "allow-delete-message",
+          "markdownDescription": "Allows deleting messages"
+        },
+        {
+          "description": "Denies deleting messages",
+          "type": "string",
+          "const": "deny-delete-message",
+          "markdownDescription": "Denies deleting messages"
+        },
+        {
+          "description": "Allows listing conversations",
+          "type": "string",
+          "const": "allow-get-conversations",
+          "markdownDescription": "Allows listing conversations"
+        },
+        {
+          "description": "Denies listing conversations",
+          "type": "string",
+          "const": "deny-get-conversations",
+          "markdownDescription": "Denies listing conversations"
+        },
+        {
+          "description": "Allows resolving @handles to public keys",
+          "type": "string",
+          "const": "allow-resolve-handle",
+          "markdownDescription": "Allows resolving @handles to public keys"
+        },
+        {
+          "description": "Denies resolving handles",
+          "type": "string",
+          "const": "deny-resolve-handle",
+          "markdownDescription": "Denies resolving handles"
+        },
+        {
+          "description": "Allows resolving identities to GNS records",
+          "type": "string",
+          "const": "allow-resolve-identity",
+          "markdownDescription": "Allows resolving identities to GNS records"
+        },
+        {
+          "description": "Denies resolving identities",
+          "type": "string",
+          "const": "deny-resolve-identity",
+          "markdownDescription": "Denies resolving identities"
+        },
+        {
+          "description": "Allows checking handle availability",
+          "type": "string",
+          "const": "allow-is-handle-available",
+          "markdownDescription": "Allows checking handle availability"
+        },
+        {
+          "description": "Denies checking handle availability",
+          "type": "string",
+          "const": "deny-is-handle-available",
+          "markdownDescription": "Denies checking handle availability"
+        },
+        {
+          "description": "Allows claiming @handles",
+          "type": "string",
+          "const": "allow-claim-handle",
+          "markdownDescription": "Allows claiming @handles"
+        },
+        {
+          "description": "Denies claiming handles",
+          "type": "string",
+          "const": "deny-claim-handle",
+          "markdownDescription": "Denies claiming handles"
+        },
+        {
+          "description": "Allows releasing @handles",
+          "type": "string",
+          "const": "allow-release-handle",
+          "markdownDescription": "Allows releasing @handles"
+        },
+        {
+          "description": "Denies releasing handles",
+          "type": "string",
+          "const": "deny-release-handle",
+          "markdownDescription": "Denies releasing handles"
+        },
+        {
+          "description": "Allows getting GNS records",
+          "type": "string",
+          "const": "allow-get-record",
+          "markdownDescription": "Allows getting GNS records"
+        },
+        {
+          "description": "Denies getting GNS records",
+          "type": "string",
+          "const": "deny-get-record",
+          "markdownDescription": "Denies getting GNS records"
+        },
+        {
+          "description": "Allows updating GNS records",
+          "type": "string",
+          "const": "allow-update-record",
+          "markdownDescription": "Allows updating GNS records"
+        },
+        {
+          "description": "Denies updating GNS records",
+          "type": "string",
+          "const": "deny-update-record",
+          "markdownDescription": "Denies updating GNS records"
+        },
+        {
+          "description": "Allows getting trust scores",
+          "type": "string",
+          "const": "allow-get-trust-score",
+          "markdownDescription": "Allows getting trust scores"
+        },
+        {
+          "description": "Denies getting trust scores",
+          "type": "string",
+          "const": "deny-get-trust-score",
+          "markdownDescription": "Denies getting trust scores"
+        },
+        {
+          "description": "Allows getting detailed trust breakdown",
+          "type": "string",
+          "const": "allow-get-trust-details",
+          "markdownDescription": "Allows getting detailed trust breakdown"
+        },
+        {
+          "description": "Denies getting trust details",
+          "type": "string",
+          "const": "deny-get-trust-details",
+          "markdownDescription": "Denies getting trust details"
+        },
+        {
+          "description": "Allows verifying identity trust",
+          "type": "string",
+          "const": "allow-verify-identity",
+          "markdownDescription": "Allows verifying identity trust"
+        },
+        {
+          "description": "Denies verifying identity trust",
+          "type": "string",
+          "const": "deny-verify-identity",
+          "markdownDescription": "Denies verifying identity trust"
+        },
+        {
+          "description": "Allows starting breadcrumb collection",
+          "type": "string",
+          "const": "allow-start-collection",
+          "markdownDescription": "Allows starting breadcrumb collection"
+        },
+        {
+          "description": "Denies starting collection",
+          "type": "string",
+          "const": "deny-start-collection",
+          "markdownDescription": "Denies starting collection"
+        },
+        {
+          "description": "Allows stopping breadcrumb collection",
+          "type": "string",
+          "const": "allow-stop-collection",
+          "markdownDescription": "Allows stopping breadcrumb collection"
+        },
+        {
+          "description": "Denies stopping collection",
+          "type": "string",
+          "const": "deny-stop-collection",
+          "markdownDescription": "Denies stopping collection"
+        },
+        {
+          "description": "Allows retrieving breadcrumbs",
+          "type": "string",
+          "const": "allow-get-breadcrumbs",
+          "markdownDescription": "Allows retrieving breadcrumbs"
+        },
+        {
+          "description": "Denies retrieving breadcrumbs",
+          "type": "string",
+          "const": "deny-get-breadcrumbs",
+          "markdownDescription": "Denies retrieving breadcrumbs"
+        },
+        {
+          "description": "Allows publishing epochs",
+          "type": "string",
+          "const": "allow-publish-epoch",
+          "markdownDescription": "Allows publishing epochs"
+        },
+        {
+          "description": "Denies publishing epochs",
+          "type": "string",
+          "const": "deny-publish-epoch",
+          "markdownDescription": "Denies publishing epochs"
+        }
+      ]
+    }
+  }
+}

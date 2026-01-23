@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-set-default-identity"
+description = "Enables the set_default_identity command without any pre-configured scope."
+commands.allow = ["set_default_identity"]
+
+[[permission]]
+identifier = "deny-set-default-identity"
+description = "Denies the set_default_identity command without any pre-configured scope."
+commands.deny = ["set_default_identity"]

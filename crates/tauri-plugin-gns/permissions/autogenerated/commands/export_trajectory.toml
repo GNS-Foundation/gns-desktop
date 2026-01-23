@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-export-trajectory"
+description = "Enables the export_trajectory command without any pre-configured scope."
+commands.allow = ["export_trajectory"]
+
+[[permission]]
+identifier = "deny-export-trajectory"
+description = "Denies the export_trajectory command without any pre-configured scope."
+commands.deny = ["export_trajectory"]

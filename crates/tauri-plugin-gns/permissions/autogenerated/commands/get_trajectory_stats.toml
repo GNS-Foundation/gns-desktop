@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-get-trajectory-stats"
+description = "Enables the get_trajectory_stats command without any pre-configured scope."
+commands.allow = ["get_trajectory_stats"]
+
+[[permission]]
+identifier = "deny-get-trajectory-stats"
+description = "Denies the get_trajectory_stats command without any pre-configured scope."
+commands.deny = ["get_trajectory_stats"]

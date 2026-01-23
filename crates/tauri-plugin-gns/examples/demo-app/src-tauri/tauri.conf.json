@@ -1,0 +1,40 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "GNS Demo",
+  "version": "0.1.0",
+  "identifier": "earth.gns.demo",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:5173",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "title": "GNS Protocol Demo",
+        "width": 900,
+        "height": 700,
+        "resizable": true,
+        "fullscreen": false,
+        "decorations": true,
+        "transparent": false,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://api.gns.earth wss://relay.gns.earth"
+    }
+  },
+  "plugins": {
+    "gns": {
+      "environment": "development",
+      "relayUrl": "https://api.gns.earth",
+      "h3Resolution": 7,
+      "breadcrumbCollectionInterval": 300,
+      "minBreadcrumbsForHandle": 100,
+      "minBreadcrumbsForEpoch": 100
+    }
+  }
+}

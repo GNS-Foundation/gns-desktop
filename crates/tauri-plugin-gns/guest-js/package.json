@@ -1,0 +1,84 @@
+{
+  "name": "@anthropic/tauri-plugin-gns-api",
+  "version": "0.1.0",
+  "description": "GNS Protocol API bindings for Tauri applications - Self-sovereign identity through Proof-of-Trajectory",
+  "keywords": [
+    "tauri",
+    "tauri-plugin",
+    "gns",
+    "identity",
+    "decentralized",
+    "proof-of-trajectory",
+    "e2e-encryption",
+    "ed25519",
+    "x25519"
+  ],
+  "license": "MIT OR Apache-2.0",
+  "author": "GNS Protocol",
+  "homepage": "https://github.com/gns-protocol/tauri-plugin-gns",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gns-protocol/tauri-plugin-gns.git"
+  },
+  "bugs": {
+    "url": "https://github.com/gns-protocol/tauri-plugin-gns/issues"
+  },
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    },
+    "./identity": {
+      "import": "./dist/identity.js",
+      "require": "./dist/identity.cjs",
+      "types": "./dist/identity.d.ts"
+    },
+    "./messaging": {
+      "import": "./dist/messaging.js",
+      "require": "./dist/messaging.cjs",
+      "types": "./dist/messaging.d.ts"
+    },
+    "./resolver": {
+      "import": "./dist/resolver.js",
+      "require": "./dist/resolver.cjs",
+      "types": "./dist/resolver.d.ts"
+    },
+    "./trust": {
+      "import": "./dist/trust.js",
+      "require": "./dist/trust.cjs",
+      "types": "./dist/trust.d.ts"
+    },
+    "./trajectory": {
+      "import": "./dist/trajectory.js",
+      "require": "./dist/trajectory.cjs",
+      "types": "./dist/trajectory.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "rollup -c",
+    "prepublishOnly": "npm run build",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@tauri-apps/api": "^2.0.0"
+  },
+  "devDependencies": {
+    "@rollup/plugin-typescript": "^11.1.0",
+    "@tauri-apps/api": "^2.0.0",
+    "rollup": "^4.0.0",
+    "tslib": "^2.6.0",
+    "typescript": "^5.3.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

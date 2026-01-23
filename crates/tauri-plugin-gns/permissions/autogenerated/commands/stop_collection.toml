@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-stop-collection"
+description = "Enables the stop_collection command without any pre-configured scope."
+commands.allow = ["stop_collection"]
+
+[[permission]]
+identifier = "deny-stop-collection"
+description = "Denies the stop_collection command without any pre-configured scope."
+commands.deny = ["stop_collection"]

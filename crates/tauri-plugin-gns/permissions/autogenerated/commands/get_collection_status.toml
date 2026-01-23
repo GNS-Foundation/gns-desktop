@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-get-collection-status"
+description = "Enables the get_collection_status command without any pre-configured scope."
+commands.allow = ["get_collection_status"]
+
+[[permission]]
+identifier = "deny-get-collection-status"
+description = "Denies the get_collection_status command without any pre-configured scope."
+commands.deny = ["get_collection_status"]

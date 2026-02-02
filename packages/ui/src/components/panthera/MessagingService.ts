@@ -135,7 +135,7 @@ export async function sendMessage(
     try {
       // Build a simple envelope — the actual E2E encryption uses
       // createDualEncryptedEnvelope from crypto.js at runtime
-      const cryptoModule = await import('../../lib/crypto');
+      const { crypto: cryptoModule } = await import('@gns/api-web');
       await cryptoModule.initCrypto();
 
       envelope = await cryptoModule.createDualEncryptedEnvelope(
@@ -248,7 +248,7 @@ class RealtimeService {
         try {
           const msg = JSON.parse(event.data as string);
           this.handleMessage(msg);
-        } catch {}
+        } catch { }
       };
 
       this.ws.onclose = () => {
@@ -345,7 +345,7 @@ class RealtimeService {
       });
       if (existing.length > 100) existing.splice(0, existing.length - 100);
       localStorage.setItem(key, JSON.stringify(existing));
-    } catch {}
+    } catch { }
   }
 
   getSyncedMessages(conversationWith: string): Message[] {
@@ -366,7 +366,7 @@ class RealtimeService {
   }
 
   private emit(event: string, data: any) {
-    this.listeners.get(event)?.forEach(cb => { try { cb(data); } catch {} });
+    this.listeners.get(event)?.forEach(cb => { try { cb(data); } catch { } });
   }
 
   get isConnected() { return this.ws?.readyState === WebSocket.OPEN; }

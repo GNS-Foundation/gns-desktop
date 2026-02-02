@@ -1,20 +1,54 @@
 // ═══════════════════════════════════════════════════════════════════
-// PANTHERA v2 — gSite Renderer
+// PANTHERA v2 — gSite Renderer (Upgraded to match Tauri Desktop)
 // ═══════════════════════════════════════════════════════════════════
 // Location: packages/ui/src/components/panthera/GSiteRenderer.tsx
 //
-// Renders GNS identity profiles and gSites within PANTHERA.
-// Shows: cover image, avatar, handle, bio, trust badge,
-// action buttons (message, pay, copy, share), modules,
-// epoch/trajectory data, and member-since.
+// Renders GNS identity profiles matching the Tauri desktop layout:
+//   - Soft gradient cover (lavender/cyan)
+//   - Square avatar card overlapping cover
+//   - Name + verified ✓ + prominent Message button
+//   - Entity type badge (person)
+//   - Trust Score + Breadcrumbs (formatted)
+//   - Public Key card with Copy
+//   - Facets section (work@, friends@, etc.)
+//   - Modules, Epoch/Trajectory, Member-since
 // ═══════════════════════════════════════════════════════════════════
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ShieldCheck, MessageCircle, CreditCard, Copy,
   ExternalLink, MapPin, Globe, Clock, CheckCircle,
+  User, Check, Key,
 } from 'lucide-react';
-import TrustBadge, { getTrustColor, getTrustLabel } from './TrustBadge';
+
+const API_BASE = 'https://gns-browser-production.up.railway.app';
+
+// ─── Helpers ───
+
+function formatTrustScore(raw: number): string {
+  // API returns trust_score as 0–100 float
+  // But sometimes it comes as e.g. 95.89041095890411
+  if (raw > 100) {
+    // It's stored as breadcrumb_ratio * 100 or some raw form
+    return `${(raw / 100).toFixed(1)}%`;
+  }
+  return `${raw.toFixed(1)}%`;
+}
+
+function formatBreadcrumbs(count: number): string {
+  if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
+  if (count >= 1_000) return `${(count / 1_000).toFixed(1)}K`;
+  return count.toLocaleString();
+}
+
+function getTrustColor(score: number): string {
+  if (score >= 76) return '#3b82f6'; // blue
+  if (score >= 51) return '#22c55e'; // green
+  if (score >= 26) return '#f59e0b'; // amber
+  return '#9ca3af'; // gray
+}
+
+// ─── Types ───
 
 interface GSiteRendererProps {
   profile: any;
@@ -31,64 +65,68 @@ export default function GSiteRenderer({
   onMessage,
   onPay,
 }: GSiteRendererProps) {
+  const [copied, setCopied] = useState(false);
+  const [facets, setFacets] = useState<string[]>([]);
+
   if (!profile) return null;
 
-  const trustColor = getTrustColor(profile.trustScore || 0);
+  const pk = profile.publicKey || profile.public_key || '';
+  const trustScore = profile.trustScore || 0;
+  const breadcrumbs = profile.breadcrumbCount || 0;
+  const trustColor = getTrustColor(trustScore);
 
-  const actions = [
-    {
-      icon: MessageCircle,
-      label: 'Message',
-      onClick: () => onMessage?.(profile),
-      primary: true,
-    },
-    {
-      icon: CreditCard,
-      label: 'Pay',
-      onClick: () => onPay?.(profile),
-    },
-    {
-      icon: Copy,
-      label: 'Copy @',
-      onClick: () => navigator.clipboard?.writeText(`@${profile.handle}`),
-    },
-    {
-      icon: ExternalLink,
-      label: 'Share',
-      onClick: () => navigator.clipboard?.writeText(
-        `https://gnamesystem.netlify.app/@${profile.handle}`
-      ),
-    },
-  ];
+  // ─── Fetch facets ───
+  useEffect(() => {
+    if (!profile.handle) return;
+    // Try to discover facets for this identity
+    const possibleFacets = ['work', 'friends', 'public', 'commerce', 'anonymous'];
+    const discovered: string[] = [];
+
+    const checkFacet = async (prefix: string) => {
+      try {
+        const res = await fetch(`${API_BASE}/handles/${prefix}@${profile.handle}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success) discovered.push(`${prefix}@${profile.handle}`);
+        }
+      } catch {}
+    };
+
+    Promise.all(possibleFacets.map(checkFacet)).then(() => {
+      if (discovered.length > 0) setFacets(discovered);
+    });
+  }, [profile.handle]);
+
+  // ─── Copy public key ───
+  const copyPk = () => {
+    navigator.clipboard?.writeText(pk);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <div className="max-w-3xl mx-auto">
-      {/* ─── Cover ─── */}
-      <div className="relative h-48 md:h-56 bg-gradient-to-br from-gray-800 via-gray-900 to-black rounded-b-2xl overflow-hidden">
-        {profile.coverImage && (
+      {/* ═══ Cover Gradient ═══ */}
+      <div className="relative h-44 md:h-52 overflow-hidden">
+        {profile.coverImage ? (
           <img
             src={profile.coverImage}
             alt=""
-            className="w-full h-full object-cover opacity-60"
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div
+            className="w-full h-full"
+            style={{
+              background: 'linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 25%, #ddd6fe 50%, #e9d5ff 75%, #f3e8ff 100%)',
+            }}
           />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-
-        {/* Trust badge on cover */}
-        <div className="absolute top-4 right-4">
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/40 backdrop-blur-sm">
-            <ShieldCheck size={14} style={{ color: trustColor }} />
-            <span className="text-xs font-semibold text-white">
-              {getTrustLabel(profile.trustScore || 0)}
-            </span>
-          </div>
-        </div>
       </div>
 
-      {/* ─── Profile Header ─── */}
+      {/* ═══ Avatar Card (overlapping cover) ═══ */}
       <div className="px-6 -mt-16 relative z-10">
-        {/* Avatar */}
-        <div className="w-28 h-28 rounded-2xl border-4 border-white shadow-lg bg-gradient-to-br from-cyan-400 to-cyan-600 flex items-center justify-center overflow-hidden">
+        <div className="w-28 h-28 rounded-2xl bg-white shadow-lg border border-gray-100 flex items-center justify-center overflow-hidden">
           {profile.avatarUrl ? (
             <img
               src={profile.avatarUrl}
@@ -96,60 +134,137 @@ export default function GSiteRenderer({
               className="w-full h-full object-cover"
             />
           ) : (
-            <span className="text-4xl font-bold text-white">
-              {(profile.displayName || profile.handle || '?')[0].toUpperCase()}
-            </span>
+            <User size={48} className="text-gray-400" />
           )}
         </div>
+      </div>
 
-        {/* Name & handle */}
-        <div className="mt-4">
-          <h1 className="text-2xl font-bold text-gray-900">
-            {profile.displayName || profile.handle}
-          </h1>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="text-cyan-600 font-semibold">@{profile.handle}</span>
-            {profile.isVerified && (
-              <CheckCircle size={16} className="text-cyan-500" />
-            )}
+      {/* ═══ Name + Handle + Message Button ═══ */}
+      <div className="px-6 mt-4">
+        <div className="flex items-start justify-between">
+          <div>
+            {/* Name with verified badge */}
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold text-gray-900">
+                {profile.displayName || profile.handle}
+              </h1>
+              {profile.isVerified && (
+                <CheckCircle size={20} className="text-cyan-500" />
+              )}
+            </div>
+
+            {/* @handle */}
+            <span className="text-cyan-600 font-medium text-base">
+              @{profile.handle}
+            </span>
+
+            {/* Entity type */}
+            <div className="flex items-center gap-1.5 mt-2">
+              <User size={14} className="text-gray-400" />
+              <span className="text-sm text-gray-500">person</span>
+            </div>
+          </div>
+
+          {/* Prominent Message button */}
+          <button
+            onClick={() => onMessage?.(profile)}
+            className="flex items-center gap-2 px-6 py-3 rounded-full bg-purple-600 hover:bg-purple-700 text-white font-medium shadow-lg transition-all hover:shadow-xl"
+          >
+            <MessageCircle size={18} />
+            Message
+          </button>
+        </div>
+
+        {/* ═══ Trust Score + Breadcrumbs ═══ */}
+        <div className="flex items-center gap-8 mt-6">
+          <div>
+            <span className="text-3xl font-bold text-gray-900">
+              {formatTrustScore(trustScore)}
+            </span>
+            <span className="text-sm text-gray-500 ml-2">Trust Score</span>
+          </div>
+          <div>
+            <span className="text-3xl font-bold text-gray-900">
+              {formatBreadcrumbs(breadcrumbs)}
+            </span>
+            <span className="text-sm text-gray-500 ml-2">Breadcrumbs</span>
           </div>
         </div>
 
-        {/* Bio */}
+        {/* ═══ Bio ═══ */}
         {profile.bio && (
-          <p className="mt-3 text-gray-600 leading-relaxed max-w-xl">
+          <p className="mt-4 text-gray-600 leading-relaxed max-w-xl">
             {profile.bio}
           </p>
         )}
 
-        {/* Trust section */}
-        <div className="mt-4">
-          <TrustBadge
-            score={profile.trustScore}
-            breadcrumbs={profile.breadcrumbCount}
-            verified={profile.isVerified}
-          />
+        {/* ═══ Public Key Card ═══ */}
+        <div className="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-100">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Key size={14} className="text-gray-400" />
+              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                Public Key
+              </span>
+            </div>
+            <button
+              onClick={copyPk}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium hover:bg-gray-200 transition-colors text-gray-500"
+            >
+              {copied ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
+              {copied ? 'Copied' : 'Copy'}
+            </button>
+          </div>
+          <code className="text-xs text-gray-600 font-mono break-all leading-relaxed">
+            {pk}
+          </code>
         </div>
 
-        {/* ─── Action Bar ─── */}
-        <div className="flex items-center gap-2 mt-5 pb-5 border-b border-gray-200">
-          {actions.map((a, i) => {
-            const Icon = a.icon;
-            return (
-              <button
-                key={i}
-                onClick={a.onClick}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                  a.primary
-                    ? 'bg-cyan-500 hover:bg-cyan-600 text-white shadow-sm'
-                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-                }`}
-              >
-                <Icon size={16} />
-                {a.label}
-              </button>
-            );
-          })}
+        {/* ═══ Facets ═══ */}
+        {facets.length > 0 && (
+          <div className="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-100">
+            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+              Facets
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {facets.map((facet, i) => (
+                <button
+                  key={i}
+                  onClick={() => onNavigate(`@${facet}`)}
+                  className="px-4 py-2 bg-purple-100 hover:bg-purple-200 rounded-xl text-sm font-medium text-purple-700 transition-colors"
+                >
+                  {facet}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ═══ Secondary Actions ═══ */}
+        <div className="flex items-center gap-2 mt-6 pb-5 border-b border-gray-200">
+          <button
+            onClick={() => onPay?.(profile)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
+          >
+            <CreditCard size={16} />
+            Pay
+          </button>
+          <button
+            onClick={() => navigator.clipboard?.writeText(`@${profile.handle}`)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
+          >
+            <Copy size={16} />
+            Copy @
+          </button>
+          <button
+            onClick={() => navigator.clipboard?.writeText(
+              `https://panthera.gcrumbs.com/@${profile.handle}`
+            )}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
+          >
+            <ExternalLink size={16} />
+            Share
+          </button>
         </div>
 
         {/* Location */}
@@ -173,7 +288,7 @@ export default function GSiteRenderer({
           </div>
         )}
 
-        {/* ─── Modules ─── */}
+        {/* ═══ Modules ═══ */}
         {profile.modules && profile.modules.length > 0 && (
           <div className="mt-6">
             <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
@@ -183,7 +298,7 @@ export default function GSiteRenderer({
               {profile.modules.map((m: any, i: number) => (
                 <span
                   key={i}
-                  className="px-3 py-1 bg-gray-100 rounded-full text-xs text-gray-600"
+                  className="px-3 py-1.5 bg-gray-100 rounded-full text-xs font-medium text-gray-600"
                 >
                   {m.schema?.split('/')[0]?.replace('gns.module.', '') || 'module'}
                 </span>
@@ -192,7 +307,7 @@ export default function GSiteRenderer({
           </div>
         )}
 
-        {/* ─── Epoch / Trajectory ─── */}
+        {/* ═══ Epoch / Trajectory ═══ */}
         {profile.epochRoots && profile.epochRoots.length > 0 && (
           <div className="mt-6 p-4 bg-gray-50 rounded-xl">
             <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
@@ -207,7 +322,7 @@ export default function GSiteRenderer({
               </div>
               <div>
                 <span className="font-bold text-gray-800">
-                  {profile.breadcrumbCount || 0}
+                  {formatBreadcrumbs(breadcrumbs)}
                 </span>
                 <span className="text-gray-500 ml-1">breadcrumbs</span>
               </div>

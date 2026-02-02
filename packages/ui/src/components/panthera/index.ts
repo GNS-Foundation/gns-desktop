@@ -5,11 +5,6 @@
 //
 // Barrel export for the PANTHERA browser shell component family.
 // Both apps/web and apps/desktop import from here via @gns/ui.
-//
-// Usage:
-//   import { PantheraShell } from '@gns/ui/components/panthera';
-//   // or
-//   import PantheraShell from '@gns/ui/components/panthera/PantheraShell';
 // ═══════════════════════════════════════════════════════════════════
 
 // Core logic
@@ -18,6 +13,11 @@ export type { ClassifiedInput, InputTypeValue, ViewModeValue, FacetContextValue 
 
 // API functions
 export { resolveHandle, searchHandles, fetchGSite, getFeatured } from './api';
+
+// Auth
+export { default as AuthProvider, useAuth } from './AuthProvider';
+export type { GnsSession, AuthContextValue } from './AuthProvider';
+export { default as QRLoginModal } from './QRLoginModal';
 
 // Components
 export { default as PantherLogo } from './PantherLogo';

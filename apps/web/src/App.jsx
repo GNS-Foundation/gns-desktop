@@ -27,7 +27,7 @@ import { SignInModal, MessageModal, QRLoginModal } from './components/modals';
 import PaymentsHub from './components/PaymentsHub';
 import PayPage from './components/PayPage';
 
-import PantheraShell from '../../packages/ui/src/components/panthera/PantheraShell';
+import { PantheraShell } from '@gns/ui';
 
 const queryClient = new QueryClient();
 

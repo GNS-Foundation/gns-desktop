@@ -42,18 +42,8 @@ const PlatformRouter = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // ✨ NEW: /v2 route renders PANTHERA v2
-  if (window.location.pathname === '/v2') {
-    return <PantheraShell />;
-  }
-
-  // Render mobile UI if on mobile platform
-  if (isMobile) {
-    return <MobileApp />;
-  }
-
-  // Otherwise render desktop UI
-  return <AppContent />;
+  // Delete the /v2 check — PantheraShell IS the app now
+  return <PantheraShell />;
 };
 
 const AppContent = () => {

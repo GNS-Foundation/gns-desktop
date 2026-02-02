@@ -1,5 +1,5 @@
 {
-  "name": "@anthropic/tauri-plugin-gns-api",
+  "name": "tauri-plugin-gns-api",
   "version": "0.1.0",
   "description": "GNS Protocol API bindings for Tauri applications - Self-sovereign identity through Proof-of-Trajectory",
   "keywords": [

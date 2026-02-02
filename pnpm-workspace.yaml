@@ -2,3 +2,4 @@ packages:
   - "packages/*"
   - "apps/*"
   - "server"
+  - "crates/tauri-plugin-gns/guest-js"

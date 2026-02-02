@@ -191,8 +191,8 @@ importers:
         specifier: ^3.6.0
         version: 3.6.0(@types/react@18.3.27)(react-dom@18.3.1(react@18.3.1))(react-is@18.3.1)(react@18.3.1)(redux@5.0.1)
       tauri-plugin-gns-api:
-        specifier: file:../../crates/tauri-plugin-gns/guest-js
-        version: '@anthropic/tauri-plugin-gns-api@file:crates/tauri-plugin-gns/guest-js(@tauri-apps/api@2.9.1)'
+        specifier: workspace:*
+        version: link:../../crates/tauri-plugin-gns/guest-js
     devDependencies:
       '@types/react':
         specifier: ^18.2.0
@@ -283,6 +283,24 @@ importers:
         specifier: ^5.0.0
         version: 5.4.21(@types/node@25.0.3)(terser@5.44.1)
 
+  crates/tauri-plugin-gns/guest-js:
+    devDependencies:
+      '@rollup/plugin-typescript':
+        specifier: ^11.1.0
+        version: 11.1.6(rollup@4.55.1)(tslib@2.8.1)(typescript@5.9.3)
+      '@tauri-apps/api':
+        specifier: ^2.0.0
+        version: 2.9.1
+      rollup:
+        specifier: ^4.0.0
+        version: 4.55.1
+      tslib:
+        specifier: ^2.6.0
+        version: 2.8.1
+      typescript:
+        specifier: ^5.3.0
+        version: 5.9.3
+
   packages/api-core:
     devDependencies:
       tsup:
@@ -301,8 +319,8 @@ importers:
         specifier: ^18.0.0
         version: 18.3.1
       tauri-plugin-gns-api:
-        specifier: file:../../crates/tauri-plugin-gns/guest-js
-        version: '@anthropic/tauri-plugin-gns-api@file:crates/tauri-plugin-gns/guest-js(@tauri-apps/api@2.9.1)'
+        specifier: workspace:*
+        version: link:../../crates/tauri-plugin-gns/guest-js
 
   packages/api-tauri:
     dependencies:
@@ -533,12 +551,6 @@ packages:
   '@alloc/quick-lru@5.2.0':
     resolution: {integrity: sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw==}
     engines: {node: '>=10'}
-
-  '@anthropic/tauri-plugin-gns-api@file:crates/tauri-plugin-gns/guest-js':
-    resolution: {directory: crates/tauri-plugin-gns/guest-js, type: directory}
-    engines: {node: '>=18'}
-    peerDependencies:
-      '@tauri-apps/api': ^2.0.0
 
   '@aws-crypto/sha256-browser@5.2.0':
     resolution: {integrity: sha512-AXfN/lGotSQwu6HNcEsIASo7kWXZ5HYWvfOmSNKDsEqC4OashTp8alTmaz+F7TC2L083SFv5RdB+qU3Vs1kZqw==}
@@ -1197,6 +1209,19 @@ packages:
 
   '@rolldown/pluginutils@1.0.0-beta.53':
     resolution: {integrity: sha512-vENRlFU4YbrwVqNDZ7fLvy+JR1CRkyr01jhSiDpE1u6py3OMzQfztQU2jxykW3ALNxO4kSlqIDeYyD0Y9RcQeQ==}
+
+  '@rollup/plugin-typescript@11.1.6':
+    resolution: {integrity: sha512-R92yOmIACgYdJ7dJ97p4K69I8gg6IEHt8M7dUBxN3W6nrO8uUxX5ixl0yU/N3aZTi8WhPuICvOHXQvF6FaykAA==}
+    engines: {node: '>=14.0.0'}
+    peerDependencies:
+      rollup: ^2.14.0||^3.0.0||^4.0.0
+      tslib: '*'
+      typescript: '>=3.7.0'
+    peerDependenciesMeta:
+      rollup:
+        optional: true
+      tslib:
+        optional: true
 
   '@rollup/pluginutils@5.3.0':
     resolution: {integrity: sha512-5EdhGZtnu3V88ces7s53hhfK5KSASnJZv8Lulpc04cWO3REESroJXg73DFsOmgbU2BhwV0E20bu2IDZb3VKW4Q==}
@@ -4631,10 +4656,6 @@ snapshots:
 
   '@alloc/quick-lru@5.2.0': {}
 
-  '@anthropic/tauri-plugin-gns-api@file:crates/tauri-plugin-gns/guest-js(@tauri-apps/api@2.9.1)':
-    dependencies:
-      '@tauri-apps/api': 2.9.1
-
   '@aws-crypto/sha256-browser@5.2.0':
     dependencies:
       '@aws-crypto/sha256-js': 5.2.0
@@ -5481,6 +5502,15 @@ snapshots:
   '@rolldown/pluginutils@1.0.0-beta.27': {}
 
   '@rolldown/pluginutils@1.0.0-beta.53': {}
+
+  '@rollup/plugin-typescript@11.1.6(rollup@4.55.1)(tslib@2.8.1)(typescript@5.9.3)':
+    dependencies:
+      '@rollup/pluginutils': 5.3.0(rollup@4.55.1)
+      resolve: 1.22.11
+      typescript: 5.9.3
+    optionalDependencies:
+      rollup: 4.55.1
+      tslib: 2.8.1
 
   '@rollup/pluginutils@5.3.0(rollup@4.55.1)':
     dependencies:

@@ -9,7 +9,7 @@
     },
     "dependencies": {
         "@tauri-apps/api": "^2.0.0",
-        "tauri-plugin-gns-api": "file:../../crates/tauri-plugin-gns/guest-js"
+        "tauri-plugin-gns-api": "workspace:*"
     },
     "peerDependencies": {
         "react": "^18.0.0"

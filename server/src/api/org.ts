@@ -1,12 +1,8 @@
 // ===========================================
-// GNS ORGANIZATION REGISTRATION API (FIXED v2)
+// GNS ORGANIZATION REGISTRATION API (FIXED)
 // ===========================================
 // Location: src/api/org.ts
-// 
-// FIXES:
-// 1. Error handling on verify update
-// 2. Logging for debugging
-// 3. Better response structure
+// Uses raw Supabase queries (no extra db functions needed)
 // ===========================================
 
 import { Router, Request, Response } from 'express';
@@ -55,14 +51,14 @@ async function checkDnsTxt(domain: string, code: string): Promise<boolean> {
     domain,
     `gns-verify.${domain}`,
   ];
-
+  
   for (const checkDomain of domainsToCheck) {
     try {
       const records = await resolveTxt(checkDomain);
       for (const record of records) {
         const text = record.join('');
         if (text.includes(code)) {
-          console.log(`[DNS] ✓ Found verification at ${checkDomain}`);
+          console.log(`[DNS] âœ“ Found verification at ${checkDomain}`);
           return true;
         }
       }
@@ -70,8 +66,8 @@ async function checkDnsTxt(domain: string, code: string): Promise<boolean> {
       // Try next domain
     }
   }
-
-  console.log(`[DNS] ✗ Code not found for ${domain}`);
+  
+  console.log(`[DNS] âœ— Code not found for ${domain}`);
   return false;
 }
 
@@ -83,7 +79,7 @@ router.get('/check/:namespace', async (req: Request, res: Response) => {
   try {
     const namespace = req.params.namespace?.toLowerCase().replace(/[^a-z0-9]/g, '');
 
-    console.log(`🔍 Checking namespace: ${namespace}`);
+    console.log(`ðŸ” Checking namespace: ${namespace}`);
 
     if (!namespace || namespace.length < 3) {
       return res.json({
@@ -145,7 +141,7 @@ router.get('/check/:namespace', async (req: Request, res: Response) => {
 
     // Check pending registrations
     const { data: pending } = await supabase
-      .from('org_registrations')
+      .from('namespace_registrations')
       .select('namespace, status')
       .eq('namespace', namespace)
       .neq('status', 'suspended')
@@ -172,7 +168,7 @@ router.get('/check/:namespace', async (req: Request, res: Response) => {
     });
 
   } catch (err) {
-    console.error('❌ /org/check error:', err);
+    console.error('âŒ /org/check error:', err);
     res.status(500).json({ success: false, error: 'Check failed' });
   }
 });
@@ -193,7 +189,7 @@ router.post('/register', async (req: Request, res: Response) => {
       tier = 'starter',
     } = req.body;
 
-    console.log(`📝 Registering: ${namespace}`);
+    console.log(`ðŸ“ Registering: ${namespace}`);
 
     if (!namespace || !organization_name || !email) {
       return res.status(400).json({
@@ -203,13 +199,13 @@ router.post('/register', async (req: Request, res: Response) => {
     }
 
     const cleanNamespace = namespace.toLowerCase().replace(/[^a-z0-9]/g, '');
-
+    
     // Need either domain or website
     let cleanDomain = domain;
     if (!cleanDomain && website) {
       cleanDomain = extractDomain(website);
     }
-
+    
     if (!cleanDomain) {
       return res.status(400).json({
         success: false,
@@ -231,36 +227,7 @@ router.post('/register', async (req: Request, res: Response) => {
 
     const supabase = db.getSupabase();
 
-    // Check if domain is already used by another namespace (Pending/Verified)
-    const { data: existingDomain } = await supabase
-      .from('org_registrations')
-      .select('namespace, domain')
-      .eq('domain', cleanDomain)
-      .neq('status', 'suspended')
-      .single();
-
-    if (existingDomain) {
-      return res.status(400).json({
-        success: false,
-        error: `Domain already registered to ${existingDomain.namespace}@`
-      });
-    }
-
-    // Check if domain is active in namespaces table
-    const { data: activeDomain } = await supabase
-      .from('namespaces')
-      .select('namespace, domain')
-      .eq('domain', cleanDomain)
-      .single();
-
-    if (activeDomain) {
-      return res.status(400).json({
-        success: false,
-        error: `Domain already verified for ${activeDomain.namespace}@`
-      });
-    }
-
-    // Check if namespace already taken (Active/Verified)
+    // Check if already taken
     const { data: existing } = await supabase
       .from('namespaces')
       .select('namespace')
@@ -271,28 +238,13 @@ router.post('/register', async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: 'Namespace already taken' });
     }
 
-    // Check if namespace is already in pending registrations
-    const { data: pendingReg } = await supabase
-      .from('org_registrations')
-      .select('namespace, status')
-      .eq('namespace', cleanNamespace)
-      .single();
-
-    if (pendingReg) {
-      return res.status(400).json({
-        success: false,
-        error: `Namespace '${cleanNamespace}' is already registered (Status: ${pendingReg.status})`
-      });
-    }
-
     // Generate verification code
     const verificationCode = generateVerificationCode();
 
-    // Insert registration (safe because we checked uniqueness above)
+    // Upsert registration
     const { data, error } = await supabase
-      .from('org_registrations')
-      .insert({
-        id: `org_${Date.now()}_${randomBytes(4).toString('hex')}`,
+      .from('namespace_registrations')
+      .upsert({
         namespace: cleanNamespace,
         organization_name,
         website: website || `https://${cleanDomain}`,
@@ -303,16 +255,16 @@ router.post('/register', async (req: Request, res: Response) => {
         verification_code: verificationCode,
         status: 'pending',
         updated_at: new Date().toISOString(),
-      })
+      }, { onConflict: 'namespace' })
       .select()
       .single();
 
     if (error) {
-      console.error('❌ Supabase error:', error);
-      return res.status(500).json({ success: false, error: 'Registration failed', details: error.message });
+      console.error('âŒ Supabase error:', error);
+      return res.status(500).json({ success: false, error: 'Registration failed' });
     }
 
-    console.log(`✅ Registration created: ${cleanNamespace}@`);
+    console.log(`âœ… Registration created: ${cleanNamespace}@`);
 
     res.status(201).json({
       success: true,
@@ -324,7 +276,7 @@ router.post('/register', async (req: Request, res: Response) => {
         txt_record: `gns-verify=${verificationCode}`,
         instructions: {
           type: 'TXT',
-          host: `@ (or _gns.${cleanDomain})`,
+          host: `_gns.${cleanDomain}`,
           value: `gns-verify=${verificationCode}`,
           ttl: 3600,
         },
@@ -332,21 +284,21 @@ router.post('/register', async (req: Request, res: Response) => {
       message: 'Add the DNS TXT record to verify domain ownership.',
     });
 
-  } catch (err: any) {
-    console.error('❌ /org/register error:', err);
-    res.status(500).json({ success: false, error: 'Registration failed', details: err.message || JSON.stringify(err) });
+  } catch (err) {
+    console.error('âŒ /org/register error:', err);
+    res.status(500).json({ success: false, error: 'Registration failed' });
   }
 });
 
 // ===========================================
-// POST /org/verify (FIXED with error handling)
+// POST /org/verify
 // ===========================================
 
 router.post('/verify', async (req: Request, res: Response) => {
   try {
     const { registration_id, domain, verification_code } = req.body;
 
-    console.log(`🔍 Verifying DNS: ${domain || registration_id}`);
+    console.log(`ðŸ” Verifying DNS: ${domain || registration_id}`);
 
     if (!registration_id && !domain) {
       return res.status(400).json({ success: false, error: 'Need registration_id or domain' });
@@ -355,26 +307,19 @@ router.post('/verify', async (req: Request, res: Response) => {
     const supabase = db.getSupabase();
 
     // Get registration
-    let query = supabase.from('org_registrations').select('*');
-
+    let query = supabase.from('namespace_registrations').select('*');
+    
     if (registration_id) {
       query = query.eq('id', registration_id);
     } else {
       query = query.eq('domain', domain);
     }
+    
+    const { data: reg, error } = await query.single();
 
-    const { data: reg, error: fetchError } = await query.single();
-
-    if (fetchError) {
-      console.error('❌ Fetch error:', fetchError);
-      return res.status(404).json({ success: false, error: 'Registration not found', details: fetchError.message });
-    }
-
-    if (!reg) {
+    if (error || !reg) {
       return res.status(404).json({ success: false, error: 'Registration not found' });
     }
-
-    console.log(`📋 Found registration: ${reg.namespace} (status: ${reg.status})`);
 
     if (reg.status === 'verified' || reg.status === 'active') {
       return res.json({
@@ -401,27 +346,17 @@ router.post('/verify', async (req: Request, res: Response) => {
       });
     }
 
-    // ✅ FIXED: Mark verified with error handling
-    const newStatus = reg.tier === 'starter' ? 'active' : 'verified';
-    const { error: updateError } = await supabase
-      .from('org_registrations')
+    // Mark verified
+    await supabase
+      .from('namespace_registrations')
       .update({
         verified: true,
         verified_at: new Date().toISOString(),
-        status: newStatus,
+        status: reg.tier === 'starter' ? 'active' : 'verified',
       })
       .eq('id', reg.id);
 
-    if (updateError) {
-      console.error('❌ Failed to update registration:', updateError);
-      return res.status(500).json({
-        success: false,
-        error: 'DNS verified but failed to update status',
-        details: updateError.message,
-      });
-    }
-
-    console.log(`✅ DNS verified: ${reg.namespace}@ → status: ${newStatus}`);
+    console.log(`âœ… DNS verified: ${reg.namespace}@`);
 
     res.json({
       success: true,
@@ -429,7 +364,6 @@ router.post('/verify', async (req: Request, res: Response) => {
         verified: true,
         namespace: `${reg.namespace}@`,
         domain: reg.domain,
-        status: newStatus,
         message: reg.tier === 'starter'
           ? 'Namespace verified! Download the app to complete setup.'
           : 'DNS verified! Complete payment to activate.',
@@ -438,7 +372,7 @@ router.post('/verify', async (req: Request, res: Response) => {
     });
 
   } catch (err) {
-    console.error('❌ /org/verify error:', err);
+    console.error('âŒ /org/verify error:', err);
     res.status(500).json({ success: false, error: 'Verification failed' });
   }
 });
@@ -453,7 +387,7 @@ router.get('/status/:id', async (req: Request, res: Response) => {
     const supabase = db.getSupabase();
 
     const { data: reg } = await supabase
-      .from('org_registrations')
+      .from('namespace_registrations')
       .select('*')
       .eq('id', id)
       .single();
@@ -478,6 +412,186 @@ router.get('/status/:id', async (req: Request, res: Response) => {
 
   } catch (err) {
     res.status(500).json({ success: false, error: 'Fetch failed' });
+  }
+});
+
+// ===========================================
+// GET /org/by-domain/:domain
+// Reverse lookup: domain → GNS namespace
+// Used by PANTHERA Legacy Web Fallback overlay
+// ===========================================
+
+router.get('/by-domain/:domain', async (req: Request, res: Response) => {
+  try {
+    let domain = req.params.domain?.toLowerCase().trim();
+
+    if (!domain) {
+      return res.status(400).json({
+        success: false,
+        error: 'Domain parameter required',
+      });
+    }
+
+    // Clean domain: strip protocol, www, path, port
+    domain = domain.replace(/^https?:\/\//, '');
+    domain = domain.replace(/^www\./, '');
+    domain = domain.split('/')[0].split(':')[0];
+
+    console.log(`🔍 Domain lookup: ${domain}`);
+
+    const supabase = db.getSupabase();
+
+    // Strategy 1: Check active namespaces table (fully verified + activated)
+    const { data: activeNs } = await supabase
+      .from('namespaces')
+      .select('namespace, organization_name, domain, tier, verified, created_at')
+      .eq('domain', domain)
+      .eq('verified', true)
+      .single();
+
+    if (activeNs) {
+      console.log(`✅ Domain ${domain} → active namespace: ${activeNs.namespace}@`);
+      res.set('Cache-Control', 'public, max-age=3600, s-maxage=86400');
+
+      return res.json({
+        success: true,
+        data: {
+          namespace: activeNs.namespace,
+          displayName: activeNs.organization_name,
+          domain: activeNs.domain,
+          tier: activeNs.tier,
+          verified: true,
+          status: 'active',
+          createdAt: activeNs.created_at,
+        },
+      });
+    }
+
+    // Strategy 2: Check registrations table (DNS-verified but not yet activated)
+    const { data: reg } = await supabase
+      .from('namespace_registrations')
+      .select('namespace, organization_name, domain, tier, status, verified_at, created_at')
+      .eq('domain', domain)
+      .in('status', ['verified', 'active'])
+      .single();
+
+    if (reg) {
+      console.log(`🔶 Domain ${domain} → registered: ${reg.namespace}@ (${reg.status})`);
+      res.set('Cache-Control', 'public, max-age=1800, s-maxage=3600');
+
+      return res.json({
+        success: true,
+        data: {
+          namespace: reg.namespace,
+          displayName: reg.organization_name,
+          domain: reg.domain,
+          tier: reg.tier,
+          verified: reg.status === 'verified' || reg.status === 'active',
+          status: reg.status,
+          verifiedAt: reg.verified_at,
+          createdAt: reg.created_at,
+        },
+      });
+    }
+
+    // Strategy 3: Subdomain fallback (shop.example.com → example.com)
+    const parts = domain.split('.');
+    if (parts.length > 2) {
+      const parentDomain = parts.slice(-2).join('.');
+
+      const { data: parentNs } = await supabase
+        .from('namespaces')
+        .select('namespace, organization_name, domain, tier, verified, created_at')
+        .eq('domain', parentDomain)
+        .eq('verified', true)
+        .single();
+
+      if (parentNs) {
+        console.log(`✅ Subdomain ${domain} → parent: ${parentNs.namespace}@`);
+        res.set('Cache-Control', 'public, max-age=3600, s-maxage=86400');
+
+        return res.json({
+          success: true,
+          data: {
+            namespace: parentNs.namespace,
+            displayName: parentNs.organization_name,
+            domain: parentNs.domain,
+            tier: parentNs.tier,
+            verified: true,
+            status: 'active',
+            matchedVia: 'parent-domain',
+            requestedDomain: domain,
+            createdAt: parentNs.created_at,
+          },
+        });
+      }
+    }
+
+    // Not found — cache negative result with shorter TTL
+    console.log(`⬜ Domain ${domain} → no GNS namespace`);
+    res.set('Cache-Control', 'public, max-age=600, s-maxage=1800');
+
+    return res.status(404).json({
+      success: false,
+      error: 'No GNS namespace registered for this domain',
+      domain,
+    });
+
+  } catch (err) {
+    console.error('❌ /org/by-domain error:', err);
+    res.status(500).json({ success: false, error: 'Domain lookup failed' });
+  }
+});
+
+// ===========================================
+// POST /org/by-domain-batch
+// Batch domain lookup (PANTHERA pages with multiple links)
+// ===========================================
+
+router.post('/by-domain-batch', async (req: Request, res: Response) => {
+  try {
+    const { domains } = req.body;
+
+    if (!domains || !Array.isArray(domains) || domains.length === 0) {
+      return res.status(400).json({ success: false, error: 'Required: domains[] array' });
+    }
+
+    const cleanDomains = domains
+      .slice(0, 50)
+      .map((d: string) => d.toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].split(':')[0])
+      .filter((d: string) => d.length > 0);
+
+    const supabase = db.getSupabase();
+
+    const { data: matches } = await supabase
+      .from('namespaces')
+      .select('namespace, organization_name, domain, tier, verified')
+      .in('domain', cleanDomains)
+      .eq('verified', true);
+
+    const result: Record<string, any> = {};
+    for (const d of cleanDomains) {
+      const match = matches?.find((m: any) => m.domain === d);
+      result[d] = match ? {
+        namespace: match.namespace,
+        displayName: match.organization_name,
+        tier: match.tier,
+        verified: true,
+      } : null;
+    }
+
+    res.set('Cache-Control', 'public, max-age=1800');
+
+    res.json({
+      success: true,
+      data: result,
+      count: Object.values(result).filter(Boolean).length,
+      total: cleanDomains.length,
+    });
+
+  } catch (err) {
+    console.error('❌ /org/by-domain-batch error:', err);
+    res.status(500).json({ success: false, error: 'Batch lookup failed' });
   }
 });
 
@@ -508,7 +622,7 @@ router.get('/:namespace', async (req: Request, res: Response) => {
 });
 
 // ===========================================
-// POST /org/:namespace/activate (FIXED with better logging)
+// POST /org/:namespace/activate
 // ===========================================
 
 router.post('/:namespace/activate', async (req: Request, res: Response) => {
@@ -516,40 +630,24 @@ router.post('/:namespace/activate', async (req: Request, res: Response) => {
     const namespace = req.params.namespace.toLowerCase();
     const { admin_pk, email } = req.body;
 
-    console.log(`🚀 Activating: ${namespace}@ (email: ${email})`);
-
     if (!admin_pk || !email) {
       return res.status(400).json({ success: false, error: 'Missing admin_pk or email' });
     }
 
     const supabase = db.getSupabase();
 
-    // Get registration with detailed logging
-    console.log(`📋 Looking for registration: namespace=${namespace}, email=${email}`);
-
-    const { data: reg, error: fetchError } = await supabase
-      .from('org_registrations')
+    // Get registration
+    const { data: reg } = await supabase
+      .from('namespace_registrations')
       .select('*')
       .eq('namespace', namespace)
       .eq('email', email)
       .in('status', ['verified', 'active'])
       .single();
 
-    if (fetchError) {
-      console.error('❌ Fetch error:', fetchError);
-      return res.status(404).json({
-        success: false,
-        error: 'Registration not found or not verified',
-        details: fetchError.message,
-      });
-    }
-
     if (!reg) {
-      console.log('❌ No matching registration found');
       return res.status(404).json({ success: false, error: 'Registration not found or not verified' });
     }
-
-    console.log(`📋 Found registration: id=${reg.id}, status=${reg.status}`);
 
     // Check if already activated
     const { data: existing } = await supabase
@@ -575,22 +673,22 @@ router.post('/:namespace/activate', async (req: Request, res: Response) => {
         tier: reg.tier,
         member_limit: tierLimits[reg.tier] || 10,
         verified: true,
+        verified_domain: reg.domain,
       })
       .select()
       .single();
 
     if (error) {
-      console.error('❌ Failed to create namespace:', error);
-      return res.status(500).json({ success: false, error: 'Activation failed', details: error.message });
+      return res.status(500).json({ success: false, error: 'Activation failed' });
     }
 
     // Update registration
     await supabase
-      .from('org_registrations')
+      .from('namespace_registrations')
       .update({ status: 'active', admin_pk })
       .eq('id', reg.id);
 
-    console.log(`✅ Activated: ${namespace}@`);
+    console.log(`âœ… Activated: ${namespace}@`);
 
     res.json({
       success: true,
@@ -603,7 +701,6 @@ router.post('/:namespace/activate', async (req: Request, res: Response) => {
     });
 
   } catch (err) {
-    console.error('❌ /org/:namespace/activate error:', err);
     res.status(500).json({ success: false, error: 'Activation failed' });
   }
 });

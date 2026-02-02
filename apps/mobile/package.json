@@ -5,6 +5,7 @@
     "type": "module",
     "scripts": {
         "dev": "vite",
+        "prebuild": "pnpm --filter tauri-plugin-gns-api build",
         "build": "vite build",
         "preview": "vite preview"
     },
@@ -18,7 +19,7 @@
         "react-dom": "^18.2.0",
         "react-router-dom": "^6.20.0",
         "recharts": "^3.6.0",
-        "tauri-plugin-gns-api": "file:../../crates/tauri-plugin-gns/guest-js"
+        "tauri-plugin-gns-api": "workspace:*"
     },
     "devDependencies": {
         "@types/react": "^18.2.0",

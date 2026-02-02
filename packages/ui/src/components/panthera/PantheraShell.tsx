@@ -4,29 +4,31 @@
 // Location: packages/ui/src/components/panthera/PantheraShell.tsx
 //
 // Orchestrator that composes all PANTHERA components:
-//   AddressBar → classifyInput() → route to view
-//   HomePage       (new tab)
-//   GSiteRenderer  (identity/gSite views)
-//   LegacyWebView  (traditional web + trust overlay)
-//   SearchResults  (identity search)
-//   FacetSwitcher  (identity context)
+//   AuthProvider    → session management (QR pairing)
+//   AddressBar      → classifyInput() → route to view
+//   HomePage        (new tab)
+//   GSiteRenderer   (identity/gSite views)
+//   LegacyWebView   (traditional web + trust overlay)
+//   SearchResults   (identity search)
+//   FacetSwitcher   (identity context)
+//   QRLoginModal    (secure sign-in)
 //
 // Both apps/web and apps/desktop import this via @gns/ui.
-// Platform-specific behavior is handled inside each component
-// (e.g., LegacyWebView auto-detects Tauri for native webview).
+// Platform-specific behavior is handled inside each component.
 // ═══════════════════════════════════════════════════════════════════
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   ArrowLeft, ArrowRight, RotateCw, Home, Search,
   ShieldCheck, Globe, Star, Moon, Sun, Menu, X,
-  User, Loader2,
+  User, Loader2, LogOut, Settings,
 } from 'lucide-react';
 
 import { classifyInput, InputType, ViewMode, FacetContext } from './classifier';
 import type { ViewModeValue, FacetContextValue } from './classifier';
 import { resolveHandle, searchHandles, fetchGSite } from './api';
 
+import AuthProvider, { useAuth } from './AuthProvider';
 import PantherLogo from './PantherLogo';
 import AddressBar from './AddressBar';
 import FacetSwitcher from './FacetSwitcher';
@@ -34,10 +36,27 @@ import GSiteRenderer from './GSiteRenderer';
 import LegacyWebView from './LegacyWebView';
 import HomePage from './HomePage';
 import SearchResults from './SearchResults';
+import QRLoginModal from './QRLoginModal';
 
+// ═══════════════════════════════════════════════════════════════════
+// Wrapper: Provides AuthProvider context to the shell
 // ═══════════════════════════════════════════════════════════════════
 
 export default function PantheraShell() {
+  return (
+    <AuthProvider>
+      <PantheraShellInner />
+    </AuthProvider>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Inner Shell (has access to auth context)
+// ═══════════════════════════════════════════════════════════════════
+
+function PantheraShellInner() {
+  const auth = useAuth();
+
   // ─── State ───
   const [addressValue, setAddressValue] = useState('');
   const [viewMode, setViewMode] = useState<ViewModeValue>(ViewMode.HOME);
@@ -57,25 +76,31 @@ export default function PantheraShell() {
   const [history, setHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
 
-  // Auth (simplified — full auth from existing auth system)
-  const [authUser, setAuthUser] = useState<{ handle: string; publicKey?: string } | null>(null);
-
-  // Restore session
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem('gns_browser_session');
-      if (stored) {
-        const session = JSON.parse(stored);
-        if (session.handle || session.publicKey) {
-          setAuthUser({ handle: session.handle, publicKey: session.publicKey });
-        }
-      }
-    } catch {}
-  }, []);
+  // Auth UI
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   // ─── Navigation ───
   const navigate = useCallback(async (input: string) => {
     if (!input || !input.trim()) return;
+
+    // Close any open menus
+    setShowUserMenu(false);
+
+    // Handle internal routes
+    if (input === '@me' && auth.handle) {
+      input = `@${auth.handle}`;
+    }
+    if (input === 'messages') {
+      // TODO: Wire messaging view
+      console.log('Messages view — coming soon');
+      return;
+    }
+    if (input === 'wallet') {
+      // TODO: Wire wallet view
+      console.log('Wallet view — coming soon');
+      return;
+    }
 
     const classified = classifyInput(input);
 
@@ -129,7 +154,7 @@ export default function PantheraShell() {
       default:
         break;
     }
-  }, [historyIndex]);
+  }, [historyIndex, auth.handle]);
 
   const goBack = useCallback(() => {
     if (historyIndex > 0) {
@@ -156,11 +181,37 @@ export default function PantheraShell() {
     setCurrentGSite(null);
     setCurrentUrl(null);
     setCurrentDomain(null);
+    setShowUserMenu(false);
   }, []);
 
   const refresh = useCallback(() => {
     if (history[historyIndex]) navigate(history[historyIndex]);
   }, [history, historyIndex, navigate]);
+
+  // ─── QR Login handlers ───
+  const handleSignInClick = useCallback(() => {
+    setShowQRModal(true);
+  }, []);
+
+  const handleLoginSuccess = useCallback((sessionData: any) => {
+    auth.onLoginSuccess(sessionData);
+    setShowQRModal(false);
+  }, [auth]);
+
+  // ─── Sign out ───
+  const handleSignOut = useCallback(() => {
+    auth.signOut();
+    setShowUserMenu(false);
+    goHome();
+  }, [auth, goHome]);
+
+  // ─── Close user menu on outside click ───
+  useEffect(() => {
+    if (!showUserMenu) return;
+    const handler = () => setShowUserMenu(false);
+    document.addEventListener('click', handler);
+    return () => document.removeEventListener('click', handler);
+  }, [showUserMenu]);
 
   // ─── Tab title ───
   const tabTitle = useMemo(() => {
@@ -273,16 +324,16 @@ export default function PantheraShell() {
             </div>
           )}
 
-          {/* Facet switcher */}
-          {authUser && (
+          {/* Facet switcher — only when authenticated */}
+          {auth.isAuthenticated && auth.handle && (
             <FacetSwitcher
               activeFacet={activeFacet}
               onSwitch={setActiveFacet}
-              handle={authUser.handle}
+              handle={auth.handle}
             />
           )}
 
-          {/* Toolbar */}
+          {/* Dark mode toggle */}
           <button
             onClick={() => setDarkMode(!darkMode)}
             className="p-2 rounded-lg hover:bg-gray-200 text-gray-500"
@@ -294,19 +345,75 @@ export default function PantheraShell() {
             <Star size={17} />
           </button>
 
-          {/* Auth */}
-          {authUser ? (
-            <button
-              onClick={() => navigate(`@${authUser.handle}`)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-cyan-500/15 hover:bg-cyan-500/25 rounded-lg text-cyan-600 text-sm font-medium transition-colors"
-            >
-              <div className="w-5 h-5 rounded-full bg-cyan-500 flex items-center justify-center text-white text-[10px] font-bold">
-                {(authUser.handle || '?')[0].toUpperCase()}
-              </div>
-              <span className="hidden sm:inline">@{authUser.handle}</span>
-            </button>
+          {/* ═══════ AUTH BUTTON ═══════ */}
+          {auth.isAuthenticated ? (
+            <div className="relative">
+              <button
+                onClick={(e) => { e.stopPropagation(); setShowUserMenu(!showUserMenu); }}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-cyan-500/15 hover:bg-cyan-500/25 rounded-lg text-cyan-600 text-sm font-medium transition-colors"
+              >
+                <div className="w-5 h-5 rounded-full bg-cyan-500 flex items-center justify-center text-white text-[10px] font-bold">
+                  {(auth.handle || '?')[0].toUpperCase()}
+                </div>
+                <span className="hidden sm:inline">@{auth.handle}</span>
+              </button>
+
+              {/* User dropdown menu */}
+              {showUserMenu && (
+                <div
+                  className={`absolute right-0 top-full mt-1 w-56 rounded-xl shadow-xl border z-50 py-1 ${
+                    darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+                  }`}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {/* User info header */}
+                  <div className={`px-4 py-3 border-b ${darkMode ? 'border-gray-700' : 'border-gray-100'}`}>
+                    <p className={`font-medium text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                      @{auth.handle}
+                    </p>
+                    <p className={`text-xs mt-0.5 font-mono ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                      {auth.publicKey?.substring(0, 16)}...
+                    </p>
+                  </div>
+
+                  {/* Menu items */}
+                  <button
+                    onClick={() => { navigate(`@${auth.handle}`); setShowUserMenu(false); }}
+                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm ${
+                      darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <User size={16} />
+                    My Profile
+                  </button>
+
+                  <button
+                    onClick={() => { /* TODO: Settings view */ setShowUserMenu(false); }}
+                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm ${
+                      darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <Settings size={16} />
+                    Settings
+                  </button>
+
+                  <div className={`my-1 border-t ${darkMode ? 'border-gray-700' : 'border-gray-100'}`} />
+
+                  <button
+                    onClick={handleSignOut}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50"
+                  >
+                    <LogOut size={16} />
+                    Sign Out
+                  </button>
+                </div>
+              )}
+            </div>
           ) : (
-            <button className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-500 hover:bg-cyan-600 rounded-lg text-white text-sm font-medium transition-colors">
+            <button
+              onClick={handleSignInClick}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-500 hover:bg-cyan-600 rounded-lg text-white text-sm font-medium transition-colors"
+            >
               <User size={15} /> Sign in
             </button>
           )}
@@ -404,10 +511,23 @@ export default function PantheraShell() {
           )}
         </div>
         <div className="flex items-center gap-3">
+          {auth.isAuthenticated && (
+            <span className="hidden md:inline text-cyan-500/70">
+              ● @{auth.handle}
+            </span>
+          )}
           <span className="hidden md:inline">Facet: {activeFacet}@</span>
           <span>Ed25519</span>
         </div>
       </div>
+
+      {/* ═══════ QR Login Modal ═══════ */}
+      <QRLoginModal
+        isOpen={showQRModal}
+        onClose={() => setShowQRModal(false)}
+        onSuccess={handleLoginSuccess}
+        darkMode={darkMode}
+      />
     </div>
   );
 }

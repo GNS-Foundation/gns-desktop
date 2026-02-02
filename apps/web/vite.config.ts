@@ -22,6 +22,13 @@ export default defineConfig({
         commonjsOptions: {
             transformMixedEsModules: true,
         },
+        rollupOptions: {
+            external: [
+                '@tauri-apps/api/core',
+                '@tauri-apps/api/tauri',
+                '@tauri-apps/api/event',
+            ],
+        },
     },
     esbuild: {
         target: 'esnext',

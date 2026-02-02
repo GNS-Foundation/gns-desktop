@@ -27,6 +27,8 @@ import { SignInModal, MessageModal, QRLoginModal } from './components/modals';
 import PaymentsHub from './components/PaymentsHub';
 import PayPage from './components/PayPage';
 
+import PantheraShell from '../../packages/ui/src/components/panthera/PantheraShell';
+
 const queryClient = new QueryClient();
 
 // Platform detection wrapper
@@ -39,6 +41,11 @@ const PlatformRouter = () => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // ✨ NEW: /v2 route renders PANTHERA v2
+  if (window.location.pathname === '/v2') {
+    return <PantheraShell />;
+  }
 
   // Render mobile UI if on mobile platform
   if (isMobile) {
@@ -98,7 +105,7 @@ const AppContent = () => {
         setPayCode(null);
       }
     };
-    
+
     checkPayUrl();
     window.addEventListener('popstate', checkPayUrl);
     return () => window.removeEventListener('popstate', checkPayUrl);
@@ -293,7 +300,7 @@ const AppContent = () => {
         )}
 
         {currentView === 'payments' && (
-          <PaymentsHub 
+          <PaymentsHub
             darkMode={theme.isDark}
             onNavigate={(view) => setCurrentView(view)}
           />

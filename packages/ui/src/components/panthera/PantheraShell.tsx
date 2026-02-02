@@ -37,6 +37,9 @@ import LegacyWebView from './LegacyWebView';
 import HomePage from './HomePage';
 import SearchResults from './SearchResults';
 import QRLoginModal from './QRLoginModal';
+import ThreadListView from './ThreadListView';
+import ConversationView from './ConversationView';
+import NewMessageView from './NewMessageView';
 
 // ═══════════════════════════════════════════════════════════════════
 // Wrapper: Provides AuthProvider context to the shell
@@ -80,6 +83,11 @@ function PantheraShellInner() {
   const [showQRModal, setShowQRModal] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
 
+  // Messaging
+  const [msgView, setMsgView] = useState<'threads' | 'conversation' | 'new'>('threads');
+  const [chatPartnerPk, setChatPartnerPk] = useState<string | null>(null);
+  const [chatPartnerHandle, setChatPartnerHandle] = useState<string | undefined>(undefined);
+
   // ─── Navigation ───
   const navigate = useCallback(async (input: string) => {
     if (!input || !input.trim()) return;
@@ -92,8 +100,10 @@ function PantheraShellInner() {
       input = `@${auth.handle}`;
     }
     if (input === 'messages') {
-      // TODO: Wire messaging view
-      console.log('Messages view — coming soon');
+      setViewMode(ViewMode.MESSAGES);
+      setAddressValue('messages');
+      setMsgView('threads');
+      setChatPartnerPk(null);
       return;
     }
     if (input === 'wallet') {
@@ -446,7 +456,13 @@ function PantheraShellInner() {
             profile={currentProfile}
             gsite={currentGSite}
             onNavigate={navigate}
-            onMessage={(p) => console.log('Message:', p.handle)}
+            onMessage={(p) => {
+              setViewMode(ViewMode.MESSAGES);
+              setAddressValue('messages');
+              setMsgView('conversation');
+              setChatPartnerPk(p.publicKey || p.public_key);
+              setChatPartnerHandle(p.handle);
+            }}
             onPay={(p) => console.log('Pay:', p.handle)}
           />
         )}
@@ -465,6 +481,41 @@ function PantheraShellInner() {
             results={searchResults}
             onNavigate={navigate}
           />
+        )}
+
+        {viewMode === ViewMode.MESSAGES && (
+          <>
+            {msgView === 'threads' && (
+              <ThreadListView
+                onSelectThread={(pk, handle) => {
+                  setMsgView('conversation');
+                  setChatPartnerPk(pk);
+                  setChatPartnerHandle(handle);
+                }}
+                onNewMessage={() => setMsgView('new')}
+                darkMode={darkMode}
+              />
+            )}
+            {msgView === 'conversation' && chatPartnerPk && (
+              <ConversationView
+                partnerPublicKey={chatPartnerPk}
+                partnerHandle={chatPartnerHandle}
+                onBack={() => { setMsgView('threads'); setChatPartnerPk(null); }}
+                darkMode={darkMode}
+              />
+            )}
+            {msgView === 'new' && (
+              <NewMessageView
+                onSelectRecipient={(pk, handle) => {
+                  setMsgView('conversation');
+                  setChatPartnerPk(pk);
+                  setChatPartnerHandle(handle);
+                }}
+                onBack={() => setMsgView('threads')}
+                darkMode={darkMode}
+              />
+            )}
+          </>
         )}
 
         {viewMode === ViewMode.ERROR && (

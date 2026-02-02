@@ -19,6 +19,13 @@ export { default as AuthProvider, useAuth } from './AuthProvider';
 export type { GnsSession, AuthContextValue } from './AuthProvider';
 export { default as QRLoginModal } from './QRLoginModal';
 
+// Messaging
+export { fetchInbox, fetchConversation, sendMessage, resolveRecipient, realtime } from './MessagingService';
+export type { Thread, Message } from './MessagingService';
+export { default as ThreadListView } from './ThreadListView';
+export { default as ConversationView } from './ConversationView';
+export { default as NewMessageView } from './NewMessageView';
+
 // Components
 export { default as PantherLogo } from './PantherLogo';
 export { default as TrustBadge, getTrustColor, getTrustLabel } from './TrustBadge';

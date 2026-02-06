@@ -71,7 +71,7 @@ jobs:
         run: cargo tauri build ${{ matrix.platform == 'macos-latest' && '--target universal-apple-darwin' || '' }}
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: nightly-${{ matrix.name }}-${{ github.run_number }}
           path: |

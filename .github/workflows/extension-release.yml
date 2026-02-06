@@ -51,7 +51,7 @@ jobs:
         run: zip -r ../../../gns-extension.zip .
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: gns-extension
           path: gns-extension.zip

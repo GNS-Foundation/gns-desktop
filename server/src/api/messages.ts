@@ -1041,6 +1041,30 @@ async function handleWebSocketMessage(conn: GnsConnection, message: any) {
       await db.updateTypingStatus(message.threadId, publicKey, message.isTyping);
       break;
 
+    // ===========================================
+    // Call signaling (ephemeral, not stored)
+    // ===========================================
+    case 'call_offer':
+    case 'call_answer':
+    case 'call_ice':
+    case 'call_hangup':
+    case 'call_busy':
+    case 'call_reject':
+    case 'call_ringing': {
+      const targetPk = message.targetPublicKey?.toLowerCase();
+      if (targetPk) {
+        notifyRecipients([targetPk], {
+          type: message.type,
+          fromPublicKey: publicKey,
+          callId: message.callId,
+          payload: message.payload || {},
+          timestamp: Date.now(),
+        });
+        console.log(`📞 [${message.type}]: ${publicKey.substring(0, 8)}... → ${targetPk.substring(0, 8)}...`);
+      }
+      break;
+    }
+
     default:
       console.log(`Unknown WS message type: ${message.type}`);
   }

@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════════════════════════════════
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Grid3x3, X } from 'lucide-react';
+import { Hexagon, X } from 'lucide-react';
 import { getFeatured } from './api';
 import PantherLogo from './PantherLogo';
 
@@ -86,7 +86,7 @@ export default function HomePage({ onNavigate, darkMode }: HomePageProps) {
         <button onClick={() => setGridOpen(v => !v)}
           className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors"
           title="Apps">
-          <Grid3x3 size={20} className="text-gray-500" />
+          <Hexagon size={20} className="text-gray-500" />
         </button>
 
         {gridOpen && (

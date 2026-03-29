@@ -278,7 +278,7 @@ function PantheraShellInner() {
         </div>
 
         {/* Navigation bar */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2">
           {/* Nav buttons */}
           <button
             onClick={goBack}
@@ -351,7 +351,7 @@ function PantheraShellInner() {
             {darkMode ? <Sun size={17} /> : <Moon size={17} />}
           </button>
 
-          <button className="p-2 rounded-lg hover:bg-gray-200 text-gray-500">
+          <button className="p-2 rounded-lg hover:bg-gray-200 text-gray-400 hidden lg:flex">
             <Star size={17} />
           </button>
 
@@ -360,9 +360,9 @@ function PantheraShellInner() {
             <div className="relative">
               <button
                 onClick={(e) => { e.stopPropagation(); setShowUserMenu(!showUserMenu); }}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-cyan-500/15 hover:bg-cyan-500/25 rounded-lg text-cyan-600 text-sm font-medium transition-colors"
+                className="flex items-center gap-2 px-3 py-1.5 bg-cyan-500/10 hover:bg-cyan-500/20 rounded-full text-cyan-700 text-sm font-semibold transition-colors border border-cyan-300/60"
               >
-                <div className="w-5 h-5 rounded-full bg-cyan-500 flex items-center justify-center text-white text-[10px] font-bold">
+                <div className="w-6 h-6 rounded-full bg-cyan-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                   {(auth.handle || '?')[0].toUpperCase()}
                 </div>
                 <span className="hidden sm:inline">@{auth.handle}</span>

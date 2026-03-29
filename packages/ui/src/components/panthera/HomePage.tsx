@@ -99,65 +99,97 @@ export default function HomePage({ onNavigate, darkMode }: HomePageProps) {
         </button>
       )}
 
-      {/* ── Quick shortcuts ──────────────────────────────── */}
-      <div className="flex items-center gap-4 mb-12">
-        {quickLinks.map(q => {
-          const Icon = q.icon;
-          const isHive = q.hive;
-          return (
-            <button
-              key={q.label}
-              onClick={() => isHive
-                ? window.open('https://hive.geiant.com/console', '_blank')
-                : onNavigate(q.action)
-              }
-              className="flex flex-col items-center gap-2 p-4 rounded-xl hover:bg-gray-100 transition-colors group"
-            >
-              <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${
-                isHive
-                  ? 'bg-gradient-to-br from-cyan-500 to-green-500 group-hover:from-cyan-400 group-hover:to-green-400'
-                  : 'bg-gray-100 group-hover:bg-cyan-100'
-              }`}>
-                <Icon
-                  size={22}
-                  className={isHive ? 'text-white' : 'text-gray-500 group-hover:text-cyan-600 transition-colors'}
-                />
-              </div>
-              <span className={`text-xs transition-colors ${
-                isHive ? 'text-cyan-600 font-semibold' : 'text-gray-500 group-hover:text-gray-700'
-              }`}>
-                {q.label}
-              </span>
-            </button>
-          );
-        })}
+      {/* ── Quick actions ─────────────────────────────────── */}
+      <div className="w-full max-w-sm mb-10">
+        <div className="grid grid-cols-4 gap-2">
+          {quickLinks.map(q => {
+            const Icon = q.icon;
+            const isHive = q.hive;
+            return (
+              <button
+                key={q.label}
+                onClick={() => isHive
+                  ? window.open('https://hive.geiant.com/console', '_blank')
+                  : onNavigate(q.action)
+                }
+                className={`flex flex-col items-center gap-2 p-3 rounded-2xl border transition-all group ${
+                  isHive
+                    ? 'border-cyan-200 bg-gradient-to-br from-cyan-50 to-green-50 hover:from-cyan-100 hover:to-green-100'
+                    : 'border-gray-100 bg-gray-50 hover:bg-gray-100 hover:border-gray-200'
+                }`}
+              >
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                  isHive
+                    ? 'bg-gradient-to-br from-cyan-500 to-green-500'
+                    : 'bg-white shadow-sm'
+                }`}>
+                  <Icon size={18} className={isHive ? 'text-white' : 'text-gray-500 group-hover:text-cyan-600'} />
+                </div>
+                <span className={`text-[11px] font-medium ${
+                  isHive ? 'text-cyan-700' : 'text-gray-500 group-hover:text-gray-700'
+                }`}>
+                  {q.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* ── Featured identities ──────────────────────────── */}
-      {featured.identities.length > 0 && (
-        <div className="w-full max-w-2xl">
-          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+      {/* ── AI Agents (pinned) ────────────────────────────── */}
+      <div className="w-full max-w-sm">
+        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-2 text-center">
+          AI Agents
+        </p>
+        <div className="flex gap-2">
+          <button
+            onClick={() => onNavigate('hai')}
+            className="flex-1 flex items-center gap-2.5 px-3 py-2.5 rounded-xl border border-cyan-100 bg-gradient-to-br from-cyan-50 to-blue-50 hover:from-cyan-100 hover:to-blue-100 transition-colors text-left"
+          >
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">H</div>
+            <div>
+              <div className="text-sm font-semibold text-gray-800">@hai</div>
+              <div className="text-[10px] text-cyan-600">AI assistant</div>
+            </div>
+          </button>
+          <button
+            onClick={() => onNavigate('echo')}
+            className="flex-1 flex items-center gap-2.5 px-3 py-2.5 rounded-xl border border-gray-100 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+          >
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-gray-400 to-gray-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">E</div>
+            <div>
+              <div className="text-sm font-semibold text-gray-800">@echo</div>
+              <div className="text-[10px] text-gray-400">Echo bot</div>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      {/* ── Your Network ──────────────────────────────────── */}
+      {featured.identities.filter(id => !['hai','echo'].includes(id.handle?.replace('@',''))).length > 0 && (
+        <div className="w-full max-w-sm mt-4">
+          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-2 text-center">
             Your Network
-          </h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {featured.identities.slice(0, 8).map((identity, i) => (
+          </p>
+          <div className="flex flex-col gap-1.5">
+            {featured.identities
+              .filter(id => !['hai','echo'].includes(id.handle?.replace('@','')))
+              .slice(0, 4).map((identity, i) => (
               <button
                 key={i}
-                onClick={() =>
-                  onNavigate(identity.handle?.replace('@', '') || '')
-                }
-                className="flex items-center gap-2.5 p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+                onClick={() => onNavigate(identity.handle?.replace('@', '') || '')}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors text-left w-full"
               >
-                <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-cyan-400 to-cyan-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-cyan-400 to-cyan-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                   {(identity.handle || '?').replace('@', '')[0]?.toUpperCase() || '?'}
                 </div>
-                <div className="min-w-0">
+                <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium text-gray-800 truncate">
                     {identity.handle || '?'}
                   </div>
-                  <div className="text-xs text-gray-400">
-                    {identity.trustScore || 0}% trust
-                  </div>
+                </div>
+                <div className="text-[10px] font-mono text-gray-400">
+                  {identity.trustScore || 0}%
                 </div>
               </button>
             ))}

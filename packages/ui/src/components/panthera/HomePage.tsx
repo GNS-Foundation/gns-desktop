@@ -90,7 +90,7 @@ export default function HomePage({ onNavigate, darkMode }: HomePageProps) {
         </button>
 
         {gridOpen && (
-          <div className="absolute top-12 right-0 w-72 bg-white rounded-2xl shadow-2xl border border-gray-100 p-4 z-50">
+          <div className="absolute top-12 right-0 w-64 max-h-[80vh] overflow-y-auto bg-white rounded-2xl shadow-2xl border border-gray-100 p-4 z-50">
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Your favourites</span>
               <button onClick={() => setGridOpen(false)} className="w-6 h-6 rounded-full flex items-center justify-center hover:bg-gray-100">

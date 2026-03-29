@@ -82,7 +82,7 @@ export default function HomePage({ onNavigate, darkMode }: HomePageProps) {
     <div className="min-h-full flex flex-col items-center justify-center px-4 py-12 relative">
 
       {/* Grid button — top right like Google */}
-      <div className="absolute top-4 right-4" ref={gridRef}>
+      <div className="absolute top-4 right-4 flex flex-col items-end" ref={gridRef}>
         <button onClick={() => setGridOpen(v => !v)}
           className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors"
           title="Apps">
@@ -90,7 +90,7 @@ export default function HomePage({ onNavigate, darkMode }: HomePageProps) {
         </button>
 
         {gridOpen && (
-          <div className="absolute top-12 right-0 w-64 max-h-[80vh] overflow-y-auto bg-white rounded-2xl shadow-2xl border border-gray-100 p-4 z-50">
+          <div className="fixed top-16 right-4 w-64 max-h-[80vh] overflow-y-auto bg-white rounded-2xl shadow-2xl border border-gray-100 p-4 z-50">
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Your favourites</span>
               <button onClick={() => setGridOpen(false)} className="w-6 h-6 rounded-full flex items-center justify-center hover:bg-gray-100">

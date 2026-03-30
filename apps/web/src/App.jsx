@@ -119,11 +119,9 @@ const AppContent = () => {
 
   // Initialize WS when authUser changes (Handled by AuthContext persistence, but we need to connect WS)
   useEffect(() => {
-    if (authUser) {
-      const session = getSession();
-      if (session) {
-        wsService.connect(session.publicKey, session.sessionToken);
-      }
+    const session = getSession();
+    if (session?.publicKey && session?.sessionToken) {
+      wsService.connect(session.publicKey, session.sessionToken);
     }
 
     // WebSocket listeners

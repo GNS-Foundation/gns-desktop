@@ -209,6 +209,13 @@ class WebSocketService {
                 break;
 
             // Existing message handling
+            case 'new_message':
+                // Raw encrypted envelope pushed by backend — request mobile to decrypt and sync
+                console.log('📨 New message arrived, requesting mobile sync...');
+                this.emit('newMessage', message);
+                this._send({ type: 'request_sync', messageId: message.id });
+                break;
+
             case 'message':
                 this.emit('message', message.data || message.envelope);
                 break;

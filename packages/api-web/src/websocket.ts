@@ -190,7 +190,8 @@ class WebSocketService {
                 this.emit('messageSynced', {
                     messageId: message.messageId,
                     conversationWith: message.conversationWith,
-                    text: message.decryptedText,  // Already decrypted by mobile!
+                    text: message.decryptedText || message.text,
+                    decryptedText: message.decryptedText || message.text,
                     direction: message.direction,
                     timestamp: message.timestamp,
                     fromHandle: message.fromHandle,

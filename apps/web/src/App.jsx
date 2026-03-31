@@ -155,10 +155,10 @@ const AppContent = () => {
     });
 
     const unsubMessageSynced = wsService.on('messageSynced', (data) => {
-      console.log('📩 Message synced from mobile:', data.messageId);
+      console.log('📩 Message synced from mobile v2:', data.messageId, 'text:', data.text, 'decryptedText:', data.decryptedText);
 
       // Save decrypted text to localStorage so loadConversation can find it
-      if (data.decryptedText && data.conversationWith) {
+      if ((data.decryptedText || data.text) && data.conversationWith) {
         try {
           const syncedKey = `gns_synced_${data.conversationWith.toLowerCase()}`;
           const syncedMessages = JSON.parse(localStorage.getItem(syncedKey) || '[]');
@@ -167,7 +167,7 @@ const AppContent = () => {
           if (!syncedMessages.find(m => m.id === data.messageId)) {
             syncedMessages.push({
               id: data.messageId,
-              text: data.decryptedText,
+              text: data.decryptedText || data.text,
               timestamp: data.timestamp || Date.now(),
               direction: data.direction
             });

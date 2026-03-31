@@ -185,6 +185,7 @@ class WebSocketService {
 
             // Phase C: Message synced FROM mobile (already decrypted!)
             case 'message_synced':
+            case 'sync_to_browser':
                 console.log('📩 Message synced from mobile:', message.messageId);
                 this.emit('messageSynced', {
                     messageId: message.messageId,

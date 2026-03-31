@@ -55,15 +55,23 @@ export default function ConversationView({
     const result = await fetchConversation(partnerPublicKey);
 
     if (result.success && result.messages.length > 0) {
+      // Load synced (decrypted) messages from localStorage
+      const synced = realtime.getSyncedMessages(partnerPublicKey);
+      const syncedMap = new Map(synced.map((s: any) => [s.id, s]));
+
       const mapped: Message[] = result.messages.map((msg: any) => {
         const fromPk = (msg.from_pk || msg.fromPublicKey || '').toLowerCase();
+        const msgTs = msg.created_at ? new Date(msg.created_at).getTime() : 0;
+        // Match by id or timestamp proximity (10s window)
+        const syncedMatch = syncedMap.get(msg.id) ||
+          synced.find((s: any) => Math.abs(msgTs - s.timestamp) < 10000);
         return {
           id: msg.id || `msg_${msg.timestamp || Date.now()}`,
-          text: msg.decryptedText || msg.text || msg.envelope?.plaintextFallback || '[Encrypted message]',
+          text: msg.decryptedText || msg.text || syncedMatch?.text || msg.envelope?.plaintextFallback || '[Encrypted message]',
           direction: fromPk === myPk ? 'outgoing' : 'incoming',
-          timestamp: msg.created_at ? new Date(msg.created_at).getTime() : msg.timestamp || Date.now(),
+          timestamp: msgTs || msg.timestamp || Date.now(),
           status: msg.status || 'delivered',
-          encrypted: !!msg.envelope?.encryptedPayload,
+          encrypted: !syncedMatch && !!msg.envelope?.encryptedPayload,
         };
       });
 

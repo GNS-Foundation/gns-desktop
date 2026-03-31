@@ -150,7 +150,7 @@ export async function sendMessage(
         if (!cryptoReady) { await initCrypto(); cryptoReady = true; }
 
         const toPk = recipientIdentityKey.toLowerCase();
-        const browserSession = JSON.parse(sessionStorage.getItem('gns_browser_session') || 'null');
+        const browserSession = JSON.parse(localStorage.getItem('gns_browser_session') || 'null');
 
         // ── PATH 1: QR Session token (preferred) ──────────────────────────
         if (browserSession?.isVerified && browserSession?.sessionToken) {
@@ -247,7 +247,7 @@ export async function sendMessage(
 
 export async function fetchInbox(options: any = {}) {
     try {
-        const browserSession = JSON.parse(sessionStorage.getItem('gns_browser_session') || 'null');
+        const browserSession = JSON.parse(localStorage.getItem('gns_browser_session') || 'null');
         const { limit = 50, since } = options;
         const params = new URLSearchParams({ limit: limit.toString() });
         if (since) params.append('since', since.toString());
@@ -281,7 +281,7 @@ export async function fetchInbox(options: any = {}) {
 
 export async function fetchConversation(withPublicKey: string, options: any = {}) {
     try {
-        const browserSession = JSON.parse(sessionStorage.getItem('gns_browser_session') || 'null');
+        const browserSession = JSON.parse(localStorage.getItem('gns_browser_session') || 'null');
         const { limit = 50, before } = options;
         const params = new URLSearchParams({ with: withPublicKey, limit: limit.toString() });
         if (before) params.append('before', before);
@@ -313,7 +313,7 @@ export async function fetchConversation(withPublicKey: string, options: any = {}
 
 export async function acknowledgeMessage(messageId: string) {
     try {
-        const browserSession = JSON.parse(sessionStorage.getItem('gns_browser_session') || 'null');
+        const browserSession = JSON.parse(localStorage.getItem('gns_browser_session') || 'null');
 
         let headers: Record<string, string>;
         if (browserSession?.isVerified && browserSession?.sessionToken) {

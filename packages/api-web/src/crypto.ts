@@ -133,21 +133,33 @@ export function generateDualKeypair() {
 /**
  * Derive encryption key from shared secret using HKDF-SHA256
  */
-async function hkdfDerive(sharedSecret: Uint8Array, info = HKDF_INFO) {
+async function hkdfDerive(sharedSecret: Uint8Array, ephemeralPub?: Uint8Array, recipientPub?: Uint8Array) {
     const keyMaterial = await crypto.subtle.importKey(
         'raw',
-        sharedSecret as unknown as BufferSource, // FIX: Force cast to BufferSource
+        sharedSecret as unknown as BufferSource,
         'HKDF',
         false,
         ['deriveBits']
     );
+
+    // Build info: "gns-envelope-v1:" + ephemeralPub + recipientPub (matches Flutter + backend)
+    let infoBytes: Uint8Array;
+    if (ephemeralPub && recipientPub) {
+        const prefix = new TextEncoder().encode('gns-envelope-v1:');
+        infoBytes = new Uint8Array(prefix.length + ephemeralPub.length + recipientPub.length);
+        infoBytes.set(prefix, 0);
+        infoBytes.set(ephemeralPub, prefix.length);
+        infoBytes.set(recipientPub, prefix.length + ephemeralPub.length);
+    } else {
+        infoBytes = new TextEncoder().encode(HKDF_INFO);
+    }
 
     const derivedBits = await crypto.subtle.deriveBits(
         {
             name: 'HKDF',
             hash: 'SHA-256',
             salt: new Uint8Array(0),
-            info: new TextEncoder().encode(info),
+            info: infoBytes,
         },
         keyMaterial,
         256
@@ -190,8 +202,8 @@ export async function encryptForRecipient(plaintext: string, recipientX25519Hex:
             recipientPubKey
         );
 
-        // 4. Derive encryption key using HKDF-SHA256
-        const encryptionKey = await hkdfDerive(sharedSecret, HKDF_INFO);
+        // 4. Derive encryption key using HKDF-SHA256 (info = prefix + ephPub + recipientPub)
+        const encryptionKey = await hkdfDerive(sharedSecret, ephemeralKeypair.publicKey, recipientPubKey);
 
         // 5. Generate random 12-byte nonce
         const nonce = sodium.randombytes_buf(NONCE_LENGTH);
@@ -442,8 +454,9 @@ export async function tryDecryptMessage(msg: any) {
         // X25519 key exchange
         const sharedSecret = sodium.crypto_scalarmult(myPrivateKey, ephemeralPub);
 
-        // Derive encryption key using HKDF
-        const encryptionKey = await hkdfDerive(sharedSecret, HKDF_INFO);
+        // Derive encryption key using HKDF (info = prefix + ephPub + myPub)
+        const myX25519Pub = hexToBytes(session.encryptionPublicKey);
+        const encryptionKey = await hkdfDerive(sharedSecret, ephemeralPub, myX25519Pub);
 
         // Decrypt with ChaCha20-Poly1305
         const decrypted = sodium.crypto_aead_chacha20poly1305_ietf_decrypt(

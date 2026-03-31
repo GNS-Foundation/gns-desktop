@@ -213,7 +213,7 @@ class WebSocketService {
                 // Raw encrypted envelope pushed by backend — request mobile to decrypt and sync
                 console.log('📨 New message arrived, requesting mobile sync...');
                 this.emit('newMessage', message);
-                this._send({ type: 'sync_request', messageId: message.id, conversationWith: message.from_pk || message.fromPublicKey || null, limit: 10 });
+                this.send({ type: 'sync_request', messageId: message.id, conversationWith: message.from_pk || message.fromPublicKey || null, limit: 10 });
                 break;
 
             case 'message':

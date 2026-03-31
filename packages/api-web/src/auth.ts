@@ -24,7 +24,7 @@ export function getSession() {
         if (stored) {
             const session = JSON.parse(stored);
             // Only return if it's a verified session (paired via QR)
-            if (session.isVerified && session.sessionToken) {
+            if (session.publicKey) {
                 return session;
             }
         }

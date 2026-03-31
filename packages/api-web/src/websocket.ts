@@ -122,8 +122,8 @@ class WebSocketService {
         console.log(`Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`);
 
         setTimeout(() => {
-            if (this.publicKey && this.sessionToken) {
-                this.connect(this.publicKey, this.sessionToken);
+            if (this.publicKey) {
+                this.connect(this.publicKey, this.sessionToken || '');
             }
         }, delay);
     }

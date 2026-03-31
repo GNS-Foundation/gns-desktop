@@ -425,8 +425,8 @@ const AppContent = () => {
             if (syncedMessages.length > 0) {
               const msgTimestamp = new Date(msg.created_at).getTime();
               const syncedMatch = syncedMessages.find(s =>
-                (msg.id && s.id && msg.id === s.id) ||
-                Math.abs(msgTimestamp - s.timestamp) < 5000
+                (msg.id && s.id && (msg.id === s.id || msg.id.includes(s.id) || s.id.includes(msg.id))) ||
+                Math.abs(msgTimestamp - s.timestamp) < 10000
               );
               if (syncedMatch?.text) {
                 return { ...msg, isOutgoing, decryptedText: syncedMatch.text };

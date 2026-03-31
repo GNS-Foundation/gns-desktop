@@ -24,11 +24,9 @@ export const AuthProvider = ({ children }) => {
                 setAuthUser({
                     handle: session.handle || session.publicKey?.substring(0, 8) || 'user',
                     publicKey: session.publicKey,
-                    displayName: session.displayName, // if available
+                    displayName: session.displayName,
                 });
-                // We'll let App.js handle the WebSocket connection for now to keep context focused on user state
-                // or we could move it here if we want to fully decouple.
-                // For now, let's keep it simple: just state.
+                wsService.connect(session.publicKey, session.sessionToken || '');
             }
             setIsLoading(false);
         };
@@ -41,6 +39,7 @@ export const AuthProvider = ({ children }) => {
             publicKey: session.publicKey,
             displayName: session.displayName,
         });
+        wsService.connect(session.publicKey, session.sessionToken || '');
     };
 
     const signOut = () => {

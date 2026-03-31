@@ -128,7 +128,19 @@ async function getRecipientEncryptionKey(publicKey: string): Promise<string | nu
         if (d2.success && d2.data?.encryption_key) return d2.data.encryption_key;
         if (d2.success && d2.data?.record_json?.encryption_key) return d2.data.record_json.encryption_key;
 
-        console.warn('   ⚠️ No encryption key found for recipient');
+        // Fallback: /handles/pk/<pubkey>
+        // System bots like @echo have their X25519 key only in Railway memory —
+        // never written to identities/records DB. This is how Flutter finds them.
+        try {
+            const r3 = await fetch(`${GNS_API_BASE}/handles/pk/${publicKey}`);
+            const d3 = await r3.json();
+            if (d3.success && d3.data?.encryption_key) {
+                console.log('   Found encryption key via /handles/pk (system bot)');
+                return d3.data.encryption_key;
+            }
+        } catch (_) { /* ignore */ }
+
+        console.warn('   ⚠️ No encryption key found for:', publicKey.substring(0, 16) + '...');
         return null;
     } catch (error) {
         console.error('   Error fetching encryption key:', error);

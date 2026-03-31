@@ -159,7 +159,7 @@ async function hkdfDerive(sharedSecret: Uint8Array, ephemeralPub?: Uint8Array, r
             name: 'HKDF',
             hash: 'SHA-256',
             salt: new Uint8Array(0),
-            info: infoBytes,
+            info: infoBytes as unknown as BufferSource,
         },
         keyMaterial,
         256

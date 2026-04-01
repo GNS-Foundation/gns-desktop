@@ -127,7 +127,7 @@ jobs:
       # Note: target directory is at workspace root, not in src-tauri
       - name: Upload macOS artifacts
         if: matrix.platform == 'macos-latest'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: gns-browser-macos
           path: |
@@ -139,7 +139,7 @@ jobs:
 
       - name: Upload Linux artifacts
         if: matrix.platform == 'ubuntu-22.04'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: gns-browser-linux
           path: |
@@ -149,7 +149,7 @@ jobs:
 
       - name: Upload Windows artifacts
         if: matrix.platform == 'windows-latest'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: gns-browser-windows
           path: |
@@ -186,7 +186,7 @@ jobs:
         run: wasm-pack build --target web --release
 
       - name: Upload WASM artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: gns-crypto-wasm
           path: crates/gns-crypto-wasm/pkg/
